@@ -1,0 +1,13 @@
+import type { CandleRecord, GpuSeriesState, LiveMergeResult, OhlcvPoint, ViewBounds } from "./types";
+export declare function timeframeToSeconds(timeframe: string | number): number;
+export declare function normalizeRestTimeframe(timeframe: string | number): string;
+export declare function bucketStart(tsSec: number, timeframeSec: number): number;
+export declare function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null;
+export declare function packHistoricalCandles(rawRows: unknown[], timeframe: string | number, limit: number): GpuSeriesState;
+export declare function prependHistoricalCandles(state: GpuSeriesState, rawRows: unknown[], timeframe: string | number): number;
+export declare function candlesToBytes(candles: CandleRecord[]): Uint8Array;
+export declare function candleToBytes(candle: CandleRecord): Uint8Array;
+export declare function mergeLiveCandle(state: GpuSeriesState, payload: unknown, limit: number, gapLimit?: number): LiveMergeResult;
+export declare function computeViewBounds(candles: CandleRecord[], lineSeries?: Float32Array[]): ViewBounds;
+export declare function makeSyntheticCandles(symbol: string, limit: number, timeframe: string | number): GpuSeriesState;
+export declare function appendSyntheticCandle(state: GpuSeriesState, limit: number): LiveMergeResult;

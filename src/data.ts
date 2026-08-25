@@ -1,0 +1,340 @@
+import type {
+  CandleRecord,
+  GpuSeriesState,
+  LiveMergeResult,
+  OhlcvPoint,
+  ViewBounds,
+} from "./types";
+
+const FLOATS_PER_CANDLE = 5;
+
+export function timeframeToSeconds(timeframe: string | number): number {
+  const raw = String(timeframe).trim().toLowerCase();
+  if (raw.endsWith("m")) return parseInt(raw, 10) * 60;
+  if (raw.endsWith("h")) return parseInt(raw, 10) * 60 * 60;
+  if (raw.endsWith("d")) return parseInt(raw, 10) * 24 * 60 * 60;
+  return parseInt(raw, 10) * 60;
+}
+
+export function normalizeRestTimeframe(timeframe: string | number): string {
+  const raw = String(timeframe).trim().toLowerCase();
+  if (raw === "60") return "1h";
+  if (raw.endsWith("m") || raw.endsWith("h") || raw.endsWith("d")) return raw;
+  return `${raw}m`;
+}
+
+export function bucketStart(tsSec: number, timeframeSec: number): number {
+  return Math.floor(tsSec / timeframeSec) * timeframeSec;
+}
+
+export function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null {
+  const raw = unwrapPayload(input);
+  if (!raw || typeof raw !== "object") return null;
+  const record = raw as Record<string, unknown>;
+  const ts = parseTimestamp(record.ts);
+  const o = finiteNumber(record.o);
+  const h = finiteNumber(record.h);
+  const l = finiteNumber(record.l);
+  const c = finiteNumber(record.c);
+  if (ts == null || o == null || h == null || l == null || c == null) return null;
+  return {
+    ts,
+    o,
+    h,
+    l,
+    c,
+    v_base: finiteNumber(record.v_base),
+    v_quote: finiteNumber(record.v_quote),
+  };
+}
+
+export function packHistoricalCandles(
+  rawRows: unknown[],
+  timeframe: string | number,
+  limit: number,
+): GpuSeriesState {
+  const timeframeSec = timeframeToSeconds(timeframe);
+  const normalized = rawRows
+    .map(normalizeOhlcvPoint)
+    .filter((row): row is OhlcvPoint => row != null)
+    .sort((a, b) => a.ts - b.ts)
+    .slice(-Math.max(1, limit));
+
+  if (!normalized.length) {
+    return {
+      timeframeSec,
+      firstBucket: 0,
+      candles: [],
+      positionByBucket: new Map(),
+    };
+  }
+
+  const firstBucket = bucketStart(normalized[0].ts, timeframeSec);
+  const candles = normalized.map((row) => {
+    const bucket = bucketStart(row.ts, timeframeSec);
+    return {
+      ...row,
+      bucket,
+      x: (bucket - firstBucket) / timeframeSec,
+    };
+  });
+
+  return rebuildPositions({
+    timeframeSec,
+    firstBucket,
+    candles,
+    positionByBucket: new Map(),
+  });
+}
+
+export function prependHistoricalCandles(
+  state: GpuSeriesState,
+  rawRows: unknown[],
+  timeframe: string | number,
+): number {
+  const rows = rawRows
+    .map(normalizeOhlcvPoint)
+    .filter((row): row is OhlcvPoint => row != null)
+    .filter((row) => bucketStart(row.ts, state.timeframeSec) < state.firstBucket)
+    .sort((a, b) => a.ts - b.ts);
+
+  if (!rows.length) return 0;
+
+  const next = packHistoricalCandles(
+    [...rows, ...state.candles],
+    timeframe,
+    rows.length + state.candles.length,
+  );
+  state.timeframeSec = next.timeframeSec;
+  state.firstBucket = next.firstBucket;
+  state.candles = next.candles;
+  state.positionByBucket = next.positionByBucket;
+  return rows.length;
+}
+
+export function candlesToBytes(candles: CandleRecord[]): Uint8Array {
+  const floats = new Float32Array(candles.length * FLOATS_PER_CANDLE);
+  candles.forEach((candle, index) => {
+    floats.set([candle.x, candle.o, candle.h, candle.l, candle.c], index * FLOATS_PER_CANDLE);
+  });
+  return new Uint8Array(floats.buffer);
+}
+
+export function candleToBytes(candle: CandleRecord): Uint8Array {
+  const floats = new Float32Array([candle.x, candle.o, candle.h, candle.l, candle.c]);
+  return new Uint8Array(floats.buffer);
+}
+
+export function mergeLiveCandle(
+  state: GpuSeriesState,
+  payload: unknown,
+  limit: number,
+  gapLimit = 3,
+): LiveMergeResult {
+  const point = normalizeOhlcvPoint(payload);
+  if (!point) return { kind: "ignore", reason: "invalid-payload" };
+  if (!state.candles.length || state.firstBucket === 0) {
+    return { kind: "ignore", reason: "empty-history" };
+  }
+
+  const bucket = bucketStart(point.ts, state.timeframeSec);
+  if (bucket < state.firstBucket) return { kind: "ignore", reason: "before-history" };
+
+  const existingPosition = state.positionByBucket.get(bucket);
+  const x = (bucket - state.firstBucket) / state.timeframeSec;
+  const candle: CandleRecord = { ...point, bucket, x };
+
+  if (existingPosition != null) {
+    if (candlesEqual(state.candles[existingPosition], candle)) {
+      return { kind: "ignore", reason: "unchanged" };
+    }
+    state.candles[existingPosition] = candle;
+    return {
+      kind: "replace",
+      position: existingPosition,
+      bytes: candleToBytes(candle),
+    };
+  }
+
+  const last = state.candles[state.candles.length - 1];
+  if (bucket <= last.bucket) return { kind: "ignore", reason: "stale-gap" };
+  const bucketGap = (bucket - last.bucket) / state.timeframeSec;
+  if (bucketGap > gapLimit) return { kind: "ignore", reason: "gap-too-large" };
+
+  state.candles.push(candle);
+  if (state.candles.length > Math.max(1, limit)) {
+    state.candles.splice(0, state.candles.length - Math.max(1, limit));
+    reanchor(state);
+    return { kind: "reset", bytes: candlesToBytes(state.candles) };
+  }
+
+  rebuildPositions(state);
+  return {
+    kind: "append",
+    position: state.candles.length - 1,
+    bytes: candleToBytes(candle),
+  };
+}
+
+export function computeViewBounds(
+  candles: CandleRecord[],
+  lineSeries: Float32Array[] = [],
+): ViewBounds {
+  if (!candles.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
+  let minY = Infinity;
+  let maxY = -Infinity;
+  for (const candle of candles) {
+    minY = Math.min(minY, candle.l);
+    maxY = Math.max(maxY, candle.h);
+  }
+  for (const line of lineSeries) {
+    for (let i = 1; i < line.length; i += 2) {
+      const y = line[i];
+      if (Number.isFinite(y)) {
+        minY = Math.min(minY, y);
+        maxY = Math.max(maxY, y);
+      }
+    }
+  }
+  const span = Math.max(1e-9, maxY - minY);
+  const pad = span * 0.08;
+  return {
+    minX: candles[0].x,
+    maxX: candles[candles.length - 1].x,
+    minY: minY - pad,
+    maxY: maxY + pad,
+  };
+}
+
+export function makeSyntheticCandles(
+  symbol: string,
+  limit: number,
+  timeframe: string | number,
+): GpuSeriesState {
+  const timeframeSec = timeframeToSeconds(timeframe);
+  const now = Math.floor(Date.now() / 1000);
+  const endBucket = bucketStart(now, timeframeSec);
+  const seed = symbol.split("").reduce((acc, char) => acc + char.charCodeAt(0), 0);
+  const rows: OhlcvPoint[] = [];
+  let close = 40 + (seed % 160);
+  for (let i = Math.max(1, limit) - 1; i >= 0; i--) {
+    const ts = endBucket - i * timeframeSec;
+    const drift = Math.sin((limit - i + seed) / 9) * 0.8;
+    const o = close;
+    const c = Math.max(0.0001, o + drift + Math.cos((limit - i) / 13) * 0.35);
+    const h = Math.max(o, c) + 0.35 + Math.abs(Math.sin(i + seed)) * 0.5;
+    const l = Math.min(o, c) - 0.35 - Math.abs(Math.cos(i + seed)) * 0.5;
+    rows.push({ ts, o, h, l, c });
+    close = c;
+  }
+  return packHistoricalCandles(rows, timeframe, limit);
+}
+
+export function appendSyntheticCandle(
+  state: GpuSeriesState,
+  limit: number,
+): LiveMergeResult {
+  const last = state.candles[state.candles.length - 1];
+  if (!last) return { kind: "ignore", reason: "empty-history" };
+  const ts = last.bucket + state.timeframeSec;
+  const wave = Math.sin(ts / 600) * 0.7;
+  const o = last.c;
+  const c = Math.max(0.0001, o + wave);
+  const h = Math.max(o, c) + 0.5;
+  const l = Math.min(o, c) - 0.5;
+  return mergeLiveCandle(state, { ts, o, h, l, c }, limit);
+}
+
+function reanchor(state: GpuSeriesState) {
+  const first = state.candles[0];
+  state.firstBucket = first ? first.bucket : 0;
+  for (const candle of state.candles) {
+    candle.x = (candle.bucket - state.firstBucket) / state.timeframeSec;
+  }
+  rebuildPositions(state);
+}
+
+function rebuildPositions(state: GpuSeriesState): GpuSeriesState {
+  state.positionByBucket = new Map();
+  state.candles.forEach((candle, index) => {
+    state.positionByBucket.set(candle.bucket, index);
+  });
+  return state;
+}
+
+function parseTimestamp(value: unknown): number | null {
+  if (typeof value === "number") {
+    if (!Number.isFinite(value)) return null;
+    return value >= 1e12 ? Math.floor(value / 1000) : Math.floor(value);
+  }
+  if (typeof value === "string") {
+    const parsed = Date.parse(value);
+    return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
+  }
+  if (Array.isArray(value)) {
+    const parsed = value.length >= 9 ? parseOffsetDateTimeArray(value) : parseDateArray(value);
+    return Number.isNaN(parsed) ? null : Math.floor(parsed / 1000);
+  }
+  return null;
+}
+
+function parseOffsetDateTimeArray(value: unknown[]): number {
+  const [
+    y,
+    ordinal = 1,
+    hh = 0,
+    mm = 0,
+    ss = 0,
+    ns = 0,
+    offsetH = 0,
+    offsetM = 0,
+    offsetS = 0,
+  ] = value;
+  const ms = Math.floor(Number(ns) / 1_000_000);
+  return Date.UTC(
+    Number(y),
+    0,
+    Number(ordinal),
+    Number(hh) - Number(offsetH),
+    Number(mm) - Number(offsetM),
+    Number(ss) - Number(offsetS),
+    ms,
+  );
+}
+
+function parseDateArray(value: unknown[]): number {
+  const [y, m = 1, d = 1, hh = 0, mm = 0, ss = 0, ms = 0] = value;
+  return Date.UTC(
+    Number(y),
+    Number(m) - 1,
+    Number(d),
+    Number(hh),
+    Number(mm),
+    Number(ss),
+    Number(ms),
+  );
+}
+
+function candlesEqual(left: CandleRecord, right: CandleRecord): boolean {
+  return left.o === right.o && left.h === right.h && left.l === right.l && left.c === right.c;
+}
+
+function finiteNumber(value: unknown): number | undefined {
+  const num = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
+  return Number.isFinite(num) ? num : undefined;
+}
+
+function unwrapPayload(input: unknown): unknown {
+  if (typeof input === "string") {
+    try {
+      return unwrapPayload(JSON.parse(input));
+    } catch {
+      return null;
+    }
+  }
+  if (input && typeof input === "object" && "data" in input) {
+    const data = (input as { data?: unknown }).data;
+    if (data && typeof data === "object") return data;
+  }
+  return input;
+}

@@ -1,0 +1,38 @@
+{
+  "name": "@cryptodouche/gpu-chart-vue",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "files": [
+    "dist",
+    "renderer/pkg"
+  ],
+  "main": "./dist/index.js",
+  "module": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./style.css": "./dist/index.css"
+  },
+  "scripts": {
+    "build": "COPYFILE_DISABLE=1 vite build && COPYFILE_DISABLE=1 vue-tsc -p tsconfig.json --declaration --emitDeclarationOnly && find dist -name '._*' -delete",
+    "clean:appledouble": "find . -name '._*' -not -path './node_modules/*' -delete",
+    "test": "vitest run",
+    "pack:local": "pnpm build && pnpm clean:appledouble && pnpm pack",
+    "build:renderer": "bash scripts/build-renderer.sh"
+  },
+  "peerDependencies": {
+    "vue": "^3.4.0 || ^3.5.0"
+  },
+  "devDependencies": {
+    "@vitejs/plugin-vue": "^5.2.4",
+    "typescript": "^5.9.3",
+    "vite": "^6.4.1",
+    "vitest": "^4.1.9",
+    "vue": "^3.5.26",
+    "vue-tsc": "^2.2.12"
+  }
+}

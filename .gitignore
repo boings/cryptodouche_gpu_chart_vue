@@ -1,0 +1,7 @@
+node_modules/
+target/
+renderer/target/
+*.tgz
+*.tsbuildinfo
+.DS_Store
+._*
