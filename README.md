@@ -1,15 +1,23 @@
 # Cryptodouche GPU Chart Vue
 
-Reusable Vue 3 wrapper for the Cryptodouche WebGPU candlestick renderer.
+Reusable Vue 3 candlestick chart package backed by a WebGPU/WASM renderer.
 
-The package is intentionally data-source agnostic. Applications provide candle history, optional historical range loading, and optional live updates through a `GpuChartDataAdapter`.
+This repository is intended to be the shared chart source of truth for Cryptodouche and other Vue projects. The chart package is data-source agnostic: consuming apps provide historical candles, optional older-range loading, and optional live updates through a small adapter interface.
 
-## Install From Git
+The package is not currently published to npm. Install it from a Git tag or a local packed tarball.
 
-Use a tag or commit SHA for reproducible installs:
+## Install
+
+Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add git+ssh://git@github.com/OWNER/cryptodouche-gpu-chart-vue.git#v0.1.0
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.2'
+```
+
+SSH works too:
+
+```sh
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.2'
 ```
 
 Import the component and CSS:
@@ -18,6 +26,8 @@ Import the component and CSS:
 import { GpuOhlcvChart, type GpuChartDataAdapter } from "@cryptodouche/gpu-chart-vue";
 import "@cryptodouche/gpu-chart-vue/style.css";
 ```
+
+The chart fills its parent. Give the parent a real height.
 
 ## Minimal Usage
 
@@ -31,6 +41,7 @@ import "@cryptodouche/gpu-chart-vue/style.css";
       timeframe="1m"
       :limit="500"
       :data-adapter="adapter"
+      open-on-chart-click
       @open="openSymbol"
     />
   </div>
@@ -56,6 +67,7 @@ const adapter: GpuChartDataAdapter = {
     const payload = await response.json();
     return payload.data ?? [];
   },
+
   async loadRange(query) {
     const params = new URLSearchParams({
       exchange: query.exchange ?? "",
@@ -90,7 +102,82 @@ export interface GpuChartDataAdapter {
 }
 ```
 
-Rows are normalized from objects with `ts`, `o`, `h`, `l`, and `c`. The timestamp can be seconds, milliseconds, an ISO string, or the OffsetDateTime tuple shape used by the Cryptodouche backend.
+`loadLatest` is required unless using the `candles` or `synthetic` props. `loadRange` is optional and enables older candle loading when the user pans or scrolls left. `subscribe` is optional and enables live candle updates.
+
+Rows are normalized from objects with:
+
+```ts
+{
+  ts: number | string | unknown[];
+  o: number;
+  h: number;
+  l: number;
+  c: number;
+  v_base?: number;
+  v_quote?: number;
+}
+```
+
+`ts` may be seconds, milliseconds, an ISO timestamp string, or the OffsetDateTime tuple shape used by the Cryptodouche backend.
+
+## Important Props
+
+```ts
+symbol: string;
+exchange?: string;
+marketType?: string;
+timeframe: string | number;
+limit: number;
+candles?: unknown[];
+dataAdapter?: GpuChartDataAdapter;
+showSma?: boolean;
+showEma?: boolean;
+synthetic?: boolean;
+appearance?: Partial<GpuChartAppearance>;
+openOnChartClick?: boolean;
+```
+
+When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange, marketType, timeframe }`. The package does not depend on Vue Router; consuming apps handle navigation.
+
+## Interaction Model
+
+- Normal scroll zooms horizontally.
+- Shift-scroll pans sideways and fits the Y axis to visible candles.
+- Dragging the chart body leaves auto-fit mode and pans manually.
+- Double-click resets visible-candle Y auto-fit.
+- Dragging the right-side price area scales the Y axis.
+- Panning near the left edge calls `dataAdapter.loadRange` when available.
+
+## Appearance
+
+`GpuChartAppearanceControls` is included, but apps can also build their own controls with:
+
+```ts
+useGpuChartAppearance()
+normalizeGpuChartAppearance()
+DEFAULT_GPU_CHART_APPEARANCE
+DEFAULT_GRID_GPU_CHART_APPEARANCE
+```
+
+The included controls are self-styled and do not require Tailwind or DaisyUI.
+
+## Extending The Chart
+
+Keep reusable chart features in this package. App-specific data fetching, routing, auth, exchange conventions, and stream details belong in adapters or wrapper components in the consuming app.
+
+For position entries, fills, trades, alerts, or labels, prefer a normalized overlay API in this package rather than app-specific drawing code. A future shape should look more like this:
+
+```ts
+positionMarkers?: GpuChartPositionMarker[];
+```
+
+or a more general overlay model:
+
+```ts
+overlays?: GpuChartOverlay[];
+```
+
+The package should remain usable by any Vue app that can provide normalized data.
 
 ## Development
 
@@ -100,4 +187,32 @@ pnpm test
 pnpm build
 ```
 
-Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when rebuilding `renderer/pkg`.
+Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when changing the renderer under `renderer/src`.
+
+Rebuild the renderer after Rust/WebGPU changes:
+
+```sh
+pnpm build:renderer
+pnpm build
+```
+
+## Release Flow
+
+Before pushing a tag:
+
+```sh
+pnpm clean:appledouble
+pnpm test
+pnpm build
+git status
+git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
+git commit -m "Describe change"
+git tag v0.1.3
+git push origin main --tags
+```
+
+This repo may be worked on from an ExFAT external drive. Always run `pnpm clean:appledouble` before committing or pushing so `._*` AppleDouble files do not get into Git metadata or package contents.
+
+## Publishing
+
+`private: true` is currently intentional: the repo is public, but the package is meant to be consumed from Git until npm package naming, license, and publishing policy are decided.
