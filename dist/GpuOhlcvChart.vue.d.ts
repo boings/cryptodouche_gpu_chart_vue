@@ -20,10 +20,12 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     open: (payload: GpuChartOpenPayload) => any;
     error: (message: string | null) => any;
     streaming: (active: boolean) => any;
+    "update:appearance": (value: GpuChartAppearance) => any;
 }, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{
     onOpen?: ((payload: GpuChartOpenPayload) => any) | undefined;
     onError?: ((message: string | null) => any) | undefined;
     onStreaming?: ((active: boolean) => any) | undefined;
+    "onUpdate:appearance"?: ((value: GpuChartAppearance) => any) | undefined;
 }>, {
     title: string;
     exchange: string;

@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.5'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.6'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.5'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.6'
 ```
 
 Import the component and CSS:
@@ -42,6 +42,7 @@ The chart fills its parent. Give the parent a real height.
       :limit="500"
       :data-adapter="adapter"
       show-indicator-panes
+      v-model:appearance="appearance"
       open-on-chart-click
       @open="openSymbol"
     />
@@ -51,10 +52,13 @@ The chart fills its parent. Give the parent a real height.
 <script setup lang="ts">
 import {
   GpuOhlcvChart,
+  useGpuChartAppearance,
   type GpuChartDataAdapter,
   type GpuChartOpenPayload,
 } from "@cryptodouche/gpu-chart-vue";
 import "@cryptodouche/gpu-chart-vue/style.css";
+
+const { appearance, saveAppearance } = useGpuChartAppearance("single");
 
 const adapter: GpuChartDataAdapter = {
   async loadLatest(query) {
@@ -143,6 +147,8 @@ When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange
 
 `showIndicatorPanes` enables the lower indicator pane. The current pane draws Stoch RSI with configurable RSI period, Stoch period, K/D smoothing, K/D colors, and pane height through `GpuChartAppearance`.
 
+Use `v-model:appearance` when enabling in-chart controls. The Stoch RSI pane exposes its own gear menu for indicator-specific settings, and the divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
+
 ## Interaction Model
 
 - Normal scroll zooms horizontally.
@@ -213,7 +219,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.5
+git tag v0.1.6
 git push origin main --tags
 ```
 

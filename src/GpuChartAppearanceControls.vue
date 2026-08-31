@@ -105,8 +105,6 @@ type ColorField = Extract<
   | "bollingerBasisColor"
   | "bollingerUpperColor"
   | "bollingerLowerColor"
-  | "stochRsiKColor"
-  | "stochRsiDColor"
   | "gridColor"
   | "textColor"
   | "crosshairColor"
@@ -123,11 +121,6 @@ type NumberField = Extract<
   | "wmaPeriod"
   | "bollingerPeriod"
   | "bollingerStdDev"
-  | "stochRsiRsiPeriod"
-  | "stochRsiPeriod"
-  | "stochRsiKPeriod"
-  | "stochRsiDPeriod"
-  | "stochRsiPaneHeight"
 >;
 type ToggleField = Extract<
   keyof GpuChartAppearance,
@@ -151,8 +144,6 @@ const colorFields: Array<{ key: ColorField; label: string }> = [
   { key: "bollingerBasisColor", label: "BB Basis" },
   { key: "bollingerUpperColor", label: "BB Upper" },
   { key: "bollingerLowerColor", label: "BB Lower" },
-  { key: "stochRsiKColor", label: "Stoch K" },
-  { key: "stochRsiDColor", label: "Stoch D" },
   { key: "gridColor", label: "Grid" },
   { key: "textColor", label: "Text" },
   { key: "crosshairColor", label: "Crosshair" },
@@ -178,11 +169,6 @@ const indicatorNumberFields: Array<{
   { key: "wmaPeriod", label: "WMA Period", min: 2, max: 250, step: 1 },
   { key: "bollingerPeriod", label: "BB Period", min: 2, max: 250, step: 1 },
   { key: "bollingerStdDev", label: "BB Std Dev", min: 0.5, max: 5, step: 0.25 },
-  { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
-  { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
-  { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
-  { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
-  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 
 const toggleFields: Array<{ key: ToggleField; label: string }> = [
@@ -217,9 +203,7 @@ function inputValue(event: Event) {
 }
 
 function formatNumberValue(field: NumberField) {
-  const value = props.modelValue[field];
-  if (field === "stochRsiPaneHeight") return `${Math.round(value * 100)}%`;
-  return value;
+  return props.modelValue[field];
 }
 </script>
 

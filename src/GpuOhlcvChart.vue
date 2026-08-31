@@ -13,6 +13,81 @@
   >
     <canvas ref="canvasRef" class="gpu-chart-canvas"></canvas>
     <canvas ref="hudRef" class="gpu-chart-hud"></canvas>
+    <div
+      v-if="indicatorPaneVisible"
+      class="gpu-chart-pane-divider"
+      :class="{ resizing: indicatorPaneResizing }"
+      :style="indicatorPaneDividerStyle"
+      title="Drag to resize"
+      @mousedown.stop.prevent="startIndicatorPaneResize"
+      @dblclick.stop.prevent="resetIndicatorPaneHeight"
+    ></div>
+    <div
+      v-if="indicatorPaneVisible"
+      class="gpu-chart-indicator-toolbar"
+      :style="indicatorPaneToolbarStyle"
+      @click.stop
+      @mousedown.stop
+      @dblclick.stop
+    >
+      <div class="gpu-chart-indicator-heading">
+        <span class="gpu-chart-indicator-title">Stoch RSI</span>
+        <button
+          type="button"
+          class="gpu-chart-indicator-gear"
+          :aria-expanded="stochRsiSettingsOpen"
+          aria-label="Stoch RSI settings"
+          title="Stoch RSI settings"
+          @click="toggleStochRsiSettings"
+        >
+          &#9881;
+        </button>
+        <span v-if="indicatorLatestKText" class="gpu-chart-indicator-value k">
+          K {{ indicatorLatestKText }}
+        </span>
+        <span v-if="indicatorLatestDText" class="gpu-chart-indicator-value d">
+          D {{ indicatorLatestDText }}
+        </span>
+      </div>
+      <div
+        v-if="stochRsiSettingsOpen"
+        class="gpu-chart-indicator-settings"
+        @wheel.stop
+      >
+        <label
+          v-for="field in stochRsiColorFields"
+          :key="field.key"
+          class="gpu-chart-indicator-field"
+        >
+          <span>{{ field.label }}</span>
+          <input
+            type="color"
+            class="gpu-chart-indicator-color"
+            :value="resolvedAppearance[field.key]"
+            @input="setStochRsiColor(field.key, $event)"
+          />
+        </label>
+        <label
+          v-for="field in stochRsiNumberFields"
+          :key="field.key"
+          class="gpu-chart-indicator-field"
+        >
+          <span class="gpu-chart-indicator-range-label">
+            <span>{{ field.label }}</span>
+            <span>{{ formatStochRsiSetting(field.key) }}</span>
+          </span>
+          <input
+            type="range"
+            :min="field.min"
+            :max="field.max"
+            :step="field.step"
+            class="gpu-chart-indicator-range"
+            :value="resolvedAppearance[field.key]"
+            @input="setStochRsiNumber(field.key, $event)"
+          />
+        </label>
+      </div>
+    </div>
     <component
       v-if="resolvedAppearance.showBadge"
       :is="badgeComponent"
@@ -100,6 +175,37 @@ interface IndicatorPaneLayout {
   innerHeight: number;
 }
 
+type StochRsiColorField = Extract<
+  keyof GpuChartAppearance,
+  "stochRsiKColor" | "stochRsiDColor"
+>;
+type StochRsiNumberField = Extract<
+  keyof GpuChartAppearance,
+  | "stochRsiRsiPeriod"
+  | "stochRsiPeriod"
+  | "stochRsiKPeriod"
+  | "stochRsiDPeriod"
+  | "stochRsiPaneHeight"
+>;
+
+const stochRsiColorFields: Array<{ key: StochRsiColorField; label: string }> = [
+  { key: "stochRsiKColor", label: "K Color" },
+  { key: "stochRsiDColor", label: "D Color" },
+];
+const stochRsiNumberFields: Array<{
+  key: StochRsiNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
+  { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
+  { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
+  { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
+  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
+];
+
 const props = withDefaults(
   defineProps<{
     symbol: string;
@@ -135,6 +241,7 @@ const emit = defineEmits<{
   streaming: [active: boolean];
   error: [message: string | null];
   open: [payload: GpuChartOpenPayload];
+  "update:appearance": [value: GpuChartAppearance];
 }>();
 
 const canvasRef = ref<HTMLCanvasElement | null>(null);
@@ -149,6 +256,13 @@ const candleCount = ref(0);
 const viewMinX = ref(0);
 const viewMaxX = ref(1);
 const historicalLoading = ref(false);
+const localAppearance = ref(normalizeGpuChartAppearance(props.appearance));
+const indicatorPaneVisible = ref(false);
+const indicatorPaneTopCss = ref(0);
+const indicatorLatestKText = ref("");
+const indicatorLatestDText = ref("");
+const stochRsiSettingsOpen = ref(false);
+const indicatorPaneResizing = ref(false);
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
@@ -164,8 +278,9 @@ let draggedDuringPointer = false;
 let autoFitVisibleY = true;
 let smoothXFrame: number | null = null;
 let smoothXTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
+let stopPaneResizeDrag: (() => void) | null = null;
 
-const resolvedAppearance = computed(() => normalizeGpuChartAppearance(props.appearance));
+const resolvedAppearance = computed(() => localAppearance.value);
 const shellStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
   return {
@@ -175,6 +290,26 @@ const shellStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-badge-bg": hexToRgba(appearance.tooltipBackgroundColor, 0.55),
     "--gpu-chart-up-color": appearance.upColor,
     "--gpu-chart-down-color": appearance.downColor,
+  };
+});
+const indicatorPaneDividerStyle = computed<Record<string, string>>(() => {
+  const appearance = resolvedAppearance.value;
+  return {
+    top: `${indicatorPaneTopCss.value}px`,
+    "--gpu-chart-divider-color": hexToRgba(appearance.gridColor, 0.86),
+  };
+});
+const indicatorPaneToolbarStyle = computed<Record<string, string>>(() => {
+  const appearance = resolvedAppearance.value;
+  return {
+    top: `${indicatorPaneTopCss.value + 7}px`,
+    "--gpu-chart-indicator-font-size": `${Math.max(11, appearance.fontSize * 0.86)}px`,
+    "--gpu-chart-indicator-text": hexToRgba(appearance.textColor, 0.92),
+    "--gpu-chart-indicator-muted": hexToRgba(appearance.textColor, 0.68),
+    "--gpu-chart-indicator-panel-bg": hexToRgba(appearance.tooltipBackgroundColor, 0.94),
+    "--gpu-chart-indicator-border": hexToRgba(appearance.gridColor, 0.72),
+    "--gpu-chart-indicator-k": appearance.stochRsiKColor,
+    "--gpu-chart-indicator-d": appearance.stochRsiDColor,
   };
 });
 const displaySymbol = computed(() => props.symbol.toUpperCase());
@@ -225,6 +360,8 @@ onBeforeUnmount(() => {
   stopStream();
   stopSynthetic();
   cancelSmoothX();
+  stopPaneResizeDrag?.();
+  stopPaneResizeDrag = null;
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -250,6 +387,14 @@ watch(
       void loadSeries();
     }
   },
+);
+
+watch(
+  () => props.appearance,
+  (appearance) => {
+    localAppearance.value = normalizeGpuChartAppearance(appearance);
+  },
+  { deep: true },
 );
 
 watch(
@@ -671,6 +816,71 @@ function resetVisibleYMode() {
   scheduleGpuRender(renderNow);
 }
 
+function toggleStochRsiSettings() {
+  stochRsiSettingsOpen.value = !stochRsiSettingsOpen.value;
+}
+
+function setStochRsiColor(field: StochRsiColorField, event: Event) {
+  patchAppearance({ [field]: inputValue(event) });
+}
+
+function setStochRsiNumber(field: StochRsiNumberField, event: Event) {
+  patchAppearance({ [field]: Number(inputValue(event)) });
+}
+
+function inputValue(event: Event) {
+  return (event.target as HTMLInputElement).value;
+}
+
+function resetIndicatorPaneHeight() {
+  patchAppearance({ stochRsiPaneHeight: 0.24 });
+}
+
+function startIndicatorPaneResize(event: MouseEvent) {
+  const hud = hudRef.value;
+  if (!hud) return;
+  const rect = hud.getBoundingClientRect();
+  if (rect.height <= 0) return;
+
+  stopPaneResizeDrag?.();
+  cancelSmoothX();
+  autoFitVisibleY = true;
+  draggedDuringPointer = true;
+  indicatorPaneResizing.value = true;
+  const previousCursor = document.body.style.cursor;
+  document.body.style.cursor = "ns-resize";
+
+  const updateHeight = (clientY: number) => {
+    const nextRatio = (rect.bottom - clientY) / rect.height;
+    patchAppearance({ stochRsiPaneHeight: nextRatio });
+  };
+  const onMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    updateHeight(moveEvent.clientY);
+  };
+  const onUp = () => {
+    stopPaneResizeDrag?.();
+  };
+
+  stopPaneResizeDrag = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    document.body.style.cursor = previousCursor;
+    indicatorPaneResizing.value = false;
+    stopPaneResizeDrag = null;
+  };
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+  updateHeight(event.clientY);
+}
+
+function patchAppearance(partial: Partial<GpuChartAppearance>) {
+  const next = normalizeGpuChartAppearance({ ...resolvedAppearance.value, ...partial });
+  localAppearance.value = next;
+  emit("update:appearance", next);
+}
+
 function smoothShiftPanBy(shift: number) {
   if (!Number.isFinite(shift) || shift === 0 || !state?.candles.length) return;
   const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
@@ -1047,6 +1257,7 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (pane) {
     paneSeries = drawIndicatorPane(ctx, pane, scale);
   }
+  syncIndicatorPaneUi(pane, paneSeries, scale);
 
   if (pos) {
     if (appearance.showCrosshair) {
@@ -1114,25 +1325,29 @@ function drawIndicatorPane(
 
   drawIndicatorLine(ctx, series.k, pane, appearance.stochRsiKColor, 0.95, 1.4 * scale);
   drawIndicatorLine(ctx, series.d, pane, appearance.stochRsiDColor, 0.88, 1.4 * scale);
-
-  const titleY = pane.top + Math.max(12 * scale, appearance.fontSize * scale * 0.9);
-  ctx.fillStyle = hexToRgba(appearance.textColor, 0.9);
-  ctx.fillText("Stoch RSI", 8 * scale, titleY);
-  const latestK = lastVisibleLineValue(series.k);
-  const latestD = lastVisibleLineValue(series.d);
-  let x = 96 * scale;
-  if (latestK != null) {
-    ctx.fillStyle = appearance.stochRsiKColor;
-    const label = `K ${formatIndicatorValue(latestK)}`;
-    ctx.fillText(label, x, titleY);
-    x += ctx.measureText(label).width + 12 * scale;
-  }
-  if (latestD != null) {
-    ctx.fillStyle = appearance.stochRsiDColor;
-    ctx.fillText(`D ${formatIndicatorValue(latestD)}`, x, titleY);
-  }
   ctx.restore();
   return series;
+}
+
+function syncIndicatorPaneUi(
+  pane: IndicatorPaneLayout | null,
+  series: { k: Float32Array; d: Float32Array } | null,
+  scale: number,
+) {
+  if (!pane || !series) {
+    indicatorPaneVisible.value = false;
+    indicatorLatestKText.value = "";
+    indicatorLatestDText.value = "";
+    if (stochRsiSettingsOpen.value) stochRsiSettingsOpen.value = false;
+    return;
+  }
+
+  indicatorPaneVisible.value = true;
+  indicatorPaneTopCss.value = pane.top / scale;
+  const latestK = lastVisibleLineValue(series.k);
+  const latestD = lastVisibleLineValue(series.d);
+  indicatorLatestKText.value = latestK == null ? "" : formatIndicatorValue(latestK);
+  indicatorLatestDText.value = latestD == null ? "" : formatIndicatorValue(latestD);
 }
 
 function drawIndicatorLine(
@@ -1310,6 +1525,12 @@ function formatIndicatorValue(value: number) {
   });
 }
 
+function formatStochRsiSetting(field: StochRsiNumberField) {
+  const value = resolvedAppearance.value[field];
+  if (field === "stochRsiPaneHeight") return `${Math.round(value * 100)}%`;
+  return value;
+}
+
 function setStreaming(active: boolean) {
   streaming.value = active;
   emit("streaming", active);
@@ -1348,6 +1569,140 @@ function setError(message: string | null) {
 
 .gpu-chart-hud {
   pointer-events: none;
+}
+
+.gpu-chart-pane-divider {
+  position: absolute;
+  left: 0;
+  right: 0;
+  z-index: 4;
+  height: 10px;
+  transform: translateY(-5px);
+  cursor: ns-resize;
+}
+
+.gpu-chart-pane-divider::before {
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: 5px;
+  height: 1px;
+  content: "";
+  background: var(--gpu-chart-divider-color, rgba(148, 163, 184, 0.72));
+  opacity: 0.72;
+  transition:
+    height 120ms ease,
+    opacity 120ms ease;
+}
+
+.gpu-chart-pane-divider:hover::before,
+.gpu-chart-pane-divider.resizing::before {
+  top: 4px;
+  height: 3px;
+  opacity: 1;
+}
+
+.gpu-chart-indicator-toolbar {
+  position: absolute;
+  left: 8px;
+  z-index: 5;
+  max-width: min(360px, calc(100% - 96px));
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.9));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--gpu-chart-indicator-font-size, 12px);
+  line-height: 1.25;
+  pointer-events: auto;
+}
+
+.gpu-chart-indicator-heading {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  padding: 2px 4px;
+  border-radius: 4px;
+  background: rgba(0, 0, 0, 0.18);
+}
+
+.gpu-chart-indicator-title {
+  flex: 0 0 auto;
+  font-weight: 700;
+}
+
+.gpu-chart-indicator-gear {
+  display: inline-grid;
+  width: 20px;
+  height: 20px;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-indicator-muted, rgba(255, 255, 255, 0.66));
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.gpu-chart-indicator-gear:hover,
+.gpu-chart-indicator-gear[aria-expanded="true"] {
+  border-color: var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.92));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gpu-chart-indicator-value {
+  flex: 0 0 auto;
+  font-variant-numeric: tabular-nums;
+}
+
+.gpu-chart-indicator-value.k {
+  color: var(--gpu-chart-indicator-k, #f59e0b);
+}
+
+.gpu-chart-indicator-value.d {
+  color: var(--gpu-chart-indicator-d, #a78bfa);
+}
+
+.gpu-chart-indicator-settings {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  width: min(320px, calc(100vw - 32px));
+  margin-top: 6px;
+  padding: 10px;
+  border: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  border-radius: 6px;
+  background: var(--gpu-chart-indicator-panel-bg, rgba(3, 6, 11, 0.94));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+}
+
+.gpu-chart-indicator-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--gpu-chart-indicator-muted, rgba(255, 255, 255, 0.68));
+  font-size: 11px;
+}
+
+.gpu-chart-indicator-range-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gpu-chart-indicator-range,
+.gpu-chart-indicator-color {
+  width: 100%;
+  accent-color: #d6a23d;
+}
+
+.gpu-chart-indicator-color {
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
 }
 
 .gpu-chart-badge {
