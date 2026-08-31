@@ -201,8 +201,10 @@ import {
   prependHistoricalCandles,
 } from "./data";
 import {
+  computeAtrLine,
   computeBollingerBands,
   computeEmaLine,
+  computeMacd,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -257,7 +259,16 @@ interface IndicatorPaneLayout {
 
 type IndicatorColorField = Extract<
   keyof GpuChartAppearance,
-  "stochRsiKColor" | "stochRsiDColor" | "stochRsiRangeColor" | "rsiColor" | "rsiRangeColor"
+  | "stochRsiKColor"
+  | "stochRsiDColor"
+  | "stochRsiRangeColor"
+  | "rsiColor"
+  | "rsiRangeColor"
+  | "macdLineColor"
+  | "macdSignalColor"
+  | "macdHistogramUpColor"
+  | "macdHistogramDownColor"
+  | "atrColor"
 >;
 type IndicatorNumberField = Extract<
   keyof GpuChartAppearance,
@@ -270,16 +281,23 @@ type IndicatorNumberField = Extract<
   | "rsiPeriod"
   | "rsiRangeLower"
   | "rsiRangeUpper"
+  | "macdFastPeriod"
+  | "macdSlowPeriod"
+  | "macdSignalPeriod"
+  | "atrPeriod"
 >;
 type IndicatorToggleField = Extract<
   keyof GpuChartAppearance,
-  "stochRsiSmooth" | "rsiSmooth"
+  "stochRsiSmooth" | "rsiSmooth" | "macdSmooth" | "atrSmooth"
 >;
 
 interface IndicatorPaneOption {
   id: GpuChartIndicatorPane;
   label: string;
-  showKey: Extract<keyof GpuChartAppearance, "showStochRsi" | "showRsi">;
+  showKey: Extract<
+    keyof GpuChartAppearance,
+    "showStochRsi" | "showRsi" | "showMacd" | "showAtr"
+  >;
   colorFields: Array<{ key: IndicatorColorField; label: string }>;
   toggleFields: Array<{ key: IndicatorToggleField; label: string }>;
   numberFields: Array<{
@@ -303,6 +321,11 @@ interface IndicatorRangeBand {
   color: string;
 }
 
+interface IndicatorValueScale {
+  min: number;
+  max: number;
+}
+
 interface VisibleWindowExtrema {
   high: number;
   low: number;
@@ -310,7 +333,9 @@ interface VisibleWindowExtrema {
 
 type IndicatorPaneSeries =
   | { id: "stochRsi"; k: Float32Array; d: Float32Array }
-  | { id: "rsi"; rsi: Float32Array };
+  | { id: "rsi"; rsi: Float32Array }
+  | { id: "macd"; macd: Float32Array; signal: Float32Array; histogram: Float32Array }
+  | { id: "atr"; atr: Float32Array };
 
 const stochRsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "stochRsiKColor", label: "K Color" },
@@ -340,6 +365,29 @@ const rsiNumberFields: IndicatorPaneOption["numberFields"] = [
 const rsiToggleFields: IndicatorPaneOption["toggleFields"] = [
   { key: "rsiSmooth", label: "Smooth Line" },
 ];
+const macdColorFields: IndicatorPaneOption["colorFields"] = [
+  { key: "macdLineColor", label: "MACD Color" },
+  { key: "macdSignalColor", label: "Signal Color" },
+  { key: "macdHistogramUpColor", label: "Histogram Up" },
+  { key: "macdHistogramDownColor", label: "Histogram Down" },
+];
+const macdNumberFields: IndicatorPaneOption["numberFields"] = [
+  { key: "macdFastPeriod", label: "Fast EMA", min: 2, max: 100, step: 1 },
+  { key: "macdSlowPeriod", label: "Slow EMA", min: 2, max: 200, step: 1 },
+  { key: "macdSignalPeriod", label: "Signal EMA", min: 1, max: 100, step: 1 },
+];
+const macdToggleFields: IndicatorPaneOption["toggleFields"] = [
+  { key: "macdSmooth", label: "Smooth Lines" },
+];
+const atrColorFields: IndicatorPaneOption["colorFields"] = [
+  { key: "atrColor", label: "ATR Color" },
+];
+const atrNumberFields: IndicatorPaneOption["numberFields"] = [
+  { key: "atrPeriod", label: "ATR Period", min: 2, max: 100, step: 1 },
+];
+const atrToggleFields: IndicatorPaneOption["toggleFields"] = [
+  { key: "atrSmooth", label: "Smooth Line" },
+];
 const INDICATOR_PANES: IndicatorPaneOption[] = [
   {
     id: "stochRsi",
@@ -356,6 +404,22 @@ const INDICATOR_PANES: IndicatorPaneOption[] = [
     colorFields: rsiColorFields,
     toggleFields: rsiToggleFields,
     numberFields: rsiNumberFields,
+  },
+  {
+    id: "macd",
+    label: "MACD",
+    showKey: "showMacd",
+    colorFields: macdColorFields,
+    toggleFields: macdToggleFields,
+    numberFields: macdNumberFields,
+  },
+  {
+    id: "atr",
+    label: "ATR",
+    showKey: "showAtr",
+    colorFields: atrColorFields,
+    toggleFields: atrToggleFields,
+    numberFields: atrNumberFields,
   },
 ];
 
@@ -491,6 +555,11 @@ const indicatorPaneToolbarStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-indicator-k": appearance.stochRsiKColor,
     "--gpu-chart-indicator-d": appearance.stochRsiDColor,
     "--gpu-chart-indicator-rsi": appearance.rsiColor,
+    "--gpu-chart-indicator-macd": appearance.macdLineColor,
+    "--gpu-chart-indicator-signal": appearance.macdSignalColor,
+    "--gpu-chart-indicator-atr": appearance.atrColor,
+    "--gpu-chart-indicator-histogram-up": appearance.macdHistogramUpColor,
+    "--gpu-chart-indicator-histogram-down": appearance.macdHistogramDownColor,
   };
 });
 const indicatorSettingsModalStyle = computed<Record<string, string>>(() => {
@@ -1484,6 +1553,8 @@ function indicatorWarmupCandles() {
     appearance.wmaPeriod,
     appearance.bollingerPeriod,
     appearance.rsiPeriod,
+    appearance.macdSlowPeriod + appearance.macdSignalPeriod,
+    appearance.atrPeriod,
     appearance.stochRsiRsiPeriod +
       appearance.stochRsiPeriod +
       appearance.stochRsiKPeriod +
@@ -1721,17 +1792,32 @@ function drawIndicatorPane(
 
   ctx.font = `${Math.max(10 * scale, appearance.fontSize * scale * 0.86)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
-  const band = indicatorRangeBand(activePane.id, appearance);
-  drawIndicatorBandFill(ctx, pane, band);
-  drawIndicatorLevels(ctx, pane, scale, [50]);
-  drawIndicatorBandLines(ctx, pane, scale, band);
-
-  const series =
-    activePane.id === "rsi"
-      ? drawRsiPane(ctx, pane, scale, appearance)
-      : drawStochRsiPane(ctx, pane, scale, appearance);
+  let series: IndicatorPaneSeries;
+  if (activePane.id === "rsi") {
+    drawOscillatorPaneDecorations(ctx, pane, scale, indicatorRangeBand(activePane.id, appearance));
+    series = drawRsiPane(ctx, pane, scale, appearance);
+  } else if (activePane.id === "macd") {
+    series = drawMacdPane(ctx, pane, scale, appearance);
+  } else if (activePane.id === "atr") {
+    series = drawAtrPane(ctx, pane, scale, appearance);
+  } else {
+    drawOscillatorPaneDecorations(ctx, pane, scale, indicatorRangeBand(activePane.id, appearance));
+    series = drawStochRsiPane(ctx, pane, scale, appearance);
+  }
   ctx.restore();
   return series;
+}
+
+function drawOscillatorPaneDecorations(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  band: IndicatorRangeBand,
+) {
+  const valueScale = oscillatorIndicatorScale();
+  drawIndicatorBandFill(ctx, pane, band, valueScale);
+  drawIndicatorLevels(ctx, pane, scale, [50], valueScale);
+  drawIndicatorBandLines(ctx, pane, scale, band, valueScale);
 }
 
 function drawStochRsiPane(
@@ -1757,6 +1843,7 @@ function drawStochRsiPane(
     0.95,
     1.4 * scale,
     appearance.stochRsiSmooth,
+    oscillatorIndicatorScale(),
   );
   drawIndicatorLine(
     ctx,
@@ -1766,6 +1853,7 @@ function drawStochRsiPane(
     0.88,
     1.4 * scale,
     appearance.stochRsiSmooth,
+    oscillatorIndicatorScale(),
   );
   return { id: "stochRsi", k: series.k, d: series.d };
 }
@@ -1777,8 +1865,86 @@ function drawRsiPane(
   appearance: GpuChartAppearance,
 ): IndicatorPaneSeries {
   const rsi = state ? computeRsiLine(state.candles, appearance.rsiPeriod) : new Float32Array();
-  drawIndicatorLine(ctx, rsi, pane, appearance.rsiColor, 0.95, 1.5 * scale, appearance.rsiSmooth);
+  drawIndicatorLine(
+    ctx,
+    rsi,
+    pane,
+    appearance.rsiColor,
+    0.95,
+    1.5 * scale,
+    appearance.rsiSmooth,
+    oscillatorIndicatorScale(),
+  );
   return { id: "rsi", rsi };
+}
+
+function drawMacdPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  appearance: GpuChartAppearance,
+): IndicatorPaneSeries {
+  const series = state
+    ? computeMacd(
+        state.candles,
+        appearance.macdFastPeriod,
+        appearance.macdSlowPeriod,
+        appearance.macdSignalPeriod,
+      )
+    : {
+        macd: new Float32Array(),
+        signal: new Float32Array(),
+        histogram: new Float32Array(),
+      };
+  const valueScale = indicatorLineBounds([series.macd, series.signal, series.histogram], {
+    includeZero: true,
+  });
+  drawIndicatorScaleLabels(ctx, pane, scale, valueScale);
+  drawIndicatorLevels(ctx, pane, scale, [0], valueScale);
+  drawIndicatorHistogram(ctx, series.histogram, pane, valueScale, appearance, scale);
+  drawIndicatorLine(
+    ctx,
+    series.macd,
+    pane,
+    appearance.macdLineColor,
+    0.95,
+    1.35 * scale,
+    appearance.macdSmooth,
+    valueScale,
+  );
+  drawIndicatorLine(
+    ctx,
+    series.signal,
+    pane,
+    appearance.macdSignalColor,
+    0.9,
+    1.35 * scale,
+    appearance.macdSmooth,
+    valueScale,
+  );
+  return { id: "macd", ...series };
+}
+
+function drawAtrPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  appearance: GpuChartAppearance,
+): IndicatorPaneSeries {
+  const atr = state ? computeAtrLine(state.candles, appearance.atrPeriod) : new Float32Array();
+  const valueScale = indicatorLineBounds([atr], { minAtZero: true });
+  drawIndicatorScaleLabels(ctx, pane, scale, valueScale);
+  drawIndicatorLine(
+    ctx,
+    atr,
+    pane,
+    appearance.atrColor,
+    0.95,
+    1.45 * scale,
+    appearance.atrSmooth,
+    valueScale,
+  );
+  return { id: "atr", atr };
 }
 
 function indicatorRangeBand(
@@ -1800,9 +1966,10 @@ function drawIndicatorBandFill(
   ctx: CanvasRenderingContext2D,
   pane: IndicatorPaneLayout,
   band: IndicatorRangeBand,
+  valueScale: IndicatorValueScale,
 ) {
-  const top = indicatorValueToPx(band.upper, pane);
-  const bottom = indicatorValueToPx(band.lower, pane);
+  const top = indicatorValueToPx(band.upper, pane, valueScale);
+  const bottom = indicatorValueToPx(band.lower, pane, valueScale);
   ctx.fillStyle = hexToRgba(band.color, 0.12);
   ctx.fillRect(0, top, ctx.canvas.width, Math.max(1, bottom - top));
 }
@@ -1812,6 +1979,7 @@ function drawIndicatorBandLines(
   pane: IndicatorPaneLayout,
   scale: number,
   band: IndicatorRangeBand,
+  valueScale: IndicatorValueScale,
 ) {
   const levels = band.lower === band.upper ? [band.lower] : [band.upper, band.lower];
   ctx.save();
@@ -1820,7 +1988,7 @@ function drawIndicatorBandLines(
   ctx.strokeStyle = hexToRgba(band.color, 0.78);
   ctx.fillStyle = hexToRgba(band.color, 0.88);
   for (const level of levels) {
-    const y = indicatorValueToPx(level, pane);
+    const y = indicatorValueToPx(level, pane, valueScale);
     ctx.beginPath();
     ctx.moveTo(0, y + 0.5);
     ctx.lineTo(ctx.canvas.width, y + 0.5);
@@ -1840,11 +2008,12 @@ function drawIndicatorLevels(
   pane: IndicatorPaneLayout,
   scale: number,
   levels: number[],
+  valueScale: IndicatorValueScale,
 ) {
   const appearance = resolvedAppearance.value;
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
   for (const level of levels) {
-    const y = indicatorValueToPx(level, pane);
+    const y = indicatorValueToPx(level, pane, valueScale);
     ctx.strokeStyle = hexToRgba(appearance.gridColor, level === 50 ? 0.46 : 0.3);
     ctx.beginPath();
     ctx.moveTo(0, y + 0.5);
@@ -1857,6 +2026,79 @@ function drawIndicatorLevels(
       y,
     );
   }
+}
+
+function drawIndicatorScaleLabels(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  valueScale: IndicatorValueScale,
+) {
+  const appearance = resolvedAppearance.value;
+  const levels = [valueScale.max, valueScale.min];
+  ctx.save();
+  ctx.fillStyle = hexToRgba(appearance.textColor, 0.66);
+  for (const level of levels) {
+    const y = indicatorValueToPx(level, pane, valueScale);
+    const label = formatDynamicIndicatorValue(level);
+    ctx.fillText(
+      label,
+      Math.max(4 * scale, ctx.canvas.width - ctx.measureText(label).width - 6 * scale),
+      y,
+    );
+  }
+  ctx.restore();
+}
+
+function oscillatorIndicatorScale(): IndicatorValueScale {
+  return { min: 0, max: 100 };
+}
+
+function indicatorLineBounds(
+  lines: Float32Array[],
+  options: { includeZero?: boolean; minAtZero?: boolean } = {},
+): IndicatorValueScale {
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  let min = Infinity;
+  let max = -Infinity;
+  for (const line of lines) {
+    for (let i = 0; i < line.length; i += 2) {
+      const x = line[i];
+      const value = line[i + 1];
+      if (!Number.isFinite(x) || !Number.isFinite(value) || x < minX || x > maxX) continue;
+      min = Math.min(min, value);
+      max = Math.max(max, value);
+    }
+  }
+
+  if (!Number.isFinite(min) || !Number.isFinite(max)) {
+    return options.minAtZero ? { min: 0, max: 1 } : { min: -1, max: 1 };
+  }
+  if (options.includeZero) {
+    min = Math.min(min, 0);
+    max = Math.max(max, 0);
+  }
+  if (options.minAtZero) {
+    min = 0;
+    max = Math.max(max, 0);
+  }
+  if (max <= min) {
+    const expansion = Math.max(Math.abs(max), 1);
+    if (options.minAtZero) {
+      max = min + expansion;
+    } else {
+      min -= expansion * 0.5;
+      max += expansion * 0.5;
+    }
+  }
+
+  const span = max - min;
+  const pad = span * 0.08;
+  return {
+    min: options.minAtZero ? min : min - pad,
+    max: max + pad,
+  };
 }
 
 function syncIndicatorPaneUi(
@@ -1883,6 +2125,35 @@ function syncIndicatorPaneUi(
     return;
   }
 
+  if (series.id === "macd") {
+    const latestMacd = lastVisibleLineValue(series.macd);
+    const latestSignal = lastVisibleLineValue(series.signal);
+    const latestHistogram = lastVisibleLineValue(series.histogram);
+    const values: IndicatorHeaderValue[] = [];
+    if (latestMacd != null) {
+      values.push({ label: "M", value: formatDynamicIndicatorValue(latestMacd), className: "macd" });
+    }
+    if (latestSignal != null) {
+      values.push({ label: "S", value: formatDynamicIndicatorValue(latestSignal), className: "signal" });
+    }
+    if (latestHistogram != null) {
+      values.push({
+        label: "H",
+        value: formatSignedIndicatorValue(latestHistogram),
+        className: latestHistogram >= 0 ? "histogram-up" : "histogram-down",
+      });
+    }
+    indicatorHeaderValues.value = values;
+    return;
+  }
+
+  if (series.id === "atr") {
+    const latestAtr = lastVisibleLineValue(series.atr);
+    indicatorHeaderValues.value =
+      latestAtr == null ? [] : [{ label: "ATR", value: formatDynamicIndicatorValue(latestAtr), className: "atr" }];
+    return;
+  }
+
   const values: IndicatorHeaderValue[] = [];
   const latestK = lastVisibleLineValue(series.k);
   const latestD = lastVisibleLineValue(series.d);
@@ -1903,6 +2174,7 @@ function drawIndicatorLine(
   alpha: number,
   width: number,
   smooth = false,
+  valueScale: IndicatorValueScale,
 ) {
   if (line.length < 4) return;
   ctx.save();
@@ -1954,10 +2226,42 @@ function drawIndicatorLine(
       continue;
     }
     const px = xToPx(x, ctx.canvas.width);
-    const py = indicatorValueToPx(value, pane);
+    const py = indicatorValueToPx(value, pane, valueScale);
     segment.push({ x: px, y: py });
   }
   flushSegment();
+  ctx.restore();
+}
+
+function drawIndicatorHistogram(
+  ctx: CanvasRenderingContext2D,
+  line: Float32Array,
+  pane: IndicatorPaneLayout,
+  valueScale: IndicatorValueScale,
+  appearance: GpuChartAppearance,
+  scale: number,
+) {
+  if (line.length < 2) return;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  const slotWidth = ctx.canvas.width / Math.max(1, view.maxX - view.minX);
+  const barWidth = Math.max(1 * scale, Math.min(slotWidth * 0.72, 10 * scale));
+  const zeroY = indicatorValueToPx(0, pane, valueScale);
+  ctx.save();
+  for (let i = 0; i < line.length; i += 2) {
+    const x = line[i];
+    const value = line[i + 1];
+    if (!Number.isFinite(x) || !Number.isFinite(value) || x < minX || x > maxX) continue;
+    const px = xToPx(x, ctx.canvas.width);
+    const py = indicatorValueToPx(value, pane, valueScale);
+    const top = Math.min(py, zeroY);
+    const height = Math.max(1 * scale, Math.abs(py - zeroY));
+    ctx.fillStyle = hexToRgba(
+      value >= 0 ? appearance.macdHistogramUpColor : appearance.macdHistogramDownColor,
+      0.46,
+    );
+    ctx.fillRect(px - barWidth / 2, top, barWidth, height);
+  }
   ctx.restore();
 }
 
@@ -1972,6 +2276,26 @@ function drawIndicatorTooltip(
     const rsi = lineValueNearX(series.rsi, candleX);
     if (rsi == null) return;
     drawTextBox(ctx, x, y, `RSI ${formatIndicatorValue(rsi)}`);
+    return;
+  }
+
+  if (series.id === "macd") {
+    const macd = lineValueNearX(series.macd, candleX);
+    const signal = lineValueNearX(series.signal, candleX);
+    const histogram = lineValueNearX(series.histogram, candleX);
+    if (macd == null && signal == null && histogram == null) return;
+    const parts = ["MACD"];
+    if (macd != null) parts.push(`M ${formatDynamicIndicatorValue(macd)}`);
+    if (signal != null) parts.push(`S ${formatDynamicIndicatorValue(signal)}`);
+    if (histogram != null) parts.push(`H ${formatSignedIndicatorValue(histogram)}`);
+    drawTextBox(ctx, x, y, parts.join("  "));
+    return;
+  }
+
+  if (series.id === "atr") {
+    const atr = lineValueNearX(series.atr, candleX);
+    if (atr == null) return;
+    drawTextBox(ctx, x, y, `ATR ${formatDynamicIndicatorValue(atr)}`);
     return;
   }
 
@@ -2061,9 +2385,15 @@ function drawTextBox(ctx: CanvasRenderingContext2D, x: number, y: number, text: 
   ctx.fillText(text, boxX + padX, boxY - height / 2);
 }
 
-function indicatorValueToPx(value: number, pane: IndicatorPaneLayout) {
-  const bounded = Math.max(0, Math.min(100, value));
-  return pane.innerTop + (1 - bounded / 100) * pane.innerHeight;
+function indicatorValueToPx(
+  value: number,
+  pane: IndicatorPaneLayout,
+  valueScale: IndicatorValueScale,
+) {
+  const span = Math.max(1e-9, valueScale.max - valueScale.min);
+  const ratio = (value - valueScale.min) / span;
+  const bounded = Math.max(0, Math.min(1, ratio));
+  return pane.innerTop + (1 - bounded) * pane.innerHeight;
 }
 
 function lastVisibleLineValue(line: Float32Array) {
@@ -2155,6 +2485,21 @@ function formatIndicatorValue(value: number) {
     minimumFractionDigits: 1,
     maximumFractionDigits: 1,
   });
+}
+
+function formatDynamicIndicatorValue(value: number) {
+  const abs = Math.abs(value);
+  const maximumFractionDigits =
+    abs >= 1_000 ? 0 : abs >= 100 ? 1 : abs >= 10 ? 2 : abs >= 1 ? 3 : abs >= 0.01 ? 4 : 6;
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits,
+  });
+}
+
+function formatSignedIndicatorValue(value: number) {
+  const formatted = formatDynamicIndicatorValue(value);
+  return value > 0 ? `+${formatted}` : formatted;
 }
 
 function formatIndicatorLevel(value: number) {
@@ -2304,6 +2649,26 @@ function setError(message: string | null) {
 
 .gpu-chart-indicator-value.rsi {
   color: var(--gpu-chart-indicator-rsi, #22c55e);
+}
+
+.gpu-chart-indicator-value.macd {
+  color: var(--gpu-chart-indicator-macd, #38bdf8);
+}
+
+.gpu-chart-indicator-value.signal {
+  color: var(--gpu-chart-indicator-signal, #f59e0b);
+}
+
+.gpu-chart-indicator-value.atr {
+  color: var(--gpu-chart-indicator-atr, #eab308);
+}
+
+.gpu-chart-indicator-value.histogram-up {
+  color: var(--gpu-chart-indicator-histogram-up, #22c55e);
+}
+
+.gpu-chart-indicator-value.histogram-down {
+  color: var(--gpu-chart-indicator-histogram-down, #ef4444);
 }
 
 .gpu-chart-indicator-settings-modal {

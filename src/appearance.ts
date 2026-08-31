@@ -1,6 +1,6 @@
 import { ref } from "vue";
 
-export type GpuChartIndicatorPane = "stochRsi" | "rsi";
+export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr";
 
 export interface GpuChartAppearance {
   backgroundColor: string;
@@ -17,6 +17,11 @@ export interface GpuChartAppearance {
   stochRsiRangeColor: string;
   rsiColor: string;
   rsiRangeColor: string;
+  macdLineColor: string;
+  macdSignalColor: string;
+  macdHistogramUpColor: string;
+  macdHistogramDownColor: string;
+  atrColor: string;
   gridColor: string;
   textColor: string;
   crosshairColor: string;
@@ -44,6 +49,12 @@ export interface GpuChartAppearance {
   rsiRangeLower: number;
   rsiRangeUpper: number;
   rsiSmooth: boolean;
+  macdFastPeriod: number;
+  macdSlowPeriod: number;
+  macdSignalPeriod: number;
+  macdSmooth: boolean;
+  atrPeriod: number;
+  atrSmooth: boolean;
   activeIndicatorPane: GpuChartIndicatorPane;
   indicatorPaneMinimized: boolean;
   showGrid: boolean;
@@ -56,6 +67,8 @@ export interface GpuChartAppearance {
   showBollinger: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
+  showMacd: boolean;
+  showAtr: boolean;
 }
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
@@ -76,6 +89,11 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   stochRsiRangeColor: "#64748b",
   rsiColor: "#22c55e",
   rsiRangeColor: "#64748b",
+  macdLineColor: "#38bdf8",
+  macdSignalColor: "#f59e0b",
+  macdHistogramUpColor: "#22c55e",
+  macdHistogramDownColor: "#ef4444",
+  atrColor: "#eab308",
   gridColor: "#27313d",
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
@@ -103,6 +121,12 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   rsiRangeLower: 20,
   rsiRangeUpper: 80,
   rsiSmooth: false,
+  macdFastPeriod: 12,
+  macdSlowPeriod: 26,
+  macdSignalPeriod: 9,
+  macdSmooth: false,
+  atrPeriod: 14,
+  atrSmooth: false,
   activeIndicatorPane: "stochRsi",
   indicatorPaneMinimized: false,
   showGrid: true,
@@ -115,6 +139,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showBollinger: false,
   showStochRsi: true,
   showRsi: true,
+  showMacd: true,
+  showAtr: true,
 };
 
 export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
@@ -124,6 +150,8 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showWindowHighLow: false,
   showStochRsi: false,
   showRsi: false,
+  showMacd: false,
+  showAtr: false,
 };
 
 interface StorageLike {
@@ -162,6 +190,17 @@ export function normalizeGpuChartAppearance(
     stochRsiRangeColor: colorValue(value.stochRsiRangeColor, defaults.stochRsiRangeColor),
     rsiColor: colorValue(value.rsiColor, defaults.rsiColor),
     rsiRangeColor: colorValue(value.rsiRangeColor, defaults.rsiRangeColor),
+    macdLineColor: colorValue(value.macdLineColor, defaults.macdLineColor),
+    macdSignalColor: colorValue(value.macdSignalColor, defaults.macdSignalColor),
+    macdHistogramUpColor: colorValue(
+      value.macdHistogramUpColor,
+      defaults.macdHistogramUpColor,
+    ),
+    macdHistogramDownColor: colorValue(
+      value.macdHistogramDownColor,
+      defaults.macdHistogramDownColor,
+    ),
+    atrColor: colorValue(value.atrColor, defaults.atrColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
@@ -234,6 +273,17 @@ export function normalizeGpuChartAppearance(
     rsiRangeLower: clampNumber(value.rsiRangeLower, 0, 100, defaults.rsiRangeLower),
     rsiRangeUpper: clampNumber(value.rsiRangeUpper, 0, 100, defaults.rsiRangeUpper),
     rsiSmooth: boolValue(value.rsiSmooth, defaults.rsiSmooth),
+    macdFastPeriod: clampInteger(value.macdFastPeriod, 2, 100, defaults.macdFastPeriod),
+    macdSlowPeriod: clampInteger(value.macdSlowPeriod, 2, 200, defaults.macdSlowPeriod),
+    macdSignalPeriod: clampInteger(
+      value.macdSignalPeriod,
+      1,
+      100,
+      defaults.macdSignalPeriod,
+    ),
+    macdSmooth: boolValue(value.macdSmooth, defaults.macdSmooth),
+    atrPeriod: clampInteger(value.atrPeriod, 2, 100, defaults.atrPeriod),
+    atrSmooth: boolValue(value.atrSmooth, defaults.atrSmooth),
     activeIndicatorPane: indicatorPaneValue(
       value.activeIndicatorPane,
       defaults.activeIndicatorPane,
@@ -252,6 +302,8 @@ export function normalizeGpuChartAppearance(
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),
+    showMacd: boolValue(value.showMacd, defaults.showMacd),
+    showAtr: boolValue(value.showAtr, defaults.showAtr),
   };
 }
 
@@ -339,7 +391,9 @@ function boolValue(value: unknown, fallback: boolean) {
 }
 
 function indicatorPaneValue(value: unknown, fallback: GpuChartIndicatorPane) {
-  return value === "stochRsi" || value === "rsi" ? value : fallback;
+  return value === "stochRsi" || value === "rsi" || value === "macd" || value === "atr"
+    ? value
+    : fallback;
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {

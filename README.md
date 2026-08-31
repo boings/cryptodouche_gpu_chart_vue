@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.12'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.13'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.12'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.13'
 ```
 
 Import the component and CSS:
@@ -146,11 +146,11 @@ openOnChartClick?: boolean;
 
 When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange, marketType, timeframe }`. The package does not depend on Vue Router; consuming apps handle navigation.
 
-`showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI and RSI, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
+`showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI, RSI, MACD, and ATR, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
 
 Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, including period, upper/lower range, and range color. The range is shaded with dashed threshold lines. The divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
 
-The price pane can show the current visible-window high and low as dashed horizontal labels. Stoch RSI and RSI panes also include a per-indicator Smooth Line toggle in their gear menus. The right edge reserves label space so the latest candle and price marker do not overlap.
+The price pane can show the current visible-window high and low as dashed horizontal labels. Lower panes include per-indicator period, color, and Smooth Line controls in their gear menus. RSI-style oscillator panes also expose shaded range settings. The right edge reserves label space so the latest candle and price marker do not overlap.
 
 ## Interaction Model
 

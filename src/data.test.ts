@@ -8,8 +8,10 @@ import {
   prependHistoricalCandles,
 } from "./data";
 import {
+  computeAtrLine,
   computeBollingerBands,
   computeEmaLine,
+  computeMacd,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -279,6 +281,38 @@ describe("gpu chart data utilities", () => {
     expect(Array.from(stoch.d).filter((_, index) => index % 2 === 1)).toEqual([
       50, 50, 50, 50, 50,
     ]);
+  });
+
+  it("computes MACD and ATR lower-pane indicator buffers", () => {
+    const state = packHistoricalCandles(
+      Array.from({ length: 40 }, (_, i) => {
+        const close = i + 1;
+        return {
+          ts: 60 + i * 60,
+          o: close - 0.25,
+          h: close + 1,
+          l: close - 1,
+          c: close,
+        };
+      }),
+      "1m",
+      500,
+    );
+
+    const macd = computeMacd(state.candles, 3, 6, 3);
+    const atr = computeAtrLine(state.candles, 3);
+
+    expect(macd.macd.length).toBe(70);
+    expect(macd.signal.length).toBe(66);
+    expect(macd.histogram.length).toBe(66);
+    expect(macd.macd[0]).toBe(5);
+    expect(macd.macd[1]).toBeCloseTo(1.5);
+    expect(macd.signal[0]).toBe(7);
+    expect(macd.signal[1]).toBeCloseTo(1.5);
+    expect(macd.histogram[1]).toBeCloseTo(0);
+    expect(atr.length).toBe(76);
+    expect(atr[0]).toBe(2);
+    expect(atr[1]).toBeCloseTo(2);
   });
 
   it("computes badge change from latest close versus previous close", () => {

@@ -48,12 +48,25 @@ describe("gpu chart appearance", () => {
       rsiRangeLower: -5,
       rsiRangeUpper: 105,
       rsiSmooth: "yes" as unknown as boolean,
+      macdLineColor: "blue",
+      macdSignalColor: "orange",
+      macdHistogramUpColor: "green",
+      macdHistogramDownColor: "red",
+      macdFastPeriod: 1,
+      macdSlowPeriod: 999,
+      macdSignalPeriod: -3,
+      macdSmooth: "yes" as unknown as boolean,
+      atrColor: "yellow",
+      atrPeriod: 999,
+      atrSmooth: "yes" as unknown as boolean,
       windowHighColor: "blue",
       showWindowHighLow: "yes" as unknown as boolean,
-      activeIndicatorPane: "macd" as unknown as "rsi",
+      activeIndicatorPane: "not-a-pane" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
       showRsi: "yes" as unknown as boolean,
+      showMacd: "yes" as unknown as boolean,
+      showAtr: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
     });
 
@@ -76,6 +89,21 @@ describe("gpu chart appearance", () => {
     expect(appearance.rsiRangeLower).toBe(0);
     expect(appearance.rsiRangeUpper).toBe(100);
     expect(appearance.rsiSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiSmooth);
+    expect(appearance.macdLineColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.macdLineColor);
+    expect(appearance.macdSignalColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.macdSignalColor);
+    expect(appearance.macdHistogramUpColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.macdHistogramUpColor,
+    );
+    expect(appearance.macdHistogramDownColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.macdHistogramDownColor,
+    );
+    expect(appearance.macdFastPeriod).toBe(2);
+    expect(appearance.macdSlowPeriod).toBe(200);
+    expect(appearance.macdSignalPeriod).toBe(1);
+    expect(appearance.macdSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.macdSmooth);
+    expect(appearance.atrColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.atrColor);
+    expect(appearance.atrPeriod).toBe(100);
+    expect(appearance.atrSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.atrSmooth);
     expect(appearance.windowHighColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.windowHighColor);
     expect(appearance.showWindowHighLow).toBe(DEFAULT_GPU_CHART_APPEARANCE.showWindowHighLow);
     expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
@@ -84,6 +112,8 @@ describe("gpu chart appearance", () => {
     );
     expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
     expect(appearance.showRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsi);
+    expect(appearance.showMacd).toBe(DEFAULT_GPU_CHART_APPEARANCE.showMacd);
+    expect(appearance.showAtr).toBe(DEFAULT_GPU_CHART_APPEARANCE.showAtr);
     expect(appearance.showGrid).toBe(DEFAULT_GPU_CHART_APPEARANCE.showGrid);
   });
 
@@ -108,7 +138,20 @@ describe("gpu chart appearance", () => {
         rsiRangeLower: 30,
         rsiRangeUpper: 70,
         rsiSmooth: true,
-        activeIndicatorPane: "rsi",
+        showMacd: false,
+        showAtr: false,
+        macdLineColor: "#0284c7",
+        macdSignalColor: "#f97316",
+        macdHistogramUpColor: "#16a34a",
+        macdHistogramDownColor: "#dc2626",
+        macdFastPeriod: 8,
+        macdSlowPeriod: 21,
+        macdSignalPeriod: 5,
+        macdSmooth: true,
+        atrColor: "#facc15",
+        atrPeriod: 22,
+        atrSmooth: true,
+        activeIndicatorPane: "macd",
         indicatorPaneMinimized: true,
       },
       storage,
@@ -131,7 +174,20 @@ describe("gpu chart appearance", () => {
     expect(saved.rsiRangeLower).toBe(30);
     expect(saved.rsiRangeUpper).toBe(70);
     expect(saved.rsiSmooth).toBe(true);
-    expect(saved.activeIndicatorPane).toBe("rsi");
+    expect(saved.showMacd).toBe(false);
+    expect(saved.showAtr).toBe(false);
+    expect(saved.macdLineColor).toBe("#0284c7");
+    expect(saved.macdSignalColor).toBe("#f97316");
+    expect(saved.macdHistogramUpColor).toBe("#16a34a");
+    expect(saved.macdHistogramDownColor).toBe("#dc2626");
+    expect(saved.macdFastPeriod).toBe(8);
+    expect(saved.macdSlowPeriod).toBe(21);
+    expect(saved.macdSignalPeriod).toBe(5);
+    expect(saved.macdSmooth).toBe(true);
+    expect(saved.atrColor).toBe("#facc15");
+    expect(saved.atrPeriod).toBe(22);
+    expect(saved.atrSmooth).toBe(true);
+    expect(saved.activeIndicatorPane).toBe("macd");
     expect(saved.indicatorPaneMinimized).toBe(true);
     expect(JSON.parse(storage.getItem(`${GPU_CHART_APPEARANCE_KEY}:single`) ?? "{}")).toMatchObject({
       backgroundColor: "#111827",
@@ -151,7 +207,20 @@ describe("gpu chart appearance", () => {
       rsiRangeLower: 30,
       rsiRangeUpper: 70,
       rsiSmooth: true,
-      activeIndicatorPane: "rsi",
+      showMacd: false,
+      showAtr: false,
+      macdLineColor: "#0284c7",
+      macdSignalColor: "#f97316",
+      macdHistogramUpColor: "#16a34a",
+      macdHistogramDownColor: "#dc2626",
+      macdFastPeriod: 8,
+      macdSlowPeriod: 21,
+      macdSignalPeriod: 5,
+      macdSmooth: true,
+      atrColor: "#facc15",
+      atrPeriod: 22,
+      atrSmooth: true,
+      activeIndicatorPane: "macd",
       indicatorPaneMinimized: true,
     });
     expect(loadGpuChartAppearance(storage)).toMatchObject(saved);
@@ -179,6 +248,10 @@ describe("gpu chart appearance", () => {
     expect(loadGpuChartAppearance(storage, "single").showStochRsi).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showRsi).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showRsi).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showMacd).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showMacd).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showAtr).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showAtr).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showWindowHighLow).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showWindowHighLow).toBe(true);
   });

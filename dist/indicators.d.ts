@@ -12,4 +12,10 @@ export declare function computeStochRsi(candles: CandleRecord[], rsiPeriod?: num
     k: Float32Array;
     d: Float32Array;
 };
+export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number, slowPeriod?: number, signalPeriod?: number): {
+    macd: Float32Array;
+    signal: Float32Array;
+    histogram: Float32Array;
+};
+export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function lineToBytes(line: Float32Array): Uint8Array;

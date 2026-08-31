@@ -128,8 +128,94 @@ export function computeStochRsi(
   };
 }
 
+export function computeMacd(
+  candles: CandleRecord[],
+  fastPeriod = 12,
+  slowPeriod = 26,
+  signalPeriod = 9,
+): { macd: Float32Array; signal: Float32Array; histogram: Float32Array } {
+  const fast = emaValues(candles, fastPeriod);
+  const slow = emaValues(candles, slowPeriod);
+  const macdPoints: Array<{ x: number; value: number }> = [];
+  for (let i = 0; i < candles.length; i++) {
+    const fastValue = fast[i];
+    const slowValue = slow[i];
+    if (fastValue == null || slowValue == null) continue;
+    macdPoints.push({ x: candles[i].x, value: fastValue - slowValue });
+  }
+
+  const signalPoints = emaLinePoints(macdPoints, signalPeriod);
+  const macdByX = new Map(macdPoints.map((point) => [point.x, point.value]));
+  const histogramPoints = signalPoints.map((point) => ({
+    x: point.x,
+    value: (macdByX.get(point.x) ?? point.value) - point.value,
+  }));
+
+  return {
+    macd: pointsToLine(macdPoints),
+    signal: pointsToLine(signalPoints),
+    histogram: pointsToLine(histogramPoints),
+  };
+}
+
+export function computeAtrLine(candles: CandleRecord[], period = 14): Float32Array {
+  const length = normalizedPeriod(period);
+  if (candles.length < length) return new Float32Array();
+  const trueRanges = candles.map((candle, index) => {
+    if (index === 0) return candle.h - candle.l;
+    const previousClose = candles[index - 1].c;
+    return Math.max(
+      candle.h - candle.l,
+      Math.abs(candle.h - previousClose),
+      Math.abs(candle.l - previousClose),
+    );
+  });
+
+  let atr = 0;
+  for (let i = 0; i < length; i++) atr += trueRanges[i];
+  atr /= length;
+  const points: Array<{ x: number; value: number }> = [{ x: candles[length - 1].x, value: atr }];
+  for (let i = length; i < candles.length; i++) {
+    atr = (atr * (length - 1) + trueRanges[i]) / length;
+    points.push({ x: candles[i].x, value: atr });
+  }
+  return pointsToLine(points);
+}
+
 export function lineToBytes(line: Float32Array): Uint8Array {
   return new Uint8Array(line.buffer);
+}
+
+function emaValues(candles: CandleRecord[], period: number) {
+  const length = normalizedPeriod(period);
+  const values: Array<number | null> = Array(candles.length).fill(null);
+  if (candles.length < length) return values;
+  const multiplier = 2 / (length + 1);
+  let ema = 0;
+  for (let i = 0; i < length; i++) ema += candles[i].c;
+  ema /= length;
+  values[length - 1] = ema;
+  for (let i = length; i < candles.length; i++) {
+    ema = (candles[i].c - ema) * multiplier + ema;
+    values[i] = ema;
+  }
+  return values;
+}
+
+function emaLinePoints(points: Array<{ x: number; value: number }>, period: number) {
+  const length = normalizedPeriod(period);
+  if (points.length < length) return [];
+  const averaged: Array<{ x: number; value: number }> = [];
+  const multiplier = 2 / (length + 1);
+  let ema = 0;
+  for (let i = 0; i < length; i++) ema += points[i].value;
+  ema /= length;
+  averaged.push({ x: points[length - 1].x, value: ema });
+  for (let i = length; i < points.length; i++) {
+    ema = (points[i].value - ema) * multiplier + ema;
+    averaged.push({ x: points[i].x, value: ema });
+  }
+  return averaged;
 }
 
 function computeRsiPoints(candles: CandleRecord[], period: number) {

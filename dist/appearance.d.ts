@@ -1,4 +1,4 @@
-export type GpuChartIndicatorPane = "stochRsi" | "rsi";
+export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr";
 export interface GpuChartAppearance {
     backgroundColor: string;
     upColor: string;
@@ -14,6 +14,11 @@ export interface GpuChartAppearance {
     stochRsiRangeColor: string;
     rsiColor: string;
     rsiRangeColor: string;
+    macdLineColor: string;
+    macdSignalColor: string;
+    macdHistogramUpColor: string;
+    macdHistogramDownColor: string;
+    atrColor: string;
     gridColor: string;
     textColor: string;
     crosshairColor: string;
@@ -41,6 +46,12 @@ export interface GpuChartAppearance {
     rsiRangeLower: number;
     rsiRangeUpper: number;
     rsiSmooth: boolean;
+    macdFastPeriod: number;
+    macdSlowPeriod: number;
+    macdSignalPeriod: number;
+    macdSmooth: boolean;
+    atrPeriod: number;
+    atrSmooth: boolean;
     activeIndicatorPane: GpuChartIndicatorPane;
     indicatorPaneMinimized: boolean;
     showGrid: boolean;
@@ -53,6 +64,8 @@ export interface GpuChartAppearance {
     showBollinger: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
+    showMacd: boolean;
+    showAtr: boolean;
 }
 export declare const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
 export type GpuChartAppearanceScope = "single" | "grid";
@@ -79,6 +92,11 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     stochRsiRangeColor: string;
     rsiColor: string;
     rsiRangeColor: string;
+    macdLineColor: string;
+    macdSignalColor: string;
+    macdHistogramUpColor: string;
+    macdHistogramDownColor: string;
+    atrColor: string;
     gridColor: string;
     textColor: string;
     crosshairColor: string;
@@ -106,6 +124,12 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     rsiRangeLower: number;
     rsiRangeUpper: number;
     rsiSmooth: boolean;
+    macdFastPeriod: number;
+    macdSlowPeriod: number;
+    macdSignalPeriod: number;
+    macdSmooth: boolean;
+    atrPeriod: number;
+    atrSmooth: boolean;
     activeIndicatorPane: GpuChartIndicatorPane;
     indicatorPaneMinimized: boolean;
     showGrid: boolean;
@@ -118,6 +142,8 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showBollinger: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
+    showMacd: boolean;
+    showAtr: boolean;
 };
 export declare function loadGpuChartAppearance(storage?: StorageLike | null, scope?: GpuChartAppearanceScope): GpuChartAppearance;
 export declare function saveGpuChartAppearance(appearance: Partial<GpuChartAppearance>, storage?: StorageLike | null, scope?: GpuChartAppearanceScope): GpuChartAppearance;
@@ -136,6 +162,11 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     stochRsiRangeColor: string;
     rsiColor: string;
     rsiRangeColor: string;
+    macdLineColor: string;
+    macdSignalColor: string;
+    macdHistogramUpColor: string;
+    macdHistogramDownColor: string;
+    atrColor: string;
     gridColor: string;
     textColor: string;
     crosshairColor: string;
@@ -163,6 +194,12 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     rsiRangeLower: number;
     rsiRangeUpper: number;
     rsiSmooth: boolean;
+    macdFastPeriod: number;
+    macdSlowPeriod: number;
+    macdSignalPeriod: number;
+    macdSmooth: boolean;
+    atrPeriod: number;
+    atrSmooth: boolean;
     activeIndicatorPane: GpuChartIndicatorPane;
     indicatorPaneMinimized: boolean;
     showGrid: boolean;
@@ -175,6 +212,8 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showBollinger: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
+    showMacd: boolean;
+    showAtr: boolean;
 };
 export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, storage?: StorageLike | null): {
     appearance: import("vue").Ref<{
@@ -192,6 +231,11 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         stochRsiRangeColor: string;
         rsiColor: string;
         rsiRangeColor: string;
+        macdLineColor: string;
+        macdSignalColor: string;
+        macdHistogramUpColor: string;
+        macdHistogramDownColor: string;
+        atrColor: string;
         gridColor: string;
         textColor: string;
         crosshairColor: string;
@@ -219,6 +263,12 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         rsiRangeLower: number;
         rsiRangeUpper: number;
         rsiSmooth: boolean;
+        macdFastPeriod: number;
+        macdSlowPeriod: number;
+        macdSignalPeriod: number;
+        macdSmooth: boolean;
+        atrPeriod: number;
+        atrSmooth: boolean;
         activeIndicatorPane: GpuChartIndicatorPane;
         indicatorPaneMinimized: boolean;
         showGrid: boolean;
@@ -231,6 +281,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showBollinger: boolean;
         showStochRsi: boolean;
         showRsi: boolean;
+        showMacd: boolean;
+        showAtr: boolean;
     }, GpuChartAppearance | {
         backgroundColor: string;
         upColor: string;
@@ -246,6 +298,11 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         stochRsiRangeColor: string;
         rsiColor: string;
         rsiRangeColor: string;
+        macdLineColor: string;
+        macdSignalColor: string;
+        macdHistogramUpColor: string;
+        macdHistogramDownColor: string;
+        atrColor: string;
         gridColor: string;
         textColor: string;
         crosshairColor: string;
@@ -273,6 +330,12 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         rsiRangeLower: number;
         rsiRangeUpper: number;
         rsiSmooth: boolean;
+        macdFastPeriod: number;
+        macdSlowPeriod: number;
+        macdSignalPeriod: number;
+        macdSmooth: boolean;
+        atrPeriod: number;
+        atrSmooth: boolean;
         activeIndicatorPane: GpuChartIndicatorPane;
         indicatorPaneMinimized: boolean;
         showGrid: boolean;
@@ -285,6 +348,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showBollinger: boolean;
         showStochRsi: boolean;
         showRsi: boolean;
+        showMacd: boolean;
+        showAtr: boolean;
     }>;
     saveAppearance: () => void;
     resetAppearance: () => void;
