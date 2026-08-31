@@ -5,6 +5,8 @@ export const RIGHT_EDGE_PADDING_CANDLES = 2;
 export const FOLLOW_LATEST_EPSILON = 0.05;
 export const VISIBLE_Y_PADDING_RATIO = 0.12;
 export const VISIBLE_Y_SMOOTHING_RATIO = 0.28;
+export const WHEEL_ZOOM_SENSITIVITY = 0.0011;
+export const WHEEL_ZOOM_MAX_DELTA_PX = 220;
 
 export interface XViewDomain {
   firstX: number;
@@ -154,6 +156,16 @@ export function isYBoundsClose(
     Math.abs(current.minY - target.minY) <= epsilon &&
     Math.abs(current.maxY - target.maxY) <= epsilon
   );
+}
+
+export function wheelZoomScale(
+  deltaPx: number,
+  sensitivity = WHEEL_ZOOM_SENSITIVITY,
+  maxAbsDeltaPx = WHEEL_ZOOM_MAX_DELTA_PX,
+): number {
+  if (!Number.isFinite(deltaPx)) return 1;
+  const boundedDelta = Math.max(-maxAbsDeltaPx, Math.min(maxAbsDeltaPx, deltaPx));
+  return Math.exp(boundedDelta * sensitivity);
 }
 
 export function scaleYView(

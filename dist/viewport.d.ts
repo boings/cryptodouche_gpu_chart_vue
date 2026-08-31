@@ -4,6 +4,8 @@ export declare const RIGHT_EDGE_PADDING_CANDLES = 2;
 export declare const FOLLOW_LATEST_EPSILON = 0.05;
 export declare const VISIBLE_Y_PADDING_RATIO = 0.12;
 export declare const VISIBLE_Y_SMOOTHING_RATIO = 0.28;
+export declare const WHEEL_ZOOM_SENSITIVITY = 0.0011;
+export declare const WHEEL_ZOOM_MAX_DELTA_PX = 220;
 export interface XViewDomain {
     firstX: number;
     lastX: number;
@@ -25,4 +27,5 @@ export interface YRangePoint {
 export declare function computeVisibleYBounds(candles: YRangePoint[], view: Pick<ViewBounds, "minX" | "maxX">, paddingRatio?: number): Pick<ViewBounds, "minY" | "maxY"> | null;
 export declare function smoothVisibleYBounds(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, ratio?: number): Pick<ViewBounds, "minY" | "maxY">;
 export declare function isYBoundsClose(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, epsilonRatio?: number): boolean;
+export declare function wheelZoomScale(deltaPx: number, sensitivity?: number, maxAbsDeltaPx?: number): number;
 export declare function scaleYView(view: ViewBounds, anchorRatio: number, scale: number): ViewBounds;

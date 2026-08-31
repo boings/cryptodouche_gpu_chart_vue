@@ -19,6 +19,7 @@ import {
   isYBoundsClose,
   scaleYView,
   smoothVisibleYBounds,
+  wheelZoomScale,
   withRightPadding,
 } from "./viewport";
 
@@ -251,6 +252,14 @@ describe("gpu chart data utilities", () => {
     expect(contracted.maxY).toBeCloseTo(117.5);
     expect(isYBoundsClose(contracted, { minY: 90, maxY: 110 })).toBe(false);
     expect(isYBoundsClose({ minY: 89.99, maxY: 110.01 }, { minY: 90, maxY: 110 })).toBe(true);
+  });
+
+  it("scales wheel zoom by delta magnitude", () => {
+    expect(wheelZoomScale(-2)).toBeCloseTo(0.9978, 4);
+    expect(wheelZoomScale(-120)).toBeLessThan(1);
+    expect(wheelZoomScale(-120)).toBeGreaterThan(0.85);
+    expect(wheelZoomScale(120)).toBeGreaterThan(1);
+    expect(wheelZoomScale(1_000)).toBeCloseTo(wheelZoomScale(220));
   });
 
   it("scales y bounds around the dragged price-axis anchor", () => {

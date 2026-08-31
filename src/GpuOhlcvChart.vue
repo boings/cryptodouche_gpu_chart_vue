@@ -76,6 +76,7 @@ import {
   scaleYView,
   smoothVisibleYBounds,
   withRightPadding,
+  wheelZoomScale,
 } from "./viewport";
 import { loadGpuChartModule } from "./wasm";
 
@@ -83,8 +84,8 @@ const LINE_SLOTS = [0, 1, 2, 3, 4, 5] as const;
 const PRICE_SCALE_DRAG_WIDTH_PX = 76;
 const Y_AXIS_SCALE_SENSITIVITY_PX = 180;
 const WHEEL_GESTURE_QUIET_MS = 180;
-const SMOOTH_SHIFT_PAN_EASE = 0.32;
-const SMOOTH_SHIFT_PAN_EPSILON_CANDLES = 0.002;
+const SMOOTH_X_EASE = 0.32;
+const SMOOTH_X_EPSILON_CANDLES = 0.002;
 
 const props = withDefaults(
   defineProps<{
@@ -146,8 +147,8 @@ let mousePos: { px: number; py: number } | null = null;
 let hasMoreHistory = true;
 let draggedDuringPointer = false;
 let autoFitVisibleY = true;
-let smoothPanFrame: number | null = null;
-let smoothPanTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
+let smoothXFrame: number | null = null;
+let smoothXTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
 
 const resolvedAppearance = computed(() => normalizeGpuChartAppearance(props.appearance));
 const shellStyle = computed<Record<string, string>>(() => {
@@ -208,7 +209,7 @@ onBeforeUnmount(() => {
   mounted = false;
   stopStream();
   stopSynthetic();
-  cancelSmoothPan();
+  cancelSmoothX();
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -307,7 +308,7 @@ function applyChartAppearance() {
 async function loadSeries() {
   stopStream();
   stopSynthetic();
-  cancelSmoothPan();
+  cancelSmoothX();
   loading.value = true;
   setError(null);
   hasMoreHistory = true;
@@ -427,9 +428,9 @@ async function maybeLoadOlderCandles() {
     if (Number.isFinite(xShift)) {
       view.minX += xShift;
       view.maxX += xShift;
-      if (smoothPanTarget) {
-        smoothPanTarget.minX += xShift;
-        smoothPanTarget.maxX += xShift;
+      if (smoothXTarget) {
+        smoothXTarget.minX += xShift;
+        smoothXTarget.maxX += xShift;
       }
     }
     updateSummaryMetrics();
@@ -499,9 +500,9 @@ function applyMergeResult(
     if (Number.isFinite(xShift)) {
       view.minX += xShift;
       view.maxX += xShift;
-      if (smoothPanTarget) {
-        smoothPanTarget.minX += xShift;
-        smoothPanTarget.maxX += xShift;
+      if (smoothXTarget) {
+        smoothXTarget.minX += xShift;
+        smoothXTarget.maxX += xShift;
       }
     }
   }
@@ -624,7 +625,7 @@ function fitVisibleY(options: { smooth?: boolean } = {}) {
 }
 
 function resetVisibleYMode() {
-  cancelSmoothPan();
+  cancelSmoothX();
   autoFitVisibleY = true;
   fitVisibleY();
   applyView();
@@ -634,59 +635,81 @@ function resetVisibleYMode() {
 
 function smoothShiftPanBy(shift: number) {
   if (!Number.isFinite(shift) || shift === 0 || !state?.candles.length) return;
-  const base = smoothPanTarget ?? { minX: view.minX, maxX: view.maxX };
+  const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
   const target = clampXBounds({
     ...view,
     minX: base.minX + shift,
     maxX: base.maxX + shift,
   });
-  smoothPanTarget = { minX: target.minX, maxX: target.maxX };
-  if (smoothPanFrame == null) {
-    smoothPanFrame = requestAnimationFrame(stepSmoothPan);
+  setSmoothXTarget(target);
+}
+
+function smoothZoomBy(scale: number, anchorRatio: number) {
+  if (!Number.isFinite(scale) || scale <= 0 || !state?.candles.length) return;
+  const ratio = Math.max(0, Math.min(1, anchorRatio));
+  const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
+  const width = Math.max(1e-9, base.maxX - base.minX);
+  const anchorX = base.minX + ratio * width;
+  const nextWidth = width * scale;
+  const target = clampXBounds(
+    {
+      ...view,
+      minX: anchorX - ratio * nextWidth,
+      maxX: anchorX + (1 - ratio) * nextWidth,
+    },
+    { x: anchorX, ratio },
+  );
+  setSmoothXTarget(target);
+}
+
+function setSmoothXTarget(target: ViewBounds) {
+  smoothXTarget = { minX: target.minX, maxX: target.maxX };
+  if (smoothXFrame == null) {
+    smoothXFrame = requestAnimationFrame(stepSmoothX);
   }
 }
 
-function stepSmoothPan() {
-  smoothPanFrame = null;
-  if (!mounted || !chart || !smoothPanTarget) {
-    smoothPanTarget = null;
+function stepSmoothX() {
+  smoothXFrame = null;
+  if (!mounted || !chart || !smoothXTarget) {
+    smoothXTarget = null;
     return;
   }
 
-  const target = smoothPanTarget;
-  const nextMinX = view.minX + (target.minX - view.minX) * SMOOTH_SHIFT_PAN_EASE;
-  const nextMaxX = view.maxX + (target.maxX - view.maxX) * SMOOTH_SHIFT_PAN_EASE;
+  const target = smoothXTarget;
+  const nextMinX = view.minX + (target.minX - view.minX) * SMOOTH_X_EASE;
+  const nextMaxX = view.maxX + (target.maxX - view.maxX) * SMOOTH_X_EASE;
   const xDone =
-    Math.abs(target.minX - nextMinX) <= SMOOTH_SHIFT_PAN_EPSILON_CANDLES &&
-    Math.abs(target.maxX - nextMaxX) <= SMOOTH_SHIFT_PAN_EPSILON_CANDLES;
+    Math.abs(target.minX - nextMinX) <= SMOOTH_X_EPSILON_CANDLES &&
+    Math.abs(target.maxX - nextMaxX) <= SMOOTH_X_EPSILON_CANDLES;
 
   view.minX = xDone ? target.minX : nextMinX;
   view.maxX = xDone ? target.maxX : nextMaxX;
   clampViewX();
-  const yDone = fitVisibleY({ smooth: true });
+  const yDone = fitVisibleYIfEnabled({ smooth: true });
   applyView();
   void maybeLoadOlderCandles();
   drawHud(mousePos);
   scheduleGpuRender(renderNow);
 
   if (xDone && yDone) {
-    smoothPanTarget = null;
-    fitVisibleY();
+    smoothXTarget = null;
+    fitVisibleYIfEnabled();
     applyView();
     drawHud(mousePos);
     scheduleGpuRender(renderNow);
     return;
   }
 
-  smoothPanFrame = requestAnimationFrame(stepSmoothPan);
+  smoothXFrame = requestAnimationFrame(stepSmoothX);
 }
 
-function cancelSmoothPan() {
-  if (smoothPanFrame != null) {
-    cancelAnimationFrame(smoothPanFrame);
+function cancelSmoothX() {
+  if (smoothXFrame != null) {
+    cancelAnimationFrame(smoothXFrame);
   }
-  smoothPanFrame = null;
-  smoothPanTarget = null;
+  smoothXFrame = null;
+  smoothXTarget = null;
 }
 
 function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
@@ -733,26 +756,16 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
       return;
     }
 
-    cancelSmoothPan();
     wheelMode = "zoom";
     resetWheelModeSoon();
     const alpha = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
-    const anchorX = view.minX + alpha * (view.maxX - view.minX);
-    const zoom = event.deltaY < 0 ? 0.88 : 1.14;
-    const nextWidth = (view.maxX - view.minX) * zoom;
-    view.minX = anchorX - alpha * nextWidth;
-    view.maxX = view.minX + nextWidth;
-    clampViewX({ x: anchorX, ratio: alpha });
-    fitVisibleYIfEnabled();
-    applyView();
-    void maybeLoadOlderCandles();
-    drawHud(mousePos);
-    scheduleGpuRender(renderNow);
+    const delta = normalizedWheelDeltaPx(event, rect.height);
+    smoothZoomBy(wheelZoomScale(delta), alpha);
   };
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
-    cancelSmoothPan();
+    cancelSmoothX();
     const rect = canvas.getBoundingClientRect();
     dragging = true;
     draggedDuringPointer = false;
