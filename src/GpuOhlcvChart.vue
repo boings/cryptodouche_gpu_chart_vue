@@ -182,6 +182,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
+  CandleRecord,
   GpuChartDataAdapter,
   GpuChartDataQuery,
   GpuChartOpenPayload,
@@ -247,6 +248,39 @@ const RIGHT_LABEL_MIN_RESERVE_PX = 88;
 const DEFAULT_INDICATOR_PANE_HEIGHT_RATIO = 0.24;
 const MIN_INDICATOR_PANE_HEIGHT_RATIO = 0.12;
 const MAX_INDICATOR_PANE_HEIGHT_RATIO = 0.4;
+const TIME_AXIS_STEPS_SEC = [
+  60,
+  120,
+  300,
+  600,
+  900,
+  1800,
+  3600,
+  7200,
+  14400,
+  21600,
+  43200,
+  86400,
+  172800,
+  259200,
+  604800,
+  1209600,
+  2592000,
+] as const;
+const MONTH_LABELS = [
+  "Jan",
+  "Feb",
+  "Mar",
+  "Apr",
+  "May",
+  "Jun",
+  "Jul",
+  "Aug",
+  "Sep",
+  "Oct",
+  "Nov",
+  "Dec",
+] as const;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -1671,6 +1705,10 @@ function drawHud(pos: { px: number; py: number } | null) {
   const pad = 6 * scale;
   const pane = currentIndicatorPaneLayout();
   const priceBottom = pane?.top ?? h;
+  const bottomChromeReserve = !pane && indicatorTabsVisible.value ? 34 * scale : 0;
+  const priceAxisBottom = Math.max(fontPx * 2, priceBottom - bottomChromeReserve);
+  const timeAxisHeightPx = appearance.showTimeAxis ? timeAxisHeight(scale, fontPx) : 0;
+  const priceDecorationBottom = Math.max(fontPx * 1.4, priceAxisBottom - timeAxisHeightPx);
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   ctx.font = `${fontPx}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
@@ -1681,7 +1719,7 @@ function drawHud(pos: { px: number; py: number } | null) {
     const ticks = yTicks(view.minY, view.maxY, 5);
     for (const tick of ticks) {
       const y = yToPx(tick, h);
-      if (y < 0 || y > priceBottom - fontPx * 0.65) continue;
+      if (y < 0 || y > priceDecorationBottom - fontPx * 0.65) continue;
       const label = formatPrice(tick);
       const labelWidth = ctx.measureText(label).width;
       ctx.beginPath();
@@ -1690,6 +1728,12 @@ function drawHud(pos: { px: number; py: number } | null) {
       ctx.stroke();
       ctx.fillText(label, Math.max(4 * scale, w - labelWidth - pad), y);
     }
+  }
+  if (appearance.showVolume) {
+    drawVolumeOverlay(ctx, priceDecorationBottom, scale);
+  }
+  if (appearance.showGrid || appearance.showTimeAxis) {
+    drawTimeAxis(ctx, priceAxisBottom, priceDecorationBottom, scale, fontPx, pad);
   }
 
   if (appearance.showWindowHighLow) {
@@ -1700,7 +1744,7 @@ function drawHud(pos: { px: number; py: number } | null) {
         extrema.high,
         "H",
         appearance.windowHighColor,
-        priceBottom,
+        priceDecorationBottom,
         fontPx,
         pad,
         scale,
@@ -1711,7 +1755,7 @@ function drawHud(pos: { px: number; py: number } | null) {
           extrema.low,
           "L",
           appearance.windowLowColor,
-          priceBottom,
+          priceDecorationBottom,
           fontPx,
           pad,
           scale,
@@ -1723,7 +1767,7 @@ function drawHud(pos: { px: number; py: number } | null) {
   const last = state?.candles[state.candles.length - 1];
   if (last && appearance.showLastPriceLine) {
     const y = yToPx(last.c, h);
-    if (y >= 0 && y <= priceBottom) {
+    if (y >= 0 && y <= priceDecorationBottom) {
       ctx.setLineDash([4 * scale, 4 * scale]);
       ctx.strokeStyle = hexToRgba(appearance.lastPriceColor, 0.8);
       ctx.beginPath();
@@ -1771,6 +1815,163 @@ function drawHud(pos: { px: number; py: number } | null) {
     }
   }
   ctx.restore();
+}
+
+function drawVolumeOverlay(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+) {
+  if (!state?.candles.length || priceBottom <= 0) return;
+  const appearance = resolvedAppearance.value;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  let maxVolume = 0;
+  for (const candle of state.candles) {
+    if (candle.x < minX || candle.x > maxX) continue;
+    const volume = candleVolumeValue(candle);
+    if (volume != null) maxVolume = Math.max(maxVolume, volume);
+  }
+  if (maxVolume <= 0) return;
+
+  const span = Math.max(1, view.maxX - view.minX);
+  const slotWidth = ctx.canvas.width / span;
+  const barWidth = Math.max(
+    1 * scale,
+    Math.min(slotWidth * 0.72, Math.max(1 * scale, appearance.candleWidth * scale * 1.2)),
+  );
+  const height = Math.max(
+    18 * scale,
+    Math.min(180 * scale, priceBottom * appearance.volumeHeightRatio),
+  );
+  const bottom = Math.max(height, priceBottom - 4 * scale);
+  const top = Math.max(0, bottom - height);
+
+  ctx.save();
+  ctx.strokeStyle = hexToRgba(appearance.gridColor, 0.2);
+  ctx.beginPath();
+  ctx.moveTo(0, bottom + 0.5);
+  ctx.lineTo(ctx.canvas.width, bottom + 0.5);
+  ctx.stroke();
+  for (const candle of state.candles) {
+    if (candle.x < minX || candle.x > maxX) continue;
+    const volume = candleVolumeValue(candle);
+    if (volume == null || volume <= 0) continue;
+    const px = xToPx(candle.x, ctx.canvas.width);
+    const barHeight = Math.max(1 * scale, (volume / maxVolume) * height);
+    ctx.fillStyle = hexToRgba(
+      candle.c >= candle.o ? appearance.volumeUpColor : appearance.volumeDownColor,
+      appearance.volumeOpacity,
+    );
+    ctx.fillRect(px - barWidth / 2, Math.max(top, bottom - barHeight), barWidth, barHeight);
+  }
+  ctx.restore();
+}
+
+function drawTimeAxis(
+  ctx: CanvasRenderingContext2D,
+  axisBottom: number,
+  gridBottom: number,
+  scale: number,
+  fontPx: number,
+  pad: number,
+) {
+  if (!state?.candles.length || state.timeframeSec <= 0 || view.maxX <= view.minX) return;
+  const appearance = resolvedAppearance.value;
+  const ticks = timeAxisTicks(ctx.canvas.width, fontPx, scale);
+  if (!ticks.length) return;
+
+  ctx.save();
+  if (appearance.showGrid) {
+    ctx.strokeStyle = hexToRgba(appearance.gridColor, 0.26);
+    for (const tick of ticks) {
+      const x = xToPx(tick.x, ctx.canvas.width);
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, 0);
+      ctx.lineTo(x + 0.5, gridBottom);
+      ctx.stroke();
+    }
+  }
+
+  if (appearance.showTimeAxis) {
+    const axisTop = Math.max(0, axisBottom - timeAxisHeight(scale, fontPx));
+    ctx.fillStyle = hexToRgba(appearance.backgroundColor, 0.72);
+    ctx.fillRect(0, axisTop, ctx.canvas.width, Math.max(1, axisBottom - axisTop));
+    ctx.strokeStyle = hexToRgba(appearance.gridColor, 0.48);
+    ctx.beginPath();
+    ctx.moveTo(0, axisTop + 0.5);
+    ctx.lineTo(ctx.canvas.width, axisTop + 0.5);
+    ctx.stroke();
+    ctx.fillStyle = hexToRgba(appearance.textColor, 0.72);
+    ctx.textBaseline = "middle";
+    let lastRight = -Infinity;
+    const labelY = axisTop + Math.max(1, axisBottom - axisTop) * 0.58;
+    for (const tick of ticks) {
+      const x = xToPx(tick.x, ctx.canvas.width);
+      const width = ctx.measureText(tick.label).width;
+      const left = Math.max(pad, Math.min(ctx.canvas.width - width - pad, x - width / 2));
+      if (left < lastRight + 12 * scale) continue;
+      ctx.fillText(tick.label, left, labelY);
+      lastRight = left + width;
+    }
+  }
+  ctx.restore();
+}
+
+function timeAxisTicks(width: number, fontPx: number, scale: number) {
+  if (!state?.candles.length || state.timeframeSec <= 0) return [];
+  const spanSec = Math.max(1, (view.maxX - view.minX) * state.timeframeSec);
+  const estimatedLabelWidth = Math.max(58 * scale, fontPx * 5.5);
+  const targetTickCount = Math.max(2, Math.floor(width / Math.max(1, estimatedLabelWidth)));
+  const stepSec = timeAxisStepSeconds(spanSec / targetTickCount, state.timeframeSec);
+  const minTs = state.firstBucket + view.minX * state.timeframeSec;
+  const maxTs = state.firstBucket + view.maxX * state.timeframeSec;
+  const ticks: Array<{ x: number; ts: number; label: string }> = [];
+  let ts = Math.ceil(minTs / stepSec) * stepSec;
+  const maxIterations = Math.ceil((maxTs - ts) / stepSec) + 4;
+  for (let i = 0; i < maxIterations && ts <= maxTs + stepSec * 0.001; i++, ts += stepSec) {
+    const x = (ts - state.firstBucket) / state.timeframeSec;
+    const px = xToPx(x, width);
+    if (px >= -estimatedLabelWidth && px <= width + estimatedLabelWidth) {
+      ticks.push({ x, ts, label: formatTimeAxisLabel(ts, spanSec) });
+    }
+  }
+  return ticks;
+}
+
+function timeAxisStepSeconds(targetSec: number, timeframeSec: number) {
+  const minStep = Math.max(1, timeframeSec);
+  const target = Math.max(minStep, targetSec);
+  for (const step of TIME_AXIS_STEPS_SEC) {
+    if (step >= target && step >= minStep) return step;
+  }
+  return Math.ceil(target / minStep) * minStep;
+}
+
+function formatTimeAxisLabel(tsSec: number, spanSec: number) {
+  const date = new Date(tsSec * 1000);
+  if (spanSec >= 365 * 86400) {
+    return `${monthLabel(date)} ${date.getFullYear()}`;
+  }
+  if (spanSec >= 7 * 86400) {
+    return `${monthLabel(date)} ${date.getDate()}`;
+  }
+  if (spanSec >= 24 * 3600) {
+    return `${monthLabel(date)} ${date.getDate()} ${pad2(date.getHours())}:00`;
+  }
+  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
+}
+
+function timeAxisHeight(scale: number, fontPx: number) {
+  return Math.max(18 * scale, fontPx * 1.5);
+}
+
+function monthLabel(date: Date) {
+  return MONTH_LABELS[date.getMonth()] ?? "";
+}
+
+function pad2(value: number) {
+  return String(value).padStart(2, "0");
 }
 
 function drawIndicatorPane(
@@ -2312,12 +2513,20 @@ function drawTooltip(
   ctx: CanvasRenderingContext2D,
   x: number,
   y: number,
-  candle: { o: number; h: number; l: number; c: number; ts: number },
+  candle: CandleRecord,
 ) {
+  const volume = candleVolumeValue(candle);
+  const volumeText = volume == null ? "" : ` V ${formatVolume(volume)}`;
   const text = `O ${formatPrice(candle.o)} H ${formatPrice(candle.h)} L ${formatPrice(
     candle.l,
-  )} C ${formatPrice(candle.c)}`;
+  )} C ${formatPrice(candle.c)}${volumeText}`;
   drawTextBox(ctx, x, y, text);
+}
+
+function candleVolumeValue(candle: Pick<CandleRecord, "v_base" | "v_quote">) {
+  if (Number.isFinite(candle.v_quote)) return candle.v_quote;
+  if (Number.isFinite(candle.v_base)) return candle.v_base;
+  return null;
 }
 
 function visibleWindowExtrema(): VisibleWindowExtrema | null {
@@ -2477,6 +2686,17 @@ function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits,
+  });
+}
+
+function formatVolume(value: number) {
+  const abs = Math.abs(value);
+  if (abs >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(2)}B`;
+  if (abs >= 1_000_000) return `${(value / 1_000_000).toFixed(2)}M`;
+  if (abs >= 1_000) return `${(value / 1_000).toFixed(2)}K`;
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
+    maximumFractionDigits: abs >= 1 ? 2 : 6,
   });
 }
 

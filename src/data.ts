@@ -246,7 +246,8 @@ export function makeSyntheticCandles(
     const c = Math.max(0.0001, o + drift + Math.cos((limit - i) / 13) * 0.35);
     const h = Math.max(o, c) + 0.35 + Math.abs(Math.sin(i + seed)) * 0.5;
     const l = Math.min(o, c) - 0.35 - Math.abs(Math.cos(i + seed)) * 0.5;
-    rows.push({ ts, o, h, l, c });
+    const v_base = 50 + (seed % 90) + Math.abs(Math.sin((limit - i + seed) / 5)) * 180;
+    rows.push({ ts, o, h, l, c, v_base, v_quote: v_base * c });
     close = c;
   }
   return packHistoricalCandles(rows, timeframe, limit);
@@ -264,7 +265,8 @@ export function appendSyntheticCandle(
   const c = Math.max(0.0001, o + wave);
   const h = Math.max(o, c) + 0.5;
   const l = Math.min(o, c) - 0.5;
-  return mergeLiveCandle(state, { ts, o, h, l, c }, limit);
+  const v_base = Math.max(1, (last.v_base ?? 100) * (0.82 + Math.abs(wave) * 0.36));
+  return mergeLiveCandle(state, { ts, o, h, l, c, v_base, v_quote: v_base * c }, limit);
 }
 
 function reanchor(state: GpuSeriesState) {
@@ -371,7 +373,14 @@ function parseDateArray(value: unknown[]): number {
 }
 
 function candlesEqual(left: CandleRecord, right: CandleRecord): boolean {
-  return left.o === right.o && left.h === right.h && left.l === right.l && left.c === right.c;
+  return (
+    left.o === right.o &&
+    left.h === right.h &&
+    left.l === right.l &&
+    left.c === right.c &&
+    Object.is(left.v_base, right.v_base) &&
+    Object.is(left.v_quote, right.v_quote)
+  );
 }
 
 function isStaleVersion(incoming: CandleRecord, existing: CandleRecord): boolean {

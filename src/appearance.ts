@@ -22,6 +22,8 @@ export interface GpuChartAppearance {
   macdHistogramUpColor: string;
   macdHistogramDownColor: string;
   atrColor: string;
+  volumeUpColor: string;
+  volumeDownColor: string;
   gridColor: string;
   textColor: string;
   crosshairColor: string;
@@ -55,9 +57,12 @@ export interface GpuChartAppearance {
   macdSmooth: boolean;
   atrPeriod: number;
   atrSmooth: boolean;
+  volumeHeightRatio: number;
+  volumeOpacity: number;
   activeIndicatorPane: GpuChartIndicatorPane;
   indicatorPaneMinimized: boolean;
   showGrid: boolean;
+  showTimeAxis: boolean;
   showLastPriceLine: boolean;
   showWindowHighLow: boolean;
   showCrosshair: boolean;
@@ -69,6 +74,7 @@ export interface GpuChartAppearance {
   showRsi: boolean;
   showMacd: boolean;
   showAtr: boolean;
+  showVolume: boolean;
 }
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
@@ -94,6 +100,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   macdHistogramUpColor: "#22c55e",
   macdHistogramDownColor: "#ef4444",
   atrColor: "#eab308",
+  volumeUpColor: "#22c55e",
+  volumeDownColor: "#ef4444",
   gridColor: "#27313d",
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
@@ -127,9 +135,12 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   macdSmooth: false,
   atrPeriod: 14,
   atrSmooth: false,
+  volumeHeightRatio: 0.18,
+  volumeOpacity: 0.34,
   activeIndicatorPane: "stochRsi",
   indicatorPaneMinimized: false,
   showGrid: true,
+  showTimeAxis: true,
   showLastPriceLine: true,
   showWindowHighLow: true,
   showCrosshair: true,
@@ -141,6 +152,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showRsi: true,
   showMacd: true,
   showAtr: true,
+  showVolume: true,
 };
 
 export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
@@ -148,10 +160,12 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   candleWidth: 3,
   fontSize: 10,
   showWindowHighLow: false,
+  showTimeAxis: false,
   showStochRsi: false,
   showRsi: false,
   showMacd: false,
   showAtr: false,
+  showVolume: false,
 };
 
 interface StorageLike {
@@ -201,6 +215,8 @@ export function normalizeGpuChartAppearance(
       defaults.macdHistogramDownColor,
     ),
     atrColor: colorValue(value.atrColor, defaults.atrColor),
+    volumeUpColor: colorValue(value.volumeUpColor, defaults.volumeUpColor),
+    volumeDownColor: colorValue(value.volumeDownColor, defaults.volumeDownColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
@@ -284,6 +300,13 @@ export function normalizeGpuChartAppearance(
     macdSmooth: boolValue(value.macdSmooth, defaults.macdSmooth),
     atrPeriod: clampInteger(value.atrPeriod, 2, 100, defaults.atrPeriod),
     atrSmooth: boolValue(value.atrSmooth, defaults.atrSmooth),
+    volumeHeightRatio: clampNumber(
+      value.volumeHeightRatio,
+      0.05,
+      0.35,
+      defaults.volumeHeightRatio,
+    ),
+    volumeOpacity: clampNumber(value.volumeOpacity, 0.05, 1, defaults.volumeOpacity),
     activeIndicatorPane: indicatorPaneValue(
       value.activeIndicatorPane,
       defaults.activeIndicatorPane,
@@ -293,6 +316,7 @@ export function normalizeGpuChartAppearance(
       defaults.indicatorPaneMinimized,
     ),
     showGrid: boolValue(value.showGrid, defaults.showGrid),
+    showTimeAxis: boolValue(value.showTimeAxis, defaults.showTimeAxis),
     showLastPriceLine: boolValue(value.showLastPriceLine, defaults.showLastPriceLine),
     showWindowHighLow: boolValue(value.showWindowHighLow, defaults.showWindowHighLow),
     showCrosshair: boolValue(value.showCrosshair, defaults.showCrosshair),
@@ -304,6 +328,7 @@ export function normalizeGpuChartAppearance(
     showRsi: boolValue(value.showRsi, defaults.showRsi),
     showMacd: boolValue(value.showMacd, defaults.showMacd),
     showAtr: boolValue(value.showAtr, defaults.showAtr),
+    showVolume: boolValue(value.showVolume, defaults.showVolume),
   };
 }
 

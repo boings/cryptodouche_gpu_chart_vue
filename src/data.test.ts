@@ -104,6 +104,26 @@ describe("gpu chart data utilities", () => {
     expect(state.candles[1].ver).toBe(2);
   });
 
+  it("replaces same-bucket live updates when only volume changes", () => {
+    const state = packHistoricalCandles(
+      [
+        { ts: 60, o: 1, h: 2, l: 0.5, c: 1.5 },
+        { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, v_quote: 100 },
+      ],
+      "1m",
+      500,
+    );
+
+    const result = mergeLiveCandle(
+      state,
+      { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, v_quote: 150 },
+      500,
+    );
+
+    expect(result.kind).toBe("replace");
+    expect(state.candles[1].v_quote).toBe(150);
+  });
+
   it("ignores older same-bucket live versions", () => {
     const state = packHistoricalCandles(
       [

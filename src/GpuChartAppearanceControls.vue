@@ -105,6 +105,8 @@ type ColorField = Extract<
   | "bollingerBasisColor"
   | "bollingerUpperColor"
   | "bollingerLowerColor"
+  | "volumeUpColor"
+  | "volumeDownColor"
   | "gridColor"
   | "textColor"
   | "crosshairColor"
@@ -123,10 +125,13 @@ type NumberField = Extract<
   | "wmaPeriod"
   | "bollingerPeriod"
   | "bollingerStdDev"
+  | "volumeHeightRatio"
+  | "volumeOpacity"
 >;
 type ToggleField = Extract<
   keyof GpuChartAppearance,
   | "showGrid"
+  | "showTimeAxis"
   | "showLastPriceLine"
   | "showWindowHighLow"
   | "showCrosshair"
@@ -138,6 +143,7 @@ type ToggleField = Extract<
   | "showRsi"
   | "showMacd"
   | "showAtr"
+  | "showVolume"
 >;
 
 const colorFields: Array<{ key: ColorField; label: string }> = [
@@ -150,6 +156,8 @@ const colorFields: Array<{ key: ColorField; label: string }> = [
   { key: "bollingerBasisColor", label: "BB Basis" },
   { key: "bollingerUpperColor", label: "BB Upper" },
   { key: "bollingerLowerColor", label: "BB Lower" },
+  { key: "volumeUpColor", label: "Volume Up" },
+  { key: "volumeDownColor", label: "Volume Down" },
   { key: "gridColor", label: "Grid" },
   { key: "textColor", label: "Text" },
   { key: "crosshairColor", label: "Crosshair" },
@@ -163,6 +171,8 @@ const numberFields: Array<{ key: NumberField; label: string; min: number; max: n
   { key: "candleWidth", label: "Candle Width", min: 1, max: 24, step: 0.5 },
   { key: "wickWidth", label: "Wick Width", min: 0.5, max: 8, step: 0.5 },
   { key: "fontSize", label: "Font Size", min: 10, max: 28, step: 1 },
+  { key: "volumeHeightRatio", label: "Volume Height", min: 0.05, max: 0.35, step: 0.01 },
+  { key: "volumeOpacity", label: "Volume Opacity", min: 0.05, max: 1, step: 0.05 },
 ];
 
 const indicatorNumberFields: Array<{
@@ -181,6 +191,7 @@ const indicatorNumberFields: Array<{
 
 const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showGrid", label: "Grid" },
+  { key: "showTimeAxis", label: "Time Axis" },
   { key: "showLastPriceLine", label: "Last Price" },
   { key: "showWindowHighLow", label: "High/Low" },
   { key: "showCrosshair", label: "Crosshair" },
@@ -192,6 +203,7 @@ const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showRsi", label: "RSI" },
   { key: "showMacd", label: "MACD" },
   { key: "showAtr", label: "ATR" },
+  { key: "showVolume", label: "Volume" },
 ];
 
 function setColor(field: ColorField, event: Event) {

@@ -59,7 +59,12 @@ describe("gpu chart appearance", () => {
       atrColor: "yellow",
       atrPeriod: 999,
       atrSmooth: "yes" as unknown as boolean,
+      volumeUpColor: "green",
+      volumeDownColor: "red",
+      volumeHeightRatio: 9,
+      volumeOpacity: 9,
       windowHighColor: "blue",
+      showTimeAxis: "yes" as unknown as boolean,
       showWindowHighLow: "yes" as unknown as boolean,
       activeIndicatorPane: "not-a-pane" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
@@ -67,6 +72,7 @@ describe("gpu chart appearance", () => {
       showRsi: "yes" as unknown as boolean,
       showMacd: "yes" as unknown as boolean,
       showAtr: "yes" as unknown as boolean,
+      showVolume: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
     });
 
@@ -104,7 +110,12 @@ describe("gpu chart appearance", () => {
     expect(appearance.atrColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.atrColor);
     expect(appearance.atrPeriod).toBe(100);
     expect(appearance.atrSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.atrSmooth);
+    expect(appearance.volumeUpColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeUpColor);
+    expect(appearance.volumeDownColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeDownColor);
+    expect(appearance.volumeHeightRatio).toBe(0.35);
+    expect(appearance.volumeOpacity).toBe(1);
     expect(appearance.windowHighColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.windowHighColor);
+    expect(appearance.showTimeAxis).toBe(DEFAULT_GPU_CHART_APPEARANCE.showTimeAxis);
     expect(appearance.showWindowHighLow).toBe(DEFAULT_GPU_CHART_APPEARANCE.showWindowHighLow);
     expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
     expect(appearance.indicatorPaneMinimized).toBe(
@@ -114,6 +125,7 @@ describe("gpu chart appearance", () => {
     expect(appearance.showRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsi);
     expect(appearance.showMacd).toBe(DEFAULT_GPU_CHART_APPEARANCE.showMacd);
     expect(appearance.showAtr).toBe(DEFAULT_GPU_CHART_APPEARANCE.showAtr);
+    expect(appearance.showVolume).toBe(DEFAULT_GPU_CHART_APPEARANCE.showVolume);
     expect(appearance.showGrid).toBe(DEFAULT_GPU_CHART_APPEARANCE.showGrid);
   });
 
@@ -128,6 +140,12 @@ describe("gpu chart appearance", () => {
         showWindowHighLow: false,
         windowHighColor: "#0ea5e9",
         windowLowColor: "#fb923c",
+        showTimeAxis: false,
+        showVolume: false,
+        volumeUpColor: "#10b981",
+        volumeDownColor: "#f43f5e",
+        volumeHeightRatio: 0.22,
+        volumeOpacity: 0.45,
         showStochRsi: false,
         showRsi: false,
         stochRsiRangeColor: "#334155",
@@ -164,6 +182,12 @@ describe("gpu chart appearance", () => {
     expect(saved.showWindowHighLow).toBe(false);
     expect(saved.windowHighColor).toBe("#0ea5e9");
     expect(saved.windowLowColor).toBe("#fb923c");
+    expect(saved.showTimeAxis).toBe(false);
+    expect(saved.showVolume).toBe(false);
+    expect(saved.volumeUpColor).toBe("#10b981");
+    expect(saved.volumeDownColor).toBe("#f43f5e");
+    expect(saved.volumeHeightRatio).toBe(0.22);
+    expect(saved.volumeOpacity).toBe(0.45);
     expect(saved.showStochRsi).toBe(false);
     expect(saved.showRsi).toBe(false);
     expect(saved.stochRsiRangeColor).toBe("#334155");
@@ -197,6 +221,12 @@ describe("gpu chart appearance", () => {
       showWindowHighLow: false,
       windowHighColor: "#0ea5e9",
       windowLowColor: "#fb923c",
+      showTimeAxis: false,
+      showVolume: false,
+      volumeUpColor: "#10b981",
+      volumeDownColor: "#f43f5e",
+      volumeHeightRatio: 0.22,
+      volumeOpacity: 0.45,
       showStochRsi: false,
       showRsi: false,
       stochRsiRangeColor: "#334155",
@@ -252,6 +282,10 @@ describe("gpu chart appearance", () => {
     expect(loadGpuChartAppearance(storage, "single").showMacd).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showAtr).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showAtr).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showVolume).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showVolume).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showTimeAxis).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showTimeAxis).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showWindowHighLow).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showWindowHighLow).toBe(true);
   });
