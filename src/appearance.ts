@@ -1,5 +1,7 @@
 import { ref } from "vue";
 
+export type GpuChartIndicatorPane = "stochRsi" | "rsi";
+
 export interface GpuChartAppearance {
   backgroundColor: string;
   upColor: string;
@@ -12,6 +14,7 @@ export interface GpuChartAppearance {
   bollingerLowerColor: string;
   stochRsiKColor: string;
   stochRsiDColor: string;
+  rsiColor: string;
   gridColor: string;
   textColor: string;
   crosshairColor: string;
@@ -30,6 +33,9 @@ export interface GpuChartAppearance {
   stochRsiKPeriod: number;
   stochRsiDPeriod: number;
   stochRsiPaneHeight: number;
+  rsiPeriod: number;
+  activeIndicatorPane: GpuChartIndicatorPane;
+  indicatorPaneMinimized: boolean;
   showGrid: boolean;
   showLastPriceLine: boolean;
   showCrosshair: boolean;
@@ -38,6 +44,7 @@ export interface GpuChartAppearance {
   showWma: boolean;
   showBollinger: boolean;
   showStochRsi: boolean;
+  showRsi: boolean;
 }
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
@@ -55,6 +62,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   bollingerLowerColor: "#38bdf8",
   stochRsiKColor: "#f59e0b",
   stochRsiDColor: "#a78bfa",
+  rsiColor: "#22c55e",
   gridColor: "#27313d",
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
@@ -73,6 +81,9 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   stochRsiKPeriod: 3,
   stochRsiDPeriod: 3,
   stochRsiPaneHeight: 0.24,
+  rsiPeriod: 14,
+  activeIndicatorPane: "stochRsi",
+  indicatorPaneMinimized: false,
   showGrid: true,
   showLastPriceLine: true,
   showCrosshair: true,
@@ -81,6 +92,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showWma: false,
   showBollinger: false,
   showStochRsi: true,
+  showRsi: true,
 };
 
 export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
@@ -88,6 +100,7 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   candleWidth: 3,
   fontSize: 10,
   showStochRsi: false,
+  showRsi: false,
 };
 
 interface StorageLike {
@@ -123,6 +136,7 @@ export function normalizeGpuChartAppearance(
     ),
     stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
     stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
+    rsiColor: colorValue(value.rsiColor, defaults.rsiColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
@@ -176,6 +190,15 @@ export function normalizeGpuChartAppearance(
       0.4,
       defaults.stochRsiPaneHeight,
     ),
+    rsiPeriod: clampInteger(value.rsiPeriod, 2, 100, defaults.rsiPeriod),
+    activeIndicatorPane: indicatorPaneValue(
+      value.activeIndicatorPane,
+      defaults.activeIndicatorPane,
+    ),
+    indicatorPaneMinimized: boolValue(
+      value.indicatorPaneMinimized,
+      defaults.indicatorPaneMinimized,
+    ),
     showGrid: boolValue(value.showGrid, defaults.showGrid),
     showLastPriceLine: boolValue(value.showLastPriceLine, defaults.showLastPriceLine),
     showCrosshair: boolValue(value.showCrosshair, defaults.showCrosshair),
@@ -184,6 +207,7 @@ export function normalizeGpuChartAppearance(
     showWma: boolValue(value.showWma, defaults.showWma),
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
+    showRsi: boolValue(value.showRsi, defaults.showRsi),
   };
 }
 
@@ -268,6 +292,10 @@ function colorValue(value: unknown, fallback: string) {
 
 function boolValue(value: unknown, fallback: boolean) {
   return typeof value === "boolean" ? value : fallback;
+}
+
+function indicatorPaneValue(value: unknown, fallback: GpuChartIndicatorPane) {
+  return value === "stochRsi" || value === "rsi" ? value : fallback;
 }
 
 function clampNumber(value: unknown, min: number, max: number, fallback: number) {

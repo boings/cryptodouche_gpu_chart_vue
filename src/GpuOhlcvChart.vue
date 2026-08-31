@@ -31,31 +31,42 @@
       @dblclick.stop
     >
       <div class="gpu-chart-indicator-heading">
-        <span class="gpu-chart-indicator-title">Stoch RSI</span>
+        <span class="gpu-chart-indicator-title">{{ activeIndicatorPaneLabel }}</span>
         <button
           type="button"
           class="gpu-chart-indicator-gear"
-          :aria-expanded="stochRsiSettingsOpen"
-          aria-label="Stoch RSI settings"
-          title="Stoch RSI settings"
-          @click="toggleStochRsiSettings"
+          :aria-expanded="indicatorSettingsOpen"
+          :aria-label="`${activeIndicatorPaneLabel} settings`"
+          :title="`${activeIndicatorPaneLabel} settings`"
+          @click="toggleIndicatorSettings"
         >
           &#9881;
         </button>
-        <span v-if="indicatorLatestKText" class="gpu-chart-indicator-value k">
-          K {{ indicatorLatestKText }}
-        </span>
-        <span v-if="indicatorLatestDText" class="gpu-chart-indicator-value d">
-          D {{ indicatorLatestDText }}
+        <button
+          type="button"
+          class="gpu-chart-indicator-minimize"
+          aria-label="Minimize indicator pane"
+          title="Minimize indicator pane"
+          @click="minimizeIndicatorPane"
+        >
+          -
+        </button>
+        <span
+          v-for="value in indicatorHeaderValues"
+          :key="`${value.className}-${value.label}`"
+          class="gpu-chart-indicator-value"
+          :class="value.className"
+        >
+          {{ value.label }} {{ value.value }}
         </span>
       </div>
       <div
-        v-if="stochRsiSettingsOpen"
+        v-if="indicatorSettingsOpen"
         class="gpu-chart-indicator-settings"
         @wheel.stop
       >
         <label
-          v-for="field in stochRsiColorFields"
+          v-for="field in activeIndicatorColorFields"
           :key="field.key"
           class="gpu-chart-indicator-field"
         >
@@ -64,17 +75,17 @@
             type="color"
             class="gpu-chart-indicator-color"
             :value="resolvedAppearance[field.key]"
-            @input="setStochRsiColor(field.key, $event)"
+            @input="setIndicatorColor(field.key, $event)"
           />
         </label>
         <label
-          v-for="field in stochRsiNumberFields"
+          v-for="field in activeIndicatorNumberFields"
           :key="field.key"
           class="gpu-chart-indicator-field"
         >
           <span class="gpu-chart-indicator-range-label">
             <span>{{ field.label }}</span>
-            <span>{{ formatStochRsiSetting(field.key) }}</span>
+            <span>{{ formatIndicatorSetting(field.key) }}</span>
           </span>
           <input
             type="range"
@@ -83,10 +94,30 @@
             :step="field.step"
             class="gpu-chart-indicator-range"
             :value="resolvedAppearance[field.key]"
-            @input="setStochRsiNumber(field.key, $event)"
+            @input="setIndicatorNumber(field.key, $event)"
           />
         </label>
       </div>
+    </div>
+    <div
+      v-if="indicatorTabsVisible"
+      class="gpu-chart-indicator-tabs"
+      :style="indicatorPaneTabsStyle"
+      @click.stop
+      @mousedown.stop
+      @dblclick.stop
+      @wheel.stop
+    >
+      <button
+        v-for="tab in indicatorPaneTabs"
+        :key="tab.id"
+        type="button"
+        class="gpu-chart-indicator-tab"
+        :class="{ active: tab.id === activeIndicatorPaneId && !resolvedAppearance.indicatorPaneMinimized }"
+        @click="selectIndicatorPane(tab.id)"
+      >
+        {{ tab.label }}
+      </button>
     </div>
     <component
       v-if="resolvedAppearance.showBadge"
@@ -131,6 +162,7 @@ import {
 import {
   computeBollingerBands,
   computeEmaLine,
+  computeRsiLine,
   computeSmaLine,
   computeStochRsi,
   computeWmaLine,
@@ -141,6 +173,7 @@ import {
   hexToRgba,
   normalizeGpuChartAppearance,
   type GpuChartAppearance,
+  type GpuChartIndicatorPane,
 } from "./appearance";
 import { cancelScheduledGpuRender, scheduleGpuRender } from "./scheduler";
 import {
@@ -175,35 +208,77 @@ interface IndicatorPaneLayout {
   innerHeight: number;
 }
 
-type StochRsiColorField = Extract<
+type IndicatorColorField = Extract<
   keyof GpuChartAppearance,
-  "stochRsiKColor" | "stochRsiDColor"
+  "stochRsiKColor" | "stochRsiDColor" | "rsiColor"
 >;
-type StochRsiNumberField = Extract<
+type IndicatorNumberField = Extract<
   keyof GpuChartAppearance,
   | "stochRsiRsiPeriod"
   | "stochRsiPeriod"
   | "stochRsiKPeriod"
   | "stochRsiDPeriod"
   | "stochRsiPaneHeight"
+  | "rsiPeriod"
 >;
 
-const stochRsiColorFields: Array<{ key: StochRsiColorField; label: string }> = [
+interface IndicatorPaneOption {
+  id: GpuChartIndicatorPane;
+  label: string;
+  showKey: Extract<keyof GpuChartAppearance, "showStochRsi" | "showRsi">;
+  colorFields: Array<{ key: IndicatorColorField; label: string }>;
+  numberFields: Array<{
+    key: IndicatorNumberField;
+    label: string;
+    min: number;
+    max: number;
+    step: number;
+  }>;
+}
+
+interface IndicatorHeaderValue {
+  label: string;
+  value: string;
+  className: string;
+}
+
+type IndicatorPaneSeries =
+  | { id: "stochRsi"; k: Float32Array; d: Float32Array }
+  | { id: "rsi"; rsi: Float32Array };
+
+const stochRsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "stochRsiKColor", label: "K Color" },
   { key: "stochRsiDColor", label: "D Color" },
 ];
-const stochRsiNumberFields: Array<{
-  key: StochRsiNumberField;
-  label: string;
-  min: number;
-  max: number;
-  step: number;
-}> = [
+const stochRsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
   { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
   { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
   { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
   { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
+];
+const rsiColorFields: IndicatorPaneOption["colorFields"] = [
+  { key: "rsiColor", label: "RSI Color" },
+];
+const rsiNumberFields: IndicatorPaneOption["numberFields"] = [
+  { key: "rsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
+  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
+];
+const INDICATOR_PANES: IndicatorPaneOption[] = [
+  {
+    id: "stochRsi",
+    label: "Stoch RSI",
+    showKey: "showStochRsi",
+    colorFields: stochRsiColorFields,
+    numberFields: stochRsiNumberFields,
+  },
+  {
+    id: "rsi",
+    label: "RSI",
+    showKey: "showRsi",
+    colorFields: rsiColorFields,
+    numberFields: rsiNumberFields,
+  },
 ];
 
 const props = withDefaults(
@@ -259,9 +334,8 @@ const historicalLoading = ref(false);
 const localAppearance = ref(normalizeGpuChartAppearance(props.appearance));
 const indicatorPaneVisible = ref(false);
 const indicatorPaneTopCss = ref(0);
-const indicatorLatestKText = ref("");
-const indicatorLatestDText = ref("");
-const stochRsiSettingsOpen = ref(false);
+const indicatorHeaderValues = ref<IndicatorHeaderValue[]>([]);
+const indicatorSettingsOpen = ref(false);
 const indicatorPaneResizing = ref(false);
 
 let chart: GpuChartHandle | null = null;
@@ -292,6 +366,23 @@ const shellStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-down-color": appearance.downColor,
   };
 });
+const indicatorPaneTabs = computed(() => {
+  if (!props.showIndicatorPanes) return [];
+  const appearance = resolvedAppearance.value;
+  return INDICATOR_PANES.filter((pane) => appearance[pane.showKey]);
+});
+const indicatorTabsVisible = computed(() => indicatorPaneTabs.value.length > 0);
+const activeIndicatorPane = computed(() => {
+  const tabs = indicatorPaneTabs.value;
+  if (!tabs.length) return null;
+  return (
+    tabs.find((pane) => pane.id === resolvedAppearance.value.activeIndicatorPane) ?? tabs[0]
+  );
+});
+const activeIndicatorPaneId = computed(() => activeIndicatorPane.value?.id ?? null);
+const activeIndicatorPaneLabel = computed(() => activeIndicatorPane.value?.label ?? "Indicator");
+const activeIndicatorColorFields = computed(() => activeIndicatorPane.value?.colorFields ?? []);
+const activeIndicatorNumberFields = computed(() => activeIndicatorPane.value?.numberFields ?? []);
 const indicatorPaneDividerStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
   return {
@@ -310,6 +401,17 @@ const indicatorPaneToolbarStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-indicator-border": hexToRgba(appearance.gridColor, 0.72),
     "--gpu-chart-indicator-k": appearance.stochRsiKColor,
     "--gpu-chart-indicator-d": appearance.stochRsiDColor,
+    "--gpu-chart-indicator-rsi": appearance.rsiColor,
+  };
+});
+const indicatorPaneTabsStyle = computed<Record<string, string>>(() => {
+  const appearance = resolvedAppearance.value;
+  return {
+    "--gpu-chart-indicator-font-size": `${Math.max(11, appearance.fontSize * 0.82)}px`,
+    "--gpu-chart-indicator-text": hexToRgba(appearance.textColor, 0.9),
+    "--gpu-chart-indicator-muted": hexToRgba(appearance.textColor, 0.62),
+    "--gpu-chart-indicator-panel-bg": hexToRgba(appearance.tooltipBackgroundColor, 0.88),
+    "--gpu-chart-indicator-border": hexToRgba(appearance.gridColor, 0.68),
   };
 });
 const displaySymbol = computed(() => props.symbol.toUpperCase());
@@ -816,15 +918,15 @@ function resetVisibleYMode() {
   scheduleGpuRender(renderNow);
 }
 
-function toggleStochRsiSettings() {
-  stochRsiSettingsOpen.value = !stochRsiSettingsOpen.value;
+function toggleIndicatorSettings() {
+  indicatorSettingsOpen.value = !indicatorSettingsOpen.value;
 }
 
-function setStochRsiColor(field: StochRsiColorField, event: Event) {
+function setIndicatorColor(field: IndicatorColorField, event: Event) {
   patchAppearance({ [field]: inputValue(event) });
 }
 
-function setStochRsiNumber(field: StochRsiNumberField, event: Event) {
+function setIndicatorNumber(field: IndicatorNumberField, event: Event) {
   patchAppearance({ [field]: Number(inputValue(event)) });
 }
 
@@ -834,6 +936,22 @@ function inputValue(event: Event) {
 
 function resetIndicatorPaneHeight() {
   patchAppearance({ stochRsiPaneHeight: 0.24 });
+}
+
+function minimizeIndicatorPane() {
+  indicatorSettingsOpen.value = false;
+  patchAppearance({ indicatorPaneMinimized: true });
+}
+
+function selectIndicatorPane(id: GpuChartIndicatorPane) {
+  const isOpen =
+    resolvedAppearance.value.activeIndicatorPane === id &&
+    !resolvedAppearance.value.indicatorPaneMinimized;
+  indicatorSettingsOpen.value = false;
+  patchAppearance({
+    activeIndicatorPane: id,
+    indicatorPaneMinimized: isOpen,
+  });
 }
 
 function startIndicatorPaneResize(event: MouseEvent) {
@@ -1164,12 +1282,12 @@ function currentIndicatorPaneLayout(): IndicatorPaneLayout | null {
 
 function indicatorPaneAvailable() {
   const appearance = resolvedAppearance.value;
-  const requiredCandles = appearance.stochRsiRsiPeriod + appearance.stochRsiPeriod;
   return Boolean(
     props.showIndicatorPanes &&
-      appearance.showStochRsi &&
+      !appearance.indicatorPaneMinimized &&
+      activeIndicatorPane.value &&
       state?.candles.length &&
-      state.candles.length >= requiredCandles,
+      state.candles.length > 0,
   );
 }
 
@@ -1253,7 +1371,7 @@ function drawHud(pos: { px: number; py: number } | null) {
     }
   }
 
-  let paneSeries: ReturnType<typeof computeStochRsi> | null = null;
+  let paneSeries: IndicatorPaneSeries | null = null;
   if (pane) {
     paneSeries = drawIndicatorPane(ctx, pane, scale);
   }
@@ -1286,17 +1404,10 @@ function drawIndicatorPane(
   ctx: CanvasRenderingContext2D,
   pane: IndicatorPaneLayout,
   scale: number,
-) {
+): IndicatorPaneSeries | null {
   const appearance = resolvedAppearance.value;
-  const series = state
-    ? computeStochRsi(
-        state.candles,
-        appearance.stochRsiRsiPeriod,
-        appearance.stochRsiPeriod,
-        appearance.stochRsiKPeriod,
-        appearance.stochRsiDPeriod,
-      )
-    : { k: new Float32Array(), d: new Float32Array() };
+  const activePane = activeIndicatorPane.value;
+  if (!activePane) return null;
   ctx.save();
   ctx.fillStyle = hexToRgba(appearance.backgroundColor, 0.97);
   ctx.fillRect(0, pane.top, ctx.canvas.width, pane.height);
@@ -1308,7 +1419,56 @@ function drawIndicatorPane(
 
   ctx.font = `${Math.max(10 * scale, appearance.fontSize * scale * 0.86)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
-  for (const level of [80, 50, 20]) {
+  drawIndicatorLevels(ctx, pane, scale, activePane.id === "rsi" ? [70, 50, 30] : [80, 50, 20]);
+
+  const series =
+    activePane.id === "rsi"
+      ? drawRsiPane(ctx, pane, scale, appearance)
+      : drawStochRsiPane(ctx, pane, scale, appearance);
+  ctx.restore();
+  return series;
+}
+
+function drawStochRsiPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  appearance: GpuChartAppearance,
+): IndicatorPaneSeries {
+  const series = state
+    ? computeStochRsi(
+        state.candles,
+        appearance.stochRsiRsiPeriod,
+        appearance.stochRsiPeriod,
+        appearance.stochRsiKPeriod,
+        appearance.stochRsiDPeriod,
+      )
+    : { k: new Float32Array(), d: new Float32Array() };
+  drawIndicatorLine(ctx, series.k, pane, appearance.stochRsiKColor, 0.95, 1.4 * scale);
+  drawIndicatorLine(ctx, series.d, pane, appearance.stochRsiDColor, 0.88, 1.4 * scale);
+  return { id: "stochRsi", k: series.k, d: series.d };
+}
+
+function drawRsiPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  appearance: GpuChartAppearance,
+): IndicatorPaneSeries {
+  const rsi = state ? computeRsiLine(state.candles, appearance.rsiPeriod) : new Float32Array();
+  drawIndicatorLine(ctx, rsi, pane, appearance.rsiColor, 0.95, 1.5 * scale);
+  return { id: "rsi", rsi };
+}
+
+function drawIndicatorLevels(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  levels: number[],
+) {
+  const appearance = resolvedAppearance.value;
+  ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
+  for (const level of levels) {
     const y = indicatorValueToPx(level, pane);
     ctx.strokeStyle = hexToRgba(appearance.gridColor, level === 50 ? 0.46 : 0.3);
     ctx.beginPath();
@@ -1322,32 +1482,39 @@ function drawIndicatorPane(
       y,
     );
   }
-
-  drawIndicatorLine(ctx, series.k, pane, appearance.stochRsiKColor, 0.95, 1.4 * scale);
-  drawIndicatorLine(ctx, series.d, pane, appearance.stochRsiDColor, 0.88, 1.4 * scale);
-  ctx.restore();
-  return series;
 }
 
 function syncIndicatorPaneUi(
   pane: IndicatorPaneLayout | null,
-  series: { k: Float32Array; d: Float32Array } | null,
+  series: IndicatorPaneSeries | null,
   scale: number,
 ) {
   if (!pane || !series) {
     indicatorPaneVisible.value = false;
-    indicatorLatestKText.value = "";
-    indicatorLatestDText.value = "";
-    if (stochRsiSettingsOpen.value) stochRsiSettingsOpen.value = false;
+    indicatorHeaderValues.value = [];
+    if (indicatorSettingsOpen.value) indicatorSettingsOpen.value = false;
     return;
   }
 
   indicatorPaneVisible.value = true;
   indicatorPaneTopCss.value = pane.top / scale;
+  if (series.id === "rsi") {
+    const latestRsi = lastVisibleLineValue(series.rsi);
+    indicatorHeaderValues.value =
+      latestRsi == null ? [] : [{ label: "RSI", value: formatIndicatorValue(latestRsi), className: "rsi" }];
+    return;
+  }
+
+  const values: IndicatorHeaderValue[] = [];
   const latestK = lastVisibleLineValue(series.k);
   const latestD = lastVisibleLineValue(series.d);
-  indicatorLatestKText.value = latestK == null ? "" : formatIndicatorValue(latestK);
-  indicatorLatestDText.value = latestD == null ? "" : formatIndicatorValue(latestD);
+  if (latestK != null) {
+    values.push({ label: "K", value: formatIndicatorValue(latestK), className: "k" });
+  }
+  if (latestD != null) {
+    values.push({ label: "D", value: formatIndicatorValue(latestD), className: "d" });
+  }
+  indicatorHeaderValues.value = values;
 }
 
 function drawIndicatorLine(
@@ -1390,8 +1557,15 @@ function drawIndicatorTooltip(
   x: number,
   y: number,
   candleX: number,
-  series: { k: Float32Array; d: Float32Array },
+  series: IndicatorPaneSeries,
 ) {
+  if (series.id === "rsi") {
+    const rsi = lineValueNearX(series.rsi, candleX);
+    if (rsi == null) return;
+    drawTextBox(ctx, x, y, `RSI ${formatIndicatorValue(rsi)}`);
+    return;
+  }
+
   const k = lineValueNearX(series.k, candleX);
   const d = lineValueNearX(series.d, candleX);
   if (k == null && d == null) return;
@@ -1525,7 +1699,7 @@ function formatIndicatorValue(value: number) {
   });
 }
 
-function formatStochRsiSetting(field: StochRsiNumberField) {
+function formatIndicatorSetting(field: IndicatorNumberField) {
   const value = resolvedAppearance.value[field];
   if (field === "stochRsiPaneHeight") return `${Math.round(value * 100)}%`;
   return value;
@@ -1629,7 +1803,8 @@ function setError(message: string | null) {
   font-weight: 700;
 }
 
-.gpu-chart-indicator-gear {
+.gpu-chart-indicator-gear,
+.gpu-chart-indicator-minimize {
   display: inline-grid;
   width: 20px;
   height: 20px;
@@ -1644,7 +1819,8 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-indicator-gear:hover,
-.gpu-chart-indicator-gear[aria-expanded="true"] {
+.gpu-chart-indicator-gear[aria-expanded="true"],
+.gpu-chart-indicator-minimize:hover {
   border-color: var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
   color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.92));
   background: rgba(255, 255, 255, 0.08);
@@ -1661,6 +1837,10 @@ function setError(message: string | null) {
 
 .gpu-chart-indicator-value.d {
   color: var(--gpu-chart-indicator-d, #a78bfa);
+}
+
+.gpu-chart-indicator-value.rsi {
+  color: var(--gpu-chart-indicator-rsi, #22c55e);
 }
 
 .gpu-chart-indicator-settings {
@@ -1703,6 +1883,49 @@ function setError(message: string | null) {
   border-radius: 5px;
   background: transparent;
   cursor: pointer;
+}
+
+.gpu-chart-indicator-tabs {
+  position: absolute;
+  left: 50%;
+  bottom: 8px;
+  z-index: 5;
+  display: inline-flex;
+  max-width: calc(100% - 16px);
+  gap: 4px;
+  padding: 3px;
+  overflow-x: auto;
+  border: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.68));
+  border-radius: 6px;
+  background: var(--gpu-chart-indicator-panel-bg, rgba(3, 6, 11, 0.88));
+  box-shadow: 0 10px 24px rgba(0, 0, 0, 0.34);
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.9));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--gpu-chart-indicator-font-size, 12px);
+  line-height: 1;
+  pointer-events: auto;
+  transform: translateX(-50%);
+}
+
+.gpu-chart-indicator-tab {
+  flex: 0 0 auto;
+  min-width: 0;
+  padding: 5px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-indicator-muted, rgba(255, 255, 255, 0.62));
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gpu-chart-indicator-tab:hover,
+.gpu-chart-indicator-tab.active {
+  border-color: var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.68));
+  background: rgba(255, 255, 255, 0.08);
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.9));
 }
 
 .gpu-chart-badge {

@@ -132,6 +132,7 @@ type ToggleField = Extract<
   | "showWma"
   | "showBollinger"
   | "showStochRsi"
+  | "showRsi"
 >;
 
 const colorFields: Array<{ key: ColorField; label: string }> = [
@@ -180,6 +181,7 @@ const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showWma", label: "WMA" },
   { key: "showBollinger", label: "Bollinger" },
   { key: "showStochRsi", label: "Stoch RSI" },
+  { key: "showRsi", label: "RSI" },
 ];
 
 function setColor(field: ColorField, event: Event) {

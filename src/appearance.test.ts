@@ -38,7 +38,12 @@ describe("gpu chart appearance", () => {
       stochRsiKColor: "orange",
       stochRsiRsiPeriod: 1,
       stochRsiPaneHeight: 1,
+      rsiColor: "lime",
+      rsiPeriod: 1,
+      activeIndicatorPane: "macd" as unknown as "rsi",
+      indicatorPaneMinimized: "no" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
+      showRsi: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
     });
 
@@ -51,7 +56,14 @@ describe("gpu chart appearance", () => {
     expect(appearance.stochRsiKColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiKColor);
     expect(appearance.stochRsiRsiPeriod).toBe(2);
     expect(appearance.stochRsiPaneHeight).toBe(0.4);
+    expect(appearance.rsiColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiColor);
+    expect(appearance.rsiPeriod).toBe(2);
+    expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
+    expect(appearance.indicatorPaneMinimized).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
+    );
     expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
+    expect(appearance.showRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsi);
     expect(appearance.showGrid).toBe(DEFAULT_GPU_CHART_APPEARANCE.showGrid);
   });
 
@@ -64,6 +76,9 @@ describe("gpu chart appearance", () => {
         showBadge: false,
         showWma: true,
         showStochRsi: false,
+        showRsi: false,
+        activeIndicatorPane: "rsi",
+        indicatorPaneMinimized: true,
       },
       storage,
     );
@@ -73,12 +88,18 @@ describe("gpu chart appearance", () => {
     expect(saved.showBadge).toBe(false);
     expect(saved.showWma).toBe(true);
     expect(saved.showStochRsi).toBe(false);
+    expect(saved.showRsi).toBe(false);
+    expect(saved.activeIndicatorPane).toBe("rsi");
+    expect(saved.indicatorPaneMinimized).toBe(true);
     expect(JSON.parse(storage.getItem(`${GPU_CHART_APPEARANCE_KEY}:single`) ?? "{}")).toMatchObject({
       backgroundColor: "#111827",
       fontSize: 18,
       showBadge: false,
       showWma: true,
       showStochRsi: false,
+      showRsi: false,
+      activeIndicatorPane: "rsi",
+      indicatorPaneMinimized: true,
     });
     expect(loadGpuChartAppearance(storage)).toMatchObject(saved);
   });
@@ -103,6 +124,8 @@ describe("gpu chart appearance", () => {
     );
     expect(loadGpuChartAppearance(storage, "grid").showStochRsi).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showStochRsi).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showRsi).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showRsi).toBe(true);
   });
 
   it("converts hex colors into renderer color channels", () => {
