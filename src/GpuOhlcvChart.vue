@@ -210,7 +210,7 @@ interface IndicatorPaneLayout {
 
 type IndicatorColorField = Extract<
   keyof GpuChartAppearance,
-  "stochRsiKColor" | "stochRsiDColor" | "rsiColor"
+  "stochRsiKColor" | "stochRsiDColor" | "stochRsiRangeColor" | "rsiColor" | "rsiRangeColor"
 >;
 type IndicatorNumberField = Extract<
   keyof GpuChartAppearance,
@@ -219,7 +219,11 @@ type IndicatorNumberField = Extract<
   | "stochRsiKPeriod"
   | "stochRsiDPeriod"
   | "stochRsiPaneHeight"
+  | "stochRsiRangeLower"
+  | "stochRsiRangeUpper"
   | "rsiPeriod"
+  | "rsiRangeLower"
+  | "rsiRangeUpper"
 >;
 
 interface IndicatorPaneOption {
@@ -242,6 +246,12 @@ interface IndicatorHeaderValue {
   className: string;
 }
 
+interface IndicatorRangeBand {
+  lower: number;
+  upper: number;
+  color: string;
+}
+
 type IndicatorPaneSeries =
   | { id: "stochRsi"; k: Float32Array; d: Float32Array }
   | { id: "rsi"; rsi: Float32Array };
@@ -249,19 +259,25 @@ type IndicatorPaneSeries =
 const stochRsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "stochRsiKColor", label: "K Color" },
   { key: "stochRsiDColor", label: "D Color" },
+  { key: "stochRsiRangeColor", label: "Range Color" },
 ];
 const stochRsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
   { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
   { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
   { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
+  { key: "stochRsiRangeLower", label: "Range Low", min: 0, max: 100, step: 1 },
+  { key: "stochRsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
   { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 const rsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "rsiColor", label: "RSI Color" },
+  { key: "rsiRangeColor", label: "Range Color" },
 ];
 const rsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "rsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
+  { key: "rsiRangeLower", label: "Range Low", min: 0, max: 100, step: 1 },
+  { key: "rsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
   { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 const INDICATOR_PANES: IndicatorPaneOption[] = [
@@ -1419,7 +1435,10 @@ function drawIndicatorPane(
 
   ctx.font = `${Math.max(10 * scale, appearance.fontSize * scale * 0.86)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
-  drawIndicatorLevels(ctx, pane, scale, activePane.id === "rsi" ? [70, 50, 30] : [80, 50, 20]);
+  const band = indicatorRangeBand(activePane.id, appearance);
+  drawIndicatorBandFill(ctx, pane, band);
+  drawIndicatorLevels(ctx, pane, scale, [50]);
+  drawIndicatorBandLines(ctx, pane, scale, band);
 
   const series =
     activePane.id === "rsi"
@@ -1458,6 +1477,60 @@ function drawRsiPane(
   const rsi = state ? computeRsiLine(state.candles, appearance.rsiPeriod) : new Float32Array();
   drawIndicatorLine(ctx, rsi, pane, appearance.rsiColor, 0.95, 1.5 * scale);
   return { id: "rsi", rsi };
+}
+
+function indicatorRangeBand(
+  paneId: GpuChartIndicatorPane,
+  appearance: GpuChartAppearance,
+): IndicatorRangeBand {
+  const lower =
+    paneId === "rsi" ? appearance.rsiRangeLower : appearance.stochRsiRangeLower;
+  const upper =
+    paneId === "rsi" ? appearance.rsiRangeUpper : appearance.stochRsiRangeUpper;
+  return {
+    lower: Math.min(lower, upper),
+    upper: Math.max(lower, upper),
+    color: paneId === "rsi" ? appearance.rsiRangeColor : appearance.stochRsiRangeColor,
+  };
+}
+
+function drawIndicatorBandFill(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  band: IndicatorRangeBand,
+) {
+  const top = indicatorValueToPx(band.upper, pane);
+  const bottom = indicatorValueToPx(band.lower, pane);
+  ctx.fillStyle = hexToRgba(band.color, 0.12);
+  ctx.fillRect(0, top, ctx.canvas.width, Math.max(1, bottom - top));
+}
+
+function drawIndicatorBandLines(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  band: IndicatorRangeBand,
+) {
+  const levels = band.lower === band.upper ? [band.lower] : [band.upper, band.lower];
+  ctx.save();
+  ctx.setLineDash([5 * scale, 4 * scale]);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.strokeStyle = hexToRgba(band.color, 0.78);
+  ctx.fillStyle = hexToRgba(band.color, 0.88);
+  for (const level of levels) {
+    const y = indicatorValueToPx(level, pane);
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(ctx.canvas.width, y + 0.5);
+    ctx.stroke();
+    const label = formatIndicatorLevel(level);
+    ctx.fillText(
+      label,
+      Math.max(4 * scale, ctx.canvas.width - ctx.measureText(label).width - 6 * scale),
+      y,
+    );
+  }
+  ctx.restore();
 }
 
 function drawIndicatorLevels(
@@ -1695,6 +1768,13 @@ function formatPrice(value: number) {
 function formatIndicatorValue(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
+  });
+}
+
+function formatIndicatorLevel(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 0,
     maximumFractionDigits: 1,
   });
 }

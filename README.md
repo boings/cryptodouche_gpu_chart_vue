@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.7'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.8'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.7'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.8'
 ```
 
 Import the component and CSS:
@@ -147,7 +147,7 @@ When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange
 
 `showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI and RSI, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
 
-Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, and the divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
+Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, including period, upper/lower range, and range color. The range is shaded with dashed threshold lines. The divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
 
 ## Interaction Model
 
@@ -219,7 +219,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.7
+git tag v0.1.8
 git push origin main --tags
 ```
 

@@ -14,7 +14,9 @@ export interface GpuChartAppearance {
   bollingerLowerColor: string;
   stochRsiKColor: string;
   stochRsiDColor: string;
+  stochRsiRangeColor: string;
   rsiColor: string;
+  rsiRangeColor: string;
   gridColor: string;
   textColor: string;
   crosshairColor: string;
@@ -33,7 +35,11 @@ export interface GpuChartAppearance {
   stochRsiKPeriod: number;
   stochRsiDPeriod: number;
   stochRsiPaneHeight: number;
+  stochRsiRangeLower: number;
+  stochRsiRangeUpper: number;
   rsiPeriod: number;
+  rsiRangeLower: number;
+  rsiRangeUpper: number;
   activeIndicatorPane: GpuChartIndicatorPane;
   indicatorPaneMinimized: boolean;
   showGrid: boolean;
@@ -62,7 +68,9 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   bollingerLowerColor: "#38bdf8",
   stochRsiKColor: "#f59e0b",
   stochRsiDColor: "#a78bfa",
+  stochRsiRangeColor: "#64748b",
   rsiColor: "#22c55e",
+  rsiRangeColor: "#64748b",
   gridColor: "#27313d",
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
@@ -81,7 +89,11 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   stochRsiKPeriod: 3,
   stochRsiDPeriod: 3,
   stochRsiPaneHeight: 0.24,
+  stochRsiRangeLower: 20,
+  stochRsiRangeUpper: 80,
   rsiPeriod: 14,
+  rsiRangeLower: 20,
+  rsiRangeUpper: 80,
   activeIndicatorPane: "stochRsi",
   indicatorPaneMinimized: false,
   showGrid: true,
@@ -136,7 +148,9 @@ export function normalizeGpuChartAppearance(
     ),
     stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
     stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
+    stochRsiRangeColor: colorValue(value.stochRsiRangeColor, defaults.stochRsiRangeColor),
     rsiColor: colorValue(value.rsiColor, defaults.rsiColor),
+    rsiRangeColor: colorValue(value.rsiRangeColor, defaults.rsiRangeColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
@@ -190,7 +204,21 @@ export function normalizeGpuChartAppearance(
       0.4,
       defaults.stochRsiPaneHeight,
     ),
+    stochRsiRangeLower: clampNumber(
+      value.stochRsiRangeLower,
+      0,
+      100,
+      defaults.stochRsiRangeLower,
+    ),
+    stochRsiRangeUpper: clampNumber(
+      value.stochRsiRangeUpper,
+      0,
+      100,
+      defaults.stochRsiRangeUpper,
+    ),
     rsiPeriod: clampInteger(value.rsiPeriod, 2, 100, defaults.rsiPeriod),
+    rsiRangeLower: clampNumber(value.rsiRangeLower, 0, 100, defaults.rsiRangeLower),
+    rsiRangeUpper: clampNumber(value.rsiRangeUpper, 0, 100, defaults.rsiRangeUpper),
     activeIndicatorPane: indicatorPaneValue(
       value.activeIndicatorPane,
       defaults.activeIndicatorPane,

@@ -38,8 +38,14 @@ describe("gpu chart appearance", () => {
       stochRsiKColor: "orange",
       stochRsiRsiPeriod: 1,
       stochRsiPaneHeight: 1,
+      stochRsiRangeColor: "gray",
+      stochRsiRangeLower: -10,
+      stochRsiRangeUpper: 120,
       rsiColor: "lime",
       rsiPeriod: 1,
+      rsiRangeColor: "gray",
+      rsiRangeLower: -5,
+      rsiRangeUpper: 105,
       activeIndicatorPane: "macd" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
@@ -56,8 +62,14 @@ describe("gpu chart appearance", () => {
     expect(appearance.stochRsiKColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiKColor);
     expect(appearance.stochRsiRsiPeriod).toBe(2);
     expect(appearance.stochRsiPaneHeight).toBe(0.4);
+    expect(appearance.stochRsiRangeColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiRangeColor);
+    expect(appearance.stochRsiRangeLower).toBe(0);
+    expect(appearance.stochRsiRangeUpper).toBe(100);
     expect(appearance.rsiColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiColor);
     expect(appearance.rsiPeriod).toBe(2);
+    expect(appearance.rsiRangeColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiRangeColor);
+    expect(appearance.rsiRangeLower).toBe(0);
+    expect(appearance.rsiRangeUpper).toBe(100);
     expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
@@ -77,6 +89,12 @@ describe("gpu chart appearance", () => {
         showWma: true,
         showStochRsi: false,
         showRsi: false,
+        stochRsiRangeColor: "#334155",
+        stochRsiRangeLower: 25,
+        stochRsiRangeUpper: 75,
+        rsiRangeColor: "#475569",
+        rsiRangeLower: 30,
+        rsiRangeUpper: 70,
         activeIndicatorPane: "rsi",
         indicatorPaneMinimized: true,
       },
@@ -89,6 +107,12 @@ describe("gpu chart appearance", () => {
     expect(saved.showWma).toBe(true);
     expect(saved.showStochRsi).toBe(false);
     expect(saved.showRsi).toBe(false);
+    expect(saved.stochRsiRangeColor).toBe("#334155");
+    expect(saved.stochRsiRangeLower).toBe(25);
+    expect(saved.stochRsiRangeUpper).toBe(75);
+    expect(saved.rsiRangeColor).toBe("#475569");
+    expect(saved.rsiRangeLower).toBe(30);
+    expect(saved.rsiRangeUpper).toBe(70);
     expect(saved.activeIndicatorPane).toBe("rsi");
     expect(saved.indicatorPaneMinimized).toBe(true);
     expect(JSON.parse(storage.getItem(`${GPU_CHART_APPEARANCE_KEY}:single`) ?? "{}")).toMatchObject({
@@ -98,6 +122,12 @@ describe("gpu chart appearance", () => {
       showWma: true,
       showStochRsi: false,
       showRsi: false,
+      stochRsiRangeColor: "#334155",
+      stochRsiRangeLower: 25,
+      stochRsiRangeUpper: 75,
+      rsiRangeColor: "#475569",
+      rsiRangeLower: 30,
+      rsiRangeUpper: 70,
       activeIndicatorPane: "rsi",
       indicatorPaneMinimized: true,
     });
