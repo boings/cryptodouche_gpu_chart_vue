@@ -1,5 +1,6 @@
 <template>
   <div
+    ref="shellRef"
     class="gpu-chart-shell"
     :data-last-close="lastCloseText"
     :data-change-pct="changePctText"
@@ -60,11 +61,37 @@
           {{ value.label }} {{ value.value }}
         </span>
       </div>
+    </div>
+    <div
+      v-if="indicatorSettingsOpen"
+      ref="indicatorSettingsRef"
+      class="gpu-chart-indicator-settings-modal"
+      :style="indicatorSettingsModalStyle"
+      @click.stop
+      @mousedown.stop
+      @dblclick.stop
+      @wheel.stop
+    >
       <div
-        v-if="indicatorSettingsOpen"
-        class="gpu-chart-indicator-settings"
-        @wheel.stop
+        class="gpu-chart-indicator-settings-header"
+        :class="{ dragging: indicatorSettingsDragging }"
+        title="Drag to move"
+        @mousedown.stop.prevent="startIndicatorSettingsDrag"
       >
+        <span class="gpu-chart-indicator-settings-title">
+          {{ activeIndicatorPaneLabel }} Settings
+        </span>
+        <button
+          type="button"
+          class="gpu-chart-indicator-settings-close"
+          aria-label="Close indicator settings"
+          title="Close"
+          @click="closeIndicatorSettings"
+        >
+          x
+        </button>
+      </div>
+      <div class="gpu-chart-indicator-settings-grid">
         <label
           v-for="field in activeIndicatorColorFields"
           :key="field.key"
@@ -126,7 +153,7 @@
         :key="tab.id"
         type="button"
         class="gpu-chart-indicator-tab"
-        :class="{ active: tab.id === activeIndicatorPaneId && !resolvedAppearance.indicatorPaneMinimized }"
+        :class="{ active: tab.id === activeIndicatorPaneId && !indicatorPaneMinimized }"
         @click="selectIndicatorPane(tab.id)"
       >
         {{ tab.label }}
@@ -153,7 +180,7 @@
 </template>
 
 <script setup lang="ts">
-import { computed, onBeforeUnmount, onMounted, ref, watch } from "vue";
+import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
   GpuChartDataAdapter,
   GpuChartDataQuery,
@@ -214,6 +241,9 @@ const MIN_PRICE_PANE_HEIGHT_PX = 180;
 const MIN_INDICATOR_WARMUP_CANDLES = 160;
 const MAX_HISTORY_LOAD_CANDLES = 5000;
 const RIGHT_LABEL_MIN_RESERVE_PX = 88;
+const DEFAULT_INDICATOR_PANE_HEIGHT_RATIO = 0.24;
+const MIN_INDICATOR_PANE_HEIGHT_RATIO = 0.12;
+const MAX_INDICATOR_PANE_HEIGHT_RATIO = 0.4;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -234,7 +264,6 @@ type IndicatorNumberField = Extract<
   | "stochRsiPeriod"
   | "stochRsiKPeriod"
   | "stochRsiDPeriod"
-  | "stochRsiPaneHeight"
   | "stochRsiRangeLower"
   | "stochRsiRangeUpper"
   | "rsiPeriod"
@@ -294,7 +323,6 @@ const stochRsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
   { key: "stochRsiRangeLower", label: "Range Low", min: 0, max: 100, step: 1 },
   { key: "stochRsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
-  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 const stochRsiToggleFields: IndicatorPaneOption["toggleFields"] = [
   { key: "stochRsiSmooth", label: "Smooth Line" },
@@ -307,7 +335,6 @@ const rsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "rsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
   { key: "rsiRangeLower", label: "Range Low", min: 0, max: 100, step: 1 },
   { key: "rsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
-  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 const rsiToggleFields: IndicatorPaneOption["toggleFields"] = [
   { key: "rsiSmooth", label: "Smooth Line" },
@@ -369,8 +396,10 @@ const emit = defineEmits<{
   "update:appearance": [value: GpuChartAppearance];
 }>();
 
+const shellRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const hudRef = ref<HTMLCanvasElement | null>(null);
+const indicatorSettingsRef = ref<HTMLDivElement | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const streaming = ref(false);
@@ -382,10 +411,17 @@ const viewMinX = ref(0);
 const viewMaxX = ref(1);
 const historicalLoading = ref(false);
 const localAppearance = ref(normalizeGpuChartAppearance(props.appearance));
+const localActiveIndicatorPane = ref<GpuChartIndicatorPane>(localAppearance.value.activeIndicatorPane);
+const indicatorPaneMinimized = ref(localAppearance.value.indicatorPaneMinimized);
+const indicatorPaneHeightRatio = ref(
+  clampIndicatorPaneHeightRatio(localAppearance.value.stochRsiPaneHeight),
+);
 const indicatorPaneVisible = ref(false);
 const indicatorPaneTopCss = ref(0);
 const indicatorHeaderValues = ref<IndicatorHeaderValue[]>([]);
 const indicatorSettingsOpen = ref(false);
+const indicatorSettingsDragging = ref(false);
+const indicatorSettingsPosition = ref<{ left: number; top: number } | null>(null);
 const indicatorPaneResizing = ref(false);
 
 let chart: GpuChartHandle | null = null;
@@ -403,6 +439,7 @@ let autoFitVisibleY = true;
 let smoothXFrame: number | null = null;
 let smoothXTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
 let stopPaneResizeDrag: (() => void) | null = null;
+let stopSettingsDrag: (() => void) | null = null;
 
 const resolvedAppearance = computed(() => localAppearance.value);
 const shellStyle = computed<Record<string, string>>(() => {
@@ -426,7 +463,7 @@ const activeIndicatorPane = computed(() => {
   const tabs = indicatorPaneTabs.value;
   if (!tabs.length) return null;
   return (
-    tabs.find((pane) => pane.id === resolvedAppearance.value.activeIndicatorPane) ?? tabs[0]
+    tabs.find((pane) => pane.id === localActiveIndicatorPane.value) ?? tabs[0]
   );
 });
 const activeIndicatorPaneId = computed(() => activeIndicatorPane.value?.id ?? null);
@@ -453,6 +490,19 @@ const indicatorPaneToolbarStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-indicator-k": appearance.stochRsiKColor,
     "--gpu-chart-indicator-d": appearance.stochRsiDColor,
     "--gpu-chart-indicator-rsi": appearance.rsiColor,
+  };
+});
+const indicatorSettingsModalStyle = computed<Record<string, string>>(() => {
+  const appearance = resolvedAppearance.value;
+  const position = indicatorSettingsPosition.value ?? defaultIndicatorSettingsPosition();
+  return {
+    left: `${position.left}px`,
+    top: `${position.top}px`,
+    "--gpu-chart-indicator-font-size": `${Math.max(11, appearance.fontSize * 0.86)}px`,
+    "--gpu-chart-indicator-text": hexToRgba(appearance.textColor, 0.92),
+    "--gpu-chart-indicator-muted": hexToRgba(appearance.textColor, 0.68),
+    "--gpu-chart-indicator-panel-bg": hexToRgba(appearance.tooltipBackgroundColor, 0.96),
+    "--gpu-chart-indicator-border": hexToRgba(appearance.gridColor, 0.76),
   };
 });
 const indicatorPaneTabsStyle = computed<Record<string, string>>(() => {
@@ -515,6 +565,8 @@ onBeforeUnmount(() => {
   cancelSmoothX();
   stopPaneResizeDrag?.();
   stopPaneResizeDrag = null;
+  stopSettingsDrag?.();
+  stopSettingsDrag = null;
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -606,6 +658,7 @@ async function boot() {
     resizeObs = new ResizeObserver(() => {
       fitCanvases();
       chart?.resize();
+      if (indicatorSettingsOpen.value) placeIndicatorSettingsModal();
       fitVisibleYIfEnabled();
       applyView();
       drawHud(mousePos);
@@ -970,7 +1023,28 @@ function resetVisibleYMode() {
 }
 
 function toggleIndicatorSettings() {
-  indicatorSettingsOpen.value = !indicatorSettingsOpen.value;
+  if (indicatorSettingsOpen.value) {
+    closeIndicatorSettings();
+    return;
+  }
+  indicatorSettingsOpen.value = true;
+  placeIndicatorSettingsModal();
+}
+
+function closeIndicatorSettings() {
+  stopSettingsDrag?.();
+  indicatorSettingsOpen.value = false;
+}
+
+function placeIndicatorSettingsModal() {
+  if (!indicatorSettingsPosition.value) {
+    indicatorSettingsPosition.value = defaultIndicatorSettingsPosition();
+  }
+  indicatorSettingsPosition.value = clampIndicatorSettingsPosition(indicatorSettingsPosition.value);
+  void nextTick(() => {
+    if (!indicatorSettingsOpen.value || !indicatorSettingsPosition.value) return;
+    indicatorSettingsPosition.value = clampIndicatorSettingsPosition(indicatorSettingsPosition.value);
+  });
 }
 
 function setIndicatorColor(field: IndicatorColorField, event: Event) {
@@ -990,23 +1064,29 @@ function inputValue(event: Event) {
 }
 
 function resetIndicatorPaneHeight() {
-  patchAppearance({ stochRsiPaneHeight: 0.24 });
+  setLocalIndicatorPaneHeight(DEFAULT_INDICATOR_PANE_HEIGHT_RATIO);
 }
 
 function minimizeIndicatorPane() {
-  indicatorSettingsOpen.value = false;
-  patchAppearance({ indicatorPaneMinimized: true });
+  closeIndicatorSettings();
+  indicatorPaneMinimized.value = true;
+  fitVisibleYIfEnabled();
+  applyView();
+  drawHud(mousePos);
+  scheduleGpuRender(renderNow);
 }
 
 function selectIndicatorPane(id: GpuChartIndicatorPane) {
   const isOpen =
-    resolvedAppearance.value.activeIndicatorPane === id &&
-    !resolvedAppearance.value.indicatorPaneMinimized;
-  indicatorSettingsOpen.value = false;
-  patchAppearance({
-    activeIndicatorPane: id,
-    indicatorPaneMinimized: isOpen,
-  });
+    activeIndicatorPane.value?.id === id &&
+    !indicatorPaneMinimized.value;
+  closeIndicatorSettings();
+  localActiveIndicatorPane.value = id;
+  indicatorPaneMinimized.value = isOpen;
+  fitVisibleYIfEnabled();
+  applyView();
+  drawHud(mousePos);
+  scheduleGpuRender(renderNow);
 }
 
 function startIndicatorPaneResize(event: MouseEvent) {
@@ -1025,7 +1105,7 @@ function startIndicatorPaneResize(event: MouseEvent) {
 
   const updateHeight = (clientY: number) => {
     const nextRatio = (rect.bottom - clientY) / rect.height;
-    patchAppearance({ stochRsiPaneHeight: nextRatio });
+    setLocalIndicatorPaneHeight(nextRatio);
   };
   const onMove = (moveEvent: MouseEvent) => {
     moveEvent.preventDefault();
@@ -1046,6 +1126,88 @@ function startIndicatorPaneResize(event: MouseEvent) {
   window.addEventListener("mousemove", onMove);
   window.addEventListener("mouseup", onUp);
   updateHeight(event.clientY);
+}
+
+function startIndicatorSettingsDrag(event: MouseEvent) {
+  if (event.button !== 0) return;
+  stopSettingsDrag?.();
+  indicatorSettingsDragging.value = true;
+  const startPosition = indicatorSettingsPosition.value ?? defaultIndicatorSettingsPosition();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const previousCursor = document.body.style.cursor;
+  document.body.style.cursor = "grabbing";
+
+  const onMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    indicatorSettingsPosition.value = clampIndicatorSettingsPosition({
+      left: startPosition.left + moveEvent.clientX - startX,
+      top: startPosition.top + moveEvent.clientY - startY,
+    });
+  };
+  const onUp = () => {
+    stopSettingsDrag?.();
+  };
+
+  stopSettingsDrag = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    document.body.style.cursor = previousCursor;
+    indicatorSettingsDragging.value = false;
+    stopSettingsDrag = null;
+  };
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+function defaultIndicatorSettingsPosition() {
+  const shell = shellRef.value;
+  const shellHeight = shell?.clientHeight ?? 360;
+  const top = Math.min(
+    Math.max(12, indicatorPaneTopCss.value + 32),
+    Math.max(12, shellHeight - indicatorSettingsSize().height - 12),
+  );
+  return { left: 12, top };
+}
+
+function indicatorSettingsSize() {
+  const rect = indicatorSettingsRef.value?.getBoundingClientRect();
+  return {
+    width: rect?.width && Number.isFinite(rect.width) ? rect.width : 336,
+    height: rect?.height && Number.isFinite(rect.height) ? rect.height : 260,
+  };
+}
+
+function clampIndicatorSettingsPosition(position: { left: number; top: number }) {
+  const shell = shellRef.value;
+  const width = shell?.clientWidth ?? 640;
+  const height = shell?.clientHeight ?? 360;
+  const size = indicatorSettingsSize();
+  const pad = 8;
+  const maxLeft = Math.max(pad, width - size.width - pad);
+  const maxTop = Math.max(pad, height - size.height - pad);
+  return {
+    left: Math.max(pad, Math.min(maxLeft, position.left)),
+    top: Math.max(pad, Math.min(maxTop, position.top)),
+  };
+}
+
+function setLocalIndicatorPaneHeight(value: number) {
+  indicatorPaneHeightRatio.value = clampIndicatorPaneHeightRatio(value);
+  fitVisibleYIfEnabled();
+  applyView();
+  drawHud(mousePos);
+  scheduleGpuRender(renderNow);
+}
+
+function clampIndicatorPaneHeightRatio(value: unknown) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return DEFAULT_INDICATOR_PANE_HEIGHT_RATIO;
+  return Math.max(
+    MIN_INDICATOR_PANE_HEIGHT_RATIO,
+    Math.min(MAX_INDICATOR_PANE_HEIGHT_RATIO, parsed),
+  );
 }
 
 function patchAppearance(partial: Partial<GpuChartAppearance>) {
@@ -1397,10 +1559,9 @@ function currentIndicatorPaneLayout(): IndicatorPaneLayout | null {
 }
 
 function indicatorPaneAvailable() {
-  const appearance = resolvedAppearance.value;
   return Boolean(
     props.showIndicatorPanes &&
-      !appearance.indicatorPaneMinimized &&
+      !indicatorPaneMinimized.value &&
       activeIndicatorPane.value &&
       state?.candles.length &&
       state.candles.length > 0,
@@ -1412,11 +1573,11 @@ function indicatorPaneLayout(height: number, scale: number): IndicatorPaneLayout
   const minPriceHeight = MIN_PRICE_PANE_HEIGHT_PX * scale;
   if (height < minPaneHeight + minPriceHeight) return null;
 
-  const appearance = resolvedAppearance.value;
   const paneHeight = Math.max(
     minPaneHeight,
-    Math.min(height * 0.4, height * appearance.stochRsiPaneHeight, height - minPriceHeight),
+    Math.min(height * 0.4, height * indicatorPaneHeightRatio.value, height - minPriceHeight),
   );
+  const appearance = resolvedAppearance.value;
   const pad = Math.max(8 * scale, appearance.fontSize * scale * 0.8);
   return {
     top: height - paneHeight,
@@ -1709,12 +1870,15 @@ function syncIndicatorPaneUi(
   if (!pane || !series) {
     indicatorPaneVisible.value = false;
     indicatorHeaderValues.value = [];
-    if (indicatorSettingsOpen.value) indicatorSettingsOpen.value = false;
+    if (indicatorSettingsOpen.value) closeIndicatorSettings();
     return;
   }
 
   indicatorPaneVisible.value = true;
   indicatorPaneTopCss.value = pane.top / scale;
+  if (indicatorSettingsOpen.value && indicatorSettingsPosition.value) {
+    indicatorSettingsPosition.value = clampIndicatorSettingsPosition(indicatorSettingsPosition.value);
+  }
   if (series.id === "rsi") {
     const latestRsi = lastVisibleLineValue(series.rsi);
     indicatorHeaderValues.value =
@@ -2004,9 +2168,7 @@ function formatIndicatorLevel(value: number) {
 }
 
 function formatIndicatorSetting(field: IndicatorNumberField) {
-  const value = resolvedAppearance.value[field];
-  if (field === "stochRsiPaneHeight") return `${Math.round(value * 100)}%`;
-  return value;
+  return resolvedAppearance.value[field];
 }
 
 function setStreaming(active: boolean) {
@@ -2147,17 +2309,70 @@ function setError(message: string | null) {
   color: var(--gpu-chart-indicator-rsi, #22c55e);
 }
 
-.gpu-chart-indicator-settings {
+.gpu-chart-indicator-settings-modal {
+  position: absolute;
+  z-index: 9;
+  width: min(336px, calc(100% - 16px));
+  overflow: hidden;
+  border: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  border-radius: 6px;
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.9));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--gpu-chart-indicator-font-size, 12px);
+  background: var(--gpu-chart-indicator-panel-bg, rgba(3, 6, 11, 0.94));
+  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
+  pointer-events: auto;
+}
+
+.gpu-chart-indicator-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  cursor: grab;
+  user-select: none;
+}
+
+.gpu-chart-indicator-settings-header.dragging {
+  cursor: grabbing;
+}
+
+.gpu-chart-indicator-settings-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpu-chart-indicator-settings-close {
+  display: inline-grid;
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-indicator-muted, rgba(255, 255, 255, 0.66));
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.gpu-chart-indicator-settings-close:hover {
+  border-color: var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.92));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gpu-chart-indicator-settings-grid {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 9px;
-  width: min(320px, calc(100vw - 32px));
-  margin-top: 6px;
   padding: 10px;
-  border: 1px solid var(--gpu-chart-indicator-border, rgba(148, 163, 184, 0.7));
-  border-radius: 6px;
-  background: var(--gpu-chart-indicator-panel-bg, rgba(3, 6, 11, 0.94));
-  box-shadow: 0 14px 32px rgba(0, 0, 0, 0.42);
 }
 
 .gpu-chart-indicator-field {
