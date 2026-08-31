@@ -133,6 +133,16 @@ export function candleToBytes(candle: CandleRecord): Uint8Array {
   return new Uint8Array(floats.buffer);
 }
 
+export function computeCloseChangePct(candles: CandleRecord[]): number | null {
+  if (candles.length < 2) return null;
+  const previous = candles[candles.length - 2];
+  const latest = candles[candles.length - 1];
+  if (!Number.isFinite(previous.c) || !Number.isFinite(latest.c) || previous.c === 0) {
+    return null;
+  }
+  return ((latest.c - previous.c) / Math.abs(previous.c)) * 100;
+}
+
 export function mergeLiveCandle(
   state: GpuSeriesState,
   payload: unknown,

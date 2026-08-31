@@ -192,6 +192,7 @@ import type { GpuChartHandle } from "./wasm";
 import {
   appendSyntheticCandle,
   candlesToBytes,
+  computeCloseChangePct,
   computeViewBounds,
   makeSyntheticCandles,
   mergeLiveCandle,
@@ -911,13 +912,9 @@ function updateSummaryMetrics() {
     changePct.value = null;
     return;
   }
-  const visible = initialVisibleCandles();
-  const first = visible[0] ?? state.candles[0];
   const last = state.candles[state.candles.length - 1];
   lastClose.value = last.c;
-  const base = Number.isFinite(first.o) && first.o !== 0 ? first.o : first.c;
-  changePct.value =
-    Number.isFinite(base) && base !== 0 ? ((last.c - base) / Math.abs(base)) * 100 : null;
+  changePct.value = computeCloseChangePct(state.candles);
 }
 
 function updateCandleCount() {

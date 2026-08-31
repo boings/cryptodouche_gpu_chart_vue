@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   candlesToBytes,
+  computeCloseChangePct,
   mergeLiveCandle,
   normalizeOhlcvPoint,
   packHistoricalCandles,
@@ -278,6 +279,23 @@ describe("gpu chart data utilities", () => {
     expect(Array.from(stoch.d).filter((_, index) => index % 2 === 1)).toEqual([
       50, 50, 50, 50, 50,
     ]);
+  });
+
+  it("computes badge change from latest close versus previous close", () => {
+    const state = packHistoricalCandles(
+      [
+        { ts: 60, o: 100, h: 110, l: 95, c: 105 },
+        { ts: 120, o: 97, h: 102, l: 96, c: 100 },
+      ],
+      "1m",
+      500,
+    );
+
+    const latest = state.candles[state.candles.length - 1];
+
+    expect(latest.c).toBeGreaterThan(latest.o);
+    expect(computeCloseChangePct(state.candles)).toBeCloseTo(-4.7619, 4);
+    expect(computeCloseChangePct(state.candles.slice(-1))).toBeNull();
   });
 
   it("only follows live updates when the latest candle is in view", () => {

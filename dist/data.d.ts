@@ -7,6 +7,7 @@ export declare function packHistoricalCandles(rawRows: unknown[], timeframe: str
 export declare function prependHistoricalCandles(state: GpuSeriesState, rawRows: unknown[], timeframe: string | number): number;
 export declare function candlesToBytes(candles: CandleRecord[]): Uint8Array;
 export declare function candleToBytes(candle: CandleRecord): Uint8Array;
+export declare function computeCloseChangePct(candles: CandleRecord[]): number | null;
 export declare function mergeLiveCandle(state: GpuSeriesState, payload: unknown, limit: number, gapLimit?: number): LiveMergeResult;
 export declare function computeViewBounds(candles: CandleRecord[], lineSeries?: Float32Array[]): ViewBounds;
 export declare function makeSyntheticCandles(symbol: string, limit: number, timeframe: string | number): GpuSeriesState;
