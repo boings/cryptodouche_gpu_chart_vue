@@ -4,6 +4,7 @@ export const MIN_VISIBLE_CANDLES = 8;
 export const RIGHT_EDGE_PADDING_CANDLES = 2;
 export const FOLLOW_LATEST_EPSILON = 0.05;
 export const VISIBLE_Y_PADDING_RATIO = 0.12;
+export const VISIBLE_Y_SMOOTHING_RATIO = 0.28;
 
 export interface XViewDomain {
   firstX: number;
@@ -111,6 +112,48 @@ export function computeVisibleYBounds(
 
   if (!Number.isFinite(minY) || !Number.isFinite(maxY)) return null;
   return paddedYBounds(minY, maxY, paddingRatio);
+}
+
+export function smoothVisibleYBounds(
+  current: Pick<ViewBounds, "minY" | "maxY">,
+  target: Pick<ViewBounds, "minY" | "maxY">,
+  ratio = VISIBLE_Y_SMOOTHING_RATIO,
+): Pick<ViewBounds, "minY" | "maxY"> {
+  if (!Number.isFinite(target.minY) || !Number.isFinite(target.maxY)) return current;
+
+  const weight = Number.isFinite(ratio)
+    ? Math.max(0, Math.min(1, ratio))
+    : VISIBLE_Y_SMOOTHING_RATIO;
+  const currentMinY = Number.isFinite(current.minY) ? current.minY : target.minY;
+  const currentMaxY = Number.isFinite(current.maxY) ? current.maxY : target.maxY;
+
+  return {
+    minY:
+      target.minY < currentMinY
+        ? target.minY
+        : currentMinY + (target.minY - currentMinY) * weight,
+    maxY:
+      target.maxY > currentMaxY
+        ? target.maxY
+        : currentMaxY + (target.maxY - currentMaxY) * weight,
+  };
+}
+
+export function isYBoundsClose(
+  current: Pick<ViewBounds, "minY" | "maxY">,
+  target: Pick<ViewBounds, "minY" | "maxY">,
+  epsilonRatio = 0.001,
+): boolean {
+  const span = Math.max(
+    Math.abs(current.maxY - current.minY),
+    Math.abs(target.maxY - target.minY),
+    1e-9,
+  );
+  const epsilon = span * Math.max(0, epsilonRatio);
+  return (
+    Math.abs(current.minY - target.minY) <= epsilon &&
+    Math.abs(current.maxY - target.maxY) <= epsilon
+  );
 }
 
 export function scaleYView(

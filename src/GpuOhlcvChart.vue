@@ -71,8 +71,10 @@ import {
   clampXView,
   computeVisibleYBounds,
   isFollowingLatest,
+  isYBoundsClose,
   RIGHT_EDGE_PADDING_CANDLES,
   scaleYView,
+  smoothVisibleYBounds,
   withRightPadding,
 } from "./viewport";
 import { loadGpuChartModule } from "./wasm";
@@ -81,6 +83,8 @@ const LINE_SLOTS = [0, 1, 2, 3, 4, 5] as const;
 const PRICE_SCALE_DRAG_WIDTH_PX = 76;
 const Y_AXIS_SCALE_SENSITIVITY_PX = 180;
 const WHEEL_GESTURE_QUIET_MS = 180;
+const SMOOTH_SHIFT_PAN_EASE = 0.32;
+const SMOOTH_SHIFT_PAN_EPSILON_CANDLES = 0.002;
 
 const props = withDefaults(
   defineProps<{
@@ -142,6 +146,8 @@ let mousePos: { px: number; py: number } | null = null;
 let hasMoreHistory = true;
 let draggedDuringPointer = false;
 let autoFitVisibleY = true;
+let smoothPanFrame: number | null = null;
+let smoothPanTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
 
 const resolvedAppearance = computed(() => normalizeGpuChartAppearance(props.appearance));
 const shellStyle = computed<Record<string, string>>(() => {
@@ -202,6 +208,7 @@ onBeforeUnmount(() => {
   mounted = false;
   stopStream();
   stopSynthetic();
+  cancelSmoothPan();
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -300,6 +307,7 @@ function applyChartAppearance() {
 async function loadSeries() {
   stopStream();
   stopSynthetic();
+  cancelSmoothPan();
   loading.value = true;
   setError(null);
   hasMoreHistory = true;
@@ -419,6 +427,10 @@ async function maybeLoadOlderCandles() {
     if (Number.isFinite(xShift)) {
       view.minX += xShift;
       view.maxX += xShift;
+      if (smoothPanTarget) {
+        smoothPanTarget.minX += xShift;
+        smoothPanTarget.maxX += xShift;
+      }
     }
     updateSummaryMetrics();
     updateCandleCount();
@@ -487,6 +499,10 @@ function applyMergeResult(
     if (Number.isFinite(xShift)) {
       view.minX += xShift;
       view.maxX += xShift;
+      if (smoothPanTarget) {
+        smoothPanTarget.minX += xShift;
+        smoothPanTarget.maxX += xShift;
+      }
     }
   }
 
@@ -592,24 +608,85 @@ function applyView() {
   chart?.set_view(view.minX, view.maxX, view.minY, view.maxY);
 }
 
-function fitVisibleYIfEnabled() {
-  if (autoFitVisibleY) fitVisibleY();
+function fitVisibleYIfEnabled(options: { smooth?: boolean } = {}) {
+  if (!autoFitVisibleY) return true;
+  return fitVisibleY(options);
 }
 
-function fitVisibleY() {
-  if (!state?.candles.length) return;
+function fitVisibleY(options: { smooth?: boolean } = {}) {
+  if (!state?.candles.length) return true;
   const yBounds = computeVisibleYBounds(state.candles, view);
-  if (!yBounds) return;
-  view.minY = yBounds.minY;
-  view.maxY = yBounds.maxY;
+  if (!yBounds) return true;
+  const nextYBounds = options.smooth ? smoothVisibleYBounds(view, yBounds) : yBounds;
+  view.minY = nextYBounds.minY;
+  view.maxY = nextYBounds.maxY;
+  return isYBoundsClose(nextYBounds, yBounds);
 }
 
 function resetVisibleYMode() {
+  cancelSmoothPan();
   autoFitVisibleY = true;
   fitVisibleY();
   applyView();
   drawHud(mousePos);
   scheduleGpuRender(renderNow);
+}
+
+function smoothShiftPanBy(shift: number) {
+  if (!Number.isFinite(shift) || shift === 0 || !state?.candles.length) return;
+  const base = smoothPanTarget ?? { minX: view.minX, maxX: view.maxX };
+  const target = clampXBounds({
+    ...view,
+    minX: base.minX + shift,
+    maxX: base.maxX + shift,
+  });
+  smoothPanTarget = { minX: target.minX, maxX: target.maxX };
+  if (smoothPanFrame == null) {
+    smoothPanFrame = requestAnimationFrame(stepSmoothPan);
+  }
+}
+
+function stepSmoothPan() {
+  smoothPanFrame = null;
+  if (!mounted || !chart || !smoothPanTarget) {
+    smoothPanTarget = null;
+    return;
+  }
+
+  const target = smoothPanTarget;
+  const nextMinX = view.minX + (target.minX - view.minX) * SMOOTH_SHIFT_PAN_EASE;
+  const nextMaxX = view.maxX + (target.maxX - view.maxX) * SMOOTH_SHIFT_PAN_EASE;
+  const xDone =
+    Math.abs(target.minX - nextMinX) <= SMOOTH_SHIFT_PAN_EPSILON_CANDLES &&
+    Math.abs(target.maxX - nextMaxX) <= SMOOTH_SHIFT_PAN_EPSILON_CANDLES;
+
+  view.minX = xDone ? target.minX : nextMinX;
+  view.maxX = xDone ? target.maxX : nextMaxX;
+  clampViewX();
+  const yDone = fitVisibleY({ smooth: true });
+  applyView();
+  void maybeLoadOlderCandles();
+  drawHud(mousePos);
+  scheduleGpuRender(renderNow);
+
+  if (xDone && yDone) {
+    smoothPanTarget = null;
+    fitVisibleY();
+    applyView();
+    drawHud(mousePos);
+    scheduleGpuRender(renderNow);
+    return;
+  }
+
+  smoothPanFrame = requestAnimationFrame(stepSmoothPan);
+}
+
+function cancelSmoothPan() {
+  if (smoothPanFrame != null) {
+    cancelAnimationFrame(smoothPanFrame);
+  }
+  smoothPanFrame = null;
+  smoothPanTarget = null;
 }
 
 function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
@@ -646,15 +723,8 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
       const delta = normalizedWheelDeltaPx(event, rect.height);
       const xSpan = view.maxX - view.minX;
       const shift = (delta / rect.width) * xSpan;
-      view.minX += shift;
-      view.maxX += shift;
       autoFitVisibleY = true;
-      clampViewX();
-      fitVisibleY();
-      applyView();
-      void maybeLoadOlderCandles();
-      drawHud(mousePos);
-      scheduleGpuRender(renderNow);
+      smoothShiftPanBy(shift);
       return;
     }
 
@@ -663,6 +733,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
       return;
     }
 
+    cancelSmoothPan();
     wheelMode = "zoom";
     resetWheelModeSoon();
     const alpha = Math.max(0, Math.min(1, (event.clientX - rect.left) / rect.width));
@@ -681,6 +752,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
+    cancelSmoothPan();
     const rect = canvas.getBoundingClientRect();
     dragging = true;
     draggedDuringPointer = false;
@@ -782,16 +854,20 @@ function isViewFollowingLatest() {
   return isFollowingLatest(view, last?.x);
 }
 
-function clampViewX(anchor?: { x: number; ratio: number }) {
-  if (!state?.candles.length) return;
-  view = clampXView(
-    view,
+function clampXBounds(nextView: ViewBounds, anchor?: { x: number; ratio: number }): ViewBounds {
+  if (!state?.candles.length) return nextView;
+  return clampXView(
+    nextView,
     {
       firstX: state.candles[0].x,
       lastX: state.candles[state.candles.length - 1].x,
     },
     anchor,
   );
+}
+
+function clampViewX(anchor?: { x: number; ratio: number }) {
+  view = clampXBounds(view, anchor);
 }
 
 function fitCanvases() {

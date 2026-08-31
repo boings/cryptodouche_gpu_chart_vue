@@ -16,7 +16,9 @@ import {
   clampXView,
   computeVisibleYBounds,
   isFollowingLatest,
+  isYBoundsClose,
   scaleYView,
+  smoothVisibleYBounds,
   withRightPadding,
 } from "./viewport";
 
@@ -230,6 +232,25 @@ describe("gpu chart data utilities", () => {
 
     expect(bounds?.minY).toBeCloseTo(88.56);
     expect(bounds?.maxY).toBeCloseTo(103.44);
+  });
+
+  it("smooths y fit without clipping newly visible extremes", () => {
+    const expanded = smoothVisibleYBounds(
+      { minY: 90, maxY: 110 },
+      { minY: 80, maxY: 120 },
+      0.25,
+    );
+    expect(expanded).toMatchObject({ minY: 80, maxY: 120 });
+
+    const contracted = smoothVisibleYBounds(
+      { minY: 80, maxY: 120 },
+      { minY: 90, maxY: 110 },
+      0.25,
+    );
+    expect(contracted.minY).toBeCloseTo(82.5);
+    expect(contracted.maxY).toBeCloseTo(117.5);
+    expect(isYBoundsClose(contracted, { minY: 90, maxY: 110 })).toBe(false);
+    expect(isYBoundsClose({ minY: 89.99, maxY: 110.01 }, { minY: 90, maxY: 110 })).toBe(true);
   });
 
   it("scales y bounds around the dragged price-axis anchor", () => {
