@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.2'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.5'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.2'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.5'
 ```
 
 Import the component and CSS:
@@ -41,6 +41,7 @@ The chart fills its parent. Give the parent a real height.
       timeframe="1m"
       :limit="500"
       :data-adapter="adapter"
+      show-indicator-panes
       open-on-chart-click
       @open="openSymbol"
     />
@@ -134,10 +135,13 @@ showSma?: boolean;
 showEma?: boolean;
 synthetic?: boolean;
 appearance?: Partial<GpuChartAppearance>;
+showIndicatorPanes?: boolean;
 openOnChartClick?: boolean;
 ```
 
 When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange, marketType, timeframe }`. The package does not depend on Vue Router; consuming apps handle navigation.
+
+`showIndicatorPanes` enables the lower indicator pane. The current pane draws Stoch RSI with configurable RSI period, Stoch period, K/D smoothing, K/D colors, and pane height through `GpuChartAppearance`.
 
 ## Interaction Model
 
@@ -160,6 +164,8 @@ DEFAULT_GRID_GPU_CHART_APPEARANCE
 ```
 
 The included controls are self-styled and do not require Tailwind or DaisyUI.
+
+The single-chart appearance default shows Stoch RSI when lower panes are opted in. The grid-chart default keeps Stoch RSI off so small chart cells stay readable.
 
 ## Extending The Chart
 
@@ -207,7 +213,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.3
+git tag v0.1.5
 git push origin main --tags
 ```
 

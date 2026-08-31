@@ -13,6 +13,7 @@ type __VLS_Props = {
     synthetic?: boolean;
     title?: string;
     openOnChartClick?: boolean;
+    showIndicatorPanes?: boolean;
     appearance?: Partial<GpuChartAppearance>;
 };
 declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -33,5 +34,6 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     showEma: boolean;
     synthetic: boolean;
     openOnChartClick: boolean;
+    showIndicatorPanes: boolean;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

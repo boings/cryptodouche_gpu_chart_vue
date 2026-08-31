@@ -26,6 +26,7 @@ export interface YRangePoint {
 }
 export declare function computeVisibleYBounds(candles: YRangePoint[], view: Pick<ViewBounds, "minX" | "maxX">, paddingRatio?: number): Pick<ViewBounds, "minY" | "maxY"> | null;
 export declare function smoothVisibleYBounds(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, ratio?: number): Pick<ViewBounds, "minY" | "maxY">;
+export declare function reserveLowerPaneYBounds(bounds: Pick<ViewBounds, "minY" | "maxY">, lowerPaneRatio: number): Pick<ViewBounds, "minY" | "maxY">;
 export declare function isYBoundsClose(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, epsilonRatio?: number): boolean;
 export declare function wheelZoomScale(deltaPx: number, sensitivity?: number, maxAbsDeltaPx?: number): number;
 export declare function scaleYView(view: ViewBounds, anchorRatio: number, scale: number): ViewBounds;

@@ -141,6 +141,21 @@ export function smoothVisibleYBounds(
   };
 }
 
+export function reserveLowerPaneYBounds(
+  bounds: Pick<ViewBounds, "minY" | "maxY">,
+  lowerPaneRatio: number,
+): Pick<ViewBounds, "minY" | "maxY"> {
+  if (!Number.isFinite(bounds.minY) || !Number.isFinite(bounds.maxY)) return bounds;
+  const priceRatio = 1 - Math.max(0, Math.min(0.8, lowerPaneRatio));
+  const span = bounds.maxY - bounds.minY;
+  if (!Number.isFinite(span) || span <= 0 || priceRatio >= 1) return bounds;
+
+  return {
+    minY: bounds.maxY - span / priceRatio,
+    maxY: bounds.maxY,
+  };
+}
+
 export function isYBoundsClose(
   current: Pick<ViewBounds, "minY" | "maxY">,
   target: Pick<ViewBounds, "minY" | "maxY">,

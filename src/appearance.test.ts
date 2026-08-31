@@ -35,6 +35,10 @@ describe("gpu chart appearance", () => {
       fontSize: 100,
       smaPeriod: 1,
       bollingerStdDev: 99,
+      stochRsiKColor: "orange",
+      stochRsiRsiPeriod: 1,
+      stochRsiPaneHeight: 1,
+      showStochRsi: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
     });
 
@@ -44,13 +48,23 @@ describe("gpu chart appearance", () => {
     expect(appearance.fontSize).toBe(28);
     expect(appearance.smaPeriod).toBe(2);
     expect(appearance.bollingerStdDev).toBe(5);
+    expect(appearance.stochRsiKColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiKColor);
+    expect(appearance.stochRsiRsiPeriod).toBe(2);
+    expect(appearance.stochRsiPaneHeight).toBe(0.4);
+    expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
     expect(appearance.showGrid).toBe(DEFAULT_GPU_CHART_APPEARANCE.showGrid);
   });
 
   it("loads and saves a partial style", () => {
     const storage = new MemoryStorage();
     const saved = saveGpuChartAppearance(
-      { backgroundColor: "#111827", fontSize: 18, showBadge: false, showWma: true },
+      {
+        backgroundColor: "#111827",
+        fontSize: 18,
+        showBadge: false,
+        showWma: true,
+        showStochRsi: false,
+      },
       storage,
     );
 
@@ -58,11 +72,13 @@ describe("gpu chart appearance", () => {
     expect(saved.fontSize).toBe(18);
     expect(saved.showBadge).toBe(false);
     expect(saved.showWma).toBe(true);
+    expect(saved.showStochRsi).toBe(false);
     expect(JSON.parse(storage.getItem(`${GPU_CHART_APPEARANCE_KEY}:single`) ?? "{}")).toMatchObject({
       backgroundColor: "#111827",
       fontSize: 18,
       showBadge: false,
       showWma: true,
+      showStochRsi: false,
     });
     expect(loadGpuChartAppearance(storage)).toMatchObject(saved);
   });
@@ -85,6 +101,8 @@ describe("gpu chart appearance", () => {
     expect(loadGpuChartAppearance(storage, "single").fontSize).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.fontSize,
     );
+    expect(loadGpuChartAppearance(storage, "grid").showStochRsi).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showStochRsi).toBe(true);
   });
 
   it("converts hex colors into renderer color channels", () => {

@@ -18,7 +18,7 @@
         <label v-for="field in numberFields" :key="field.key" class="cdgc-field">
           <span class="cdgc-range-label">
             <span>{{ field.label }}</span>
-            <span>{{ modelValue[field.key] }}</span>
+            <span>{{ formatNumberValue(field.key) }}</span>
           </span>
           <input
             type="range"
@@ -52,7 +52,7 @@
         >
           <span class="cdgc-range-label">
             <span>{{ field.label }}</span>
-            <span>{{ modelValue[field.key] }}</span>
+            <span>{{ formatNumberValue(field.key) }}</span>
           </span>
           <input
             type="range"
@@ -105,6 +105,8 @@ type ColorField = Extract<
   | "bollingerBasisColor"
   | "bollingerUpperColor"
   | "bollingerLowerColor"
+  | "stochRsiKColor"
+  | "stochRsiDColor"
   | "gridColor"
   | "textColor"
   | "crosshairColor"
@@ -121,6 +123,11 @@ type NumberField = Extract<
   | "wmaPeriod"
   | "bollingerPeriod"
   | "bollingerStdDev"
+  | "stochRsiRsiPeriod"
+  | "stochRsiPeriod"
+  | "stochRsiKPeriod"
+  | "stochRsiDPeriod"
+  | "stochRsiPaneHeight"
 >;
 type ToggleField = Extract<
   keyof GpuChartAppearance,
@@ -131,6 +138,7 @@ type ToggleField = Extract<
   | "showBadge"
   | "showWma"
   | "showBollinger"
+  | "showStochRsi"
 >;
 
 const colorFields: Array<{ key: ColorField; label: string }> = [
@@ -143,6 +151,8 @@ const colorFields: Array<{ key: ColorField; label: string }> = [
   { key: "bollingerBasisColor", label: "BB Basis" },
   { key: "bollingerUpperColor", label: "BB Upper" },
   { key: "bollingerLowerColor", label: "BB Lower" },
+  { key: "stochRsiKColor", label: "Stoch K" },
+  { key: "stochRsiDColor", label: "Stoch D" },
   { key: "gridColor", label: "Grid" },
   { key: "textColor", label: "Text" },
   { key: "crosshairColor", label: "Crosshair" },
@@ -168,6 +178,11 @@ const indicatorNumberFields: Array<{
   { key: "wmaPeriod", label: "WMA Period", min: 2, max: 250, step: 1 },
   { key: "bollingerPeriod", label: "BB Period", min: 2, max: 250, step: 1 },
   { key: "bollingerStdDev", label: "BB Std Dev", min: 0.5, max: 5, step: 0.25 },
+  { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
+  { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
+  { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
+  { key: "stochRsiDPeriod", label: "D Smooth", min: 1, max: 20, step: 1 },
+  { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
 
 const toggleFields: Array<{ key: ToggleField; label: string }> = [
@@ -178,6 +193,7 @@ const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showBadge", label: "Badge" },
   { key: "showWma", label: "WMA" },
   { key: "showBollinger", label: "Bollinger" },
+  { key: "showStochRsi", label: "Stoch RSI" },
 ];
 
 function setColor(field: ColorField, event: Event) {
@@ -198,6 +214,12 @@ function patch(partial: Partial<GpuChartAppearance>) {
 
 function inputValue(event: Event) {
   return (event.target as HTMLInputElement).value;
+}
+
+function formatNumberValue(field: NumberField) {
+  const value = props.modelValue[field];
+  if (field === "stochRsiPaneHeight") return `${Math.round(value * 100)}%`;
+  return value;
 }
 </script>
 

@@ -9,7 +9,9 @@ import {
 import {
   computeBollingerBands,
   computeEmaLine,
+  computeRsiLine,
   computeSmaLine,
+  computeStochRsi,
   computeWmaLine,
 } from "./indicators";
 import {
@@ -17,6 +19,7 @@ import {
   computeVisibleYBounds,
   isFollowingLatest,
   isYBoundsClose,
+  reserveLowerPaneYBounds,
   scaleYView,
   smoothVisibleYBounds,
   wheelZoomScale,
@@ -185,6 +188,59 @@ describe("gpu chart data utilities", () => {
     expect(bands.lower[1]).toBeCloseTo(1.183503, 5);
   });
 
+  it("computes RSI and Stoch RSI oscillator buffers", () => {
+    const state = packHistoricalCandles(
+      [1, 2, 3, 2, 1, 2, 3, 4, 3, 2].map((close, i) => ({
+        ts: 60 + i * 60,
+        o: close,
+        h: close,
+        l: close,
+        c: close,
+      })),
+      "1m",
+      500,
+    );
+
+    const rsi = computeRsiLine(state.candles, 2);
+    const stoch = computeStochRsi(state.candles, 2, 3, 2, 2);
+
+    expect(rsi.length).toBe(16);
+    expect(Array.from(rsi.slice(0, 2))).toEqual([2, 100]);
+    expect(stoch.k.length).toBe(10);
+    expect(stoch.d.length).toBe(8);
+    expect(stoch.k[0]).toBe(5);
+    expect(stoch.d[0]).toBe(6);
+    for (const value of [...Array.from(stoch.k), ...Array.from(stoch.d)].filter(
+      (_, index) => index % 2 === 1,
+    )) {
+      expect(value).toBeGreaterThanOrEqual(0);
+      expect(value).toBeLessThanOrEqual(100);
+    }
+  });
+
+  it("keeps a flat Stoch RSI line neutral instead of pinning it to an edge", () => {
+    const state = packHistoricalCandles(
+      Array.from({ length: 8 }, (_, i) => ({
+        ts: 60 + i * 60,
+        o: 10,
+        h: 10,
+        l: 10,
+        c: 10,
+      })),
+      "1m",
+      500,
+    );
+
+    const stoch = computeStochRsi(state.candles, 2, 2, 1, 1);
+
+    expect(Array.from(stoch.k).filter((_, index) => index % 2 === 1)).toEqual([
+      50, 50, 50, 50, 50,
+    ]);
+    expect(Array.from(stoch.d).filter((_, index) => index % 2 === 1)).toEqual([
+      50, 50, 50, 50, 50,
+    ]);
+  });
+
   it("only follows live updates when the latest candle is in view", () => {
     expect(isFollowingLatest({ maxX: 100 }, 100)).toBe(true);
     expect(isFollowingLatest({ maxX: 102 }, 100)).toBe(true);
@@ -233,6 +289,13 @@ describe("gpu chart data utilities", () => {
 
     expect(bounds?.minY).toBeCloseTo(88.56);
     expect(bounds?.maxY).toBeCloseTo(103.44);
+  });
+
+  it("reserves lower pane space while preserving the visible price range", () => {
+    const bounds = reserveLowerPaneYBounds({ minY: 90, maxY: 110 }, 0.25);
+
+    expect(bounds.maxY).toBe(110);
+    expect(bounds.minY).toBeCloseTo(83.333333);
   });
 
   it("smooths y fit without clipping newly visible extremes", () => {

@@ -10,6 +10,8 @@ export interface GpuChartAppearance {
   bollingerBasisColor: string;
   bollingerUpperColor: string;
   bollingerLowerColor: string;
+  stochRsiKColor: string;
+  stochRsiDColor: string;
   gridColor: string;
   textColor: string;
   crosshairColor: string;
@@ -23,6 +25,11 @@ export interface GpuChartAppearance {
   wmaPeriod: number;
   bollingerPeriod: number;
   bollingerStdDev: number;
+  stochRsiRsiPeriod: number;
+  stochRsiPeriod: number;
+  stochRsiKPeriod: number;
+  stochRsiDPeriod: number;
+  stochRsiPaneHeight: number;
   showGrid: boolean;
   showLastPriceLine: boolean;
   showCrosshair: boolean;
@@ -30,6 +37,7 @@ export interface GpuChartAppearance {
   showBadge: boolean;
   showWma: boolean;
   showBollinger: boolean;
+  showStochRsi: boolean;
 }
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
@@ -45,6 +53,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   bollingerBasisColor: "#94a3b8",
   bollingerUpperColor: "#38bdf8",
   bollingerLowerColor: "#38bdf8",
+  stochRsiKColor: "#f59e0b",
+  stochRsiDColor: "#a78bfa",
   gridColor: "#27313d",
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
@@ -58,6 +68,11 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   wmaPeriod: 20,
   bollingerPeriod: 20,
   bollingerStdDev: 2,
+  stochRsiRsiPeriod: 14,
+  stochRsiPeriod: 14,
+  stochRsiKPeriod: 3,
+  stochRsiDPeriod: 3,
+  stochRsiPaneHeight: 0.24,
   showGrid: true,
   showLastPriceLine: true,
   showCrosshair: true,
@@ -65,12 +80,14 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showBadge: true,
   showWma: false,
   showBollinger: false,
+  showStochRsi: true,
 };
 
 export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   ...DEFAULT_GPU_CHART_APPEARANCE,
   candleWidth: 3,
   fontSize: 10,
+  showStochRsi: false,
 };
 
 interface StorageLike {
@@ -104,6 +121,8 @@ export function normalizeGpuChartAppearance(
       value.bollingerLowerColor,
       defaults.bollingerLowerColor,
     ),
+    stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
+    stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
@@ -127,6 +146,36 @@ export function normalizeGpuChartAppearance(
       5,
       defaults.bollingerStdDev,
     ),
+    stochRsiRsiPeriod: clampInteger(
+      value.stochRsiRsiPeriod,
+      2,
+      100,
+      defaults.stochRsiRsiPeriod,
+    ),
+    stochRsiPeriod: clampInteger(
+      value.stochRsiPeriod,
+      2,
+      100,
+      defaults.stochRsiPeriod,
+    ),
+    stochRsiKPeriod: clampInteger(
+      value.stochRsiKPeriod,
+      1,
+      20,
+      defaults.stochRsiKPeriod,
+    ),
+    stochRsiDPeriod: clampInteger(
+      value.stochRsiDPeriod,
+      1,
+      20,
+      defaults.stochRsiDPeriod,
+    ),
+    stochRsiPaneHeight: clampNumber(
+      value.stochRsiPaneHeight,
+      0.12,
+      0.4,
+      defaults.stochRsiPaneHeight,
+    ),
     showGrid: boolValue(value.showGrid, defaults.showGrid),
     showLastPriceLine: boolValue(value.showLastPriceLine, defaults.showLastPriceLine),
     showCrosshair: boolValue(value.showCrosshair, defaults.showCrosshair),
@@ -134,6 +183,7 @@ export function normalizeGpuChartAppearance(
     showBadge: boolValue(value.showBadge, defaults.showBadge),
     showWma: boolValue(value.showWma, defaults.showWma),
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
+    showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
   };
 }
 

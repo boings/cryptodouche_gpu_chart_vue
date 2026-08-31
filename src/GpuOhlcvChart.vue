@@ -57,6 +57,7 @@ import {
   computeBollingerBands,
   computeEmaLine,
   computeSmaLine,
+  computeStochRsi,
   computeWmaLine,
   lineToBytes,
 } from "./indicators";
@@ -73,6 +74,7 @@ import {
   isFollowingLatest,
   isYBoundsClose,
   RIGHT_EDGE_PADDING_CANDLES,
+  reserveLowerPaneYBounds,
   scaleYView,
   smoothVisibleYBounds,
   withRightPadding,
@@ -86,6 +88,17 @@ const Y_AXIS_SCALE_SENSITIVITY_PX = 180;
 const WHEEL_GESTURE_QUIET_MS = 180;
 const SMOOTH_X_EASE = 0.32;
 const SMOOTH_X_EPSILON_CANDLES = 0.002;
+const MIN_INDICATOR_PANE_HEIGHT_PX = 88;
+const MIN_PRICE_PANE_HEIGHT_PX = 180;
+
+interface IndicatorPaneLayout {
+  top: number;
+  bottom: number;
+  height: number;
+  innerTop: number;
+  innerBottom: number;
+  innerHeight: number;
+}
 
 const props = withDefaults(
   defineProps<{
@@ -101,6 +114,7 @@ const props = withDefaults(
     synthetic?: boolean;
     title?: string;
     openOnChartClick?: boolean;
+    showIndicatorPanes?: boolean;
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -113,6 +127,7 @@ const props = withDefaults(
     synthetic: false,
     title: "",
     openOnChartClick: false,
+    showIndicatorPanes: false,
   },
 );
 
@@ -255,10 +270,23 @@ watch(
     if (!chart) return;
     applyChartAppearance();
     updateOverlays();
+    fitVisibleYIfEnabled();
+    applyView();
     drawHud(mousePos);
     scheduleGpuRender(renderNow);
   },
   { deep: true },
+);
+
+watch(
+  () => props.showIndicatorPanes,
+  () => {
+    if (!chart) return;
+    fitVisibleYIfEnabled();
+    applyView();
+    drawHud(mousePos);
+    scheduleGpuRender(renderNow);
+  },
 );
 
 async function boot() {
@@ -618,10 +646,20 @@ function fitVisibleY(options: { smooth?: boolean } = {}) {
   if (!state?.candles.length) return true;
   const yBounds = computeVisibleYBounds(state.candles, view);
   if (!yBounds) return true;
-  const nextYBounds = options.smooth ? smoothVisibleYBounds(view, yBounds) : yBounds;
+  const targetYBounds = adjustYBoundsForIndicatorPane(yBounds);
+  const nextYBounds = options.smooth ? smoothVisibleYBounds(view, targetYBounds) : targetYBounds;
   view.minY = nextYBounds.minY;
   view.maxY = nextYBounds.maxY;
-  return isYBoundsClose(nextYBounds, yBounds);
+  return isYBoundsClose(nextYBounds, targetYBounds);
+}
+
+function adjustYBoundsForIndicatorPane(
+  bounds: Pick<ViewBounds, "minY" | "maxY">,
+): Pick<ViewBounds, "minY" | "maxY"> {
+  const pane = currentIndicatorPaneLayout();
+  const hud = hudRef.value;
+  if (!pane || !hud || hud.height <= 0) return bounds;
+  return reserveLowerPaneYBounds(bounds, pane.height / hud.height);
 }
 
 function resetVisibleYMode() {
@@ -800,7 +838,9 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         view = scaleYView(startView, startAnchorRatio, scale);
       } else {
         const dx = ((event.clientX - startX) / rect.width) * (startView.maxX - startView.minX);
-        const dy = ((event.clientY - startY) / rect.height) * (startView.maxY - startView.minY);
+        const dy =
+          ((event.clientY - startY) / pricePaneHeightCss(rect)) *
+          (startView.maxY - startView.minY);
         view.minX = startView.minX - dx;
         view.maxX = startView.maxX - dx;
         view.minY = startView.minY + dy;
@@ -854,12 +894,21 @@ function normalizedWheelDeltaPx(event: WheelEvent, pageHeight: number) {
 
 function isPriceScaleDragZone(event: MouseEvent, rect: DOMRect) {
   if (rect.width <= PRICE_SCALE_DRAG_WIDTH_PX * 2) return false;
+  if (event.clientY - rect.top > pricePaneHeightCss(rect)) return false;
   return rect.right - event.clientX <= PRICE_SCALE_DRAG_WIDTH_PX;
 }
 
 function pointerYRatio(event: MouseEvent, rect: DOMRect) {
-  if (rect.height <= 0) return 0.5;
-  return Math.max(0, Math.min(1, (event.clientY - rect.top) / rect.height));
+  const priceHeight = pricePaneHeightCss(rect);
+  if (priceHeight <= 0) return 0.5;
+  return Math.max(0, Math.min(1, (event.clientY - rect.top) / priceHeight));
+}
+
+function pricePaneHeightCss(rect: DOMRect) {
+  const hud = hudRef.value;
+  const pane = currentIndicatorPaneLayout();
+  if (!hud || !pane) return Math.max(1, rect.height);
+  return Math.max(1, pane.top / canvasScale(hud));
 }
 
 function isViewFollowingLatest() {
@@ -897,6 +946,44 @@ function fitCanvases() {
   }
 }
 
+function currentIndicatorPaneLayout(): IndicatorPaneLayout | null {
+  const hud = hudRef.value;
+  if (!hud || !indicatorPaneAvailable()) return null;
+  return indicatorPaneLayout(hud.height, canvasScale(hud));
+}
+
+function indicatorPaneAvailable() {
+  const appearance = resolvedAppearance.value;
+  const requiredCandles = appearance.stochRsiRsiPeriod + appearance.stochRsiPeriod;
+  return Boolean(
+    props.showIndicatorPanes &&
+      appearance.showStochRsi &&
+      state?.candles.length &&
+      state.candles.length >= requiredCandles,
+  );
+}
+
+function indicatorPaneLayout(height: number, scale: number): IndicatorPaneLayout | null {
+  const minPaneHeight = MIN_INDICATOR_PANE_HEIGHT_PX * scale;
+  const minPriceHeight = MIN_PRICE_PANE_HEIGHT_PX * scale;
+  if (height < minPaneHeight + minPriceHeight) return null;
+
+  const appearance = resolvedAppearance.value;
+  const paneHeight = Math.max(
+    minPaneHeight,
+    Math.min(height * 0.4, height * appearance.stochRsiPaneHeight, height - minPriceHeight),
+  );
+  const pad = Math.max(8 * scale, appearance.fontSize * scale * 0.8);
+  return {
+    top: height - paneHeight,
+    bottom: height,
+    height: paneHeight,
+    innerTop: height - paneHeight + pad,
+    innerBottom: height - pad,
+    innerHeight: Math.max(1, paneHeight - pad * 2),
+  };
+}
+
 function drawHud(pos: { px: number; py: number } | null) {
   const hud = hudRef.value;
   if (!hud) return;
@@ -909,6 +996,8 @@ function drawHud(pos: { px: number; py: number } | null) {
   const fontPx = appearance.fontSize * scale;
   const smallFontPx = Math.max(10 * scale, fontPx * 0.86);
   const pad = 6 * scale;
+  const pane = currentIndicatorPaneLayout();
+  const priceBottom = pane?.top ?? h;
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   ctx.font = `${fontPx}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
@@ -919,6 +1008,7 @@ function drawHud(pos: { px: number; py: number } | null) {
     const ticks = yTicks(view.minY, view.maxY, 5);
     for (const tick of ticks) {
       const y = yToPx(tick, h);
+      if (y < 0 || y > priceBottom - fontPx * 0.65) continue;
       const label = formatPrice(tick);
       const labelWidth = ctx.measureText(label).width;
       ctx.beginPath();
@@ -932,23 +1022,30 @@ function drawHud(pos: { px: number; py: number } | null) {
   const last = state?.candles[state.candles.length - 1];
   if (last && appearance.showLastPriceLine) {
     const y = yToPx(last.c, h);
-    ctx.setLineDash([4 * scale, 4 * scale]);
-    ctx.strokeStyle = hexToRgba(appearance.lastPriceColor, 0.8);
-    ctx.beginPath();
-    ctx.moveTo(0, y + 0.5);
-    ctx.lineTo(w, y + 0.5);
-    ctx.stroke();
-    ctx.setLineDash([]);
-    const label = formatPrice(last.c);
-    const labelWidth = ctx.measureText(label).width;
-    const boxWidth = labelWidth + pad * 2;
-    const boxHeight = fontPx + pad * 1.4;
-    const boxX = Math.max(0, w - boxWidth - 4 * scale);
-    const boxY = y - boxHeight / 2;
-    ctx.fillStyle = hexToRgba(appearance.lastPriceColor, 0.95);
-    ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-    ctx.fillStyle = "white";
-    ctx.fillText(label, boxX + pad, y);
+    if (y >= 0 && y <= priceBottom) {
+      ctx.setLineDash([4 * scale, 4 * scale]);
+      ctx.strokeStyle = hexToRgba(appearance.lastPriceColor, 0.8);
+      ctx.beginPath();
+      ctx.moveTo(0, y + 0.5);
+      ctx.lineTo(w, y + 0.5);
+      ctx.stroke();
+      ctx.setLineDash([]);
+      const label = formatPrice(last.c);
+      const labelWidth = ctx.measureText(label).width;
+      const boxWidth = labelWidth + pad * 2;
+      const boxHeight = fontPx + pad * 1.4;
+      const boxX = Math.max(0, w - boxWidth - 4 * scale);
+      const boxY = y - boxHeight / 2;
+      ctx.fillStyle = hexToRgba(appearance.lastPriceColor, 0.95);
+      ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+      ctx.fillStyle = "white";
+      ctx.fillText(label, boxX + pad, y);
+    }
+  }
+
+  let paneSeries: ReturnType<typeof computeStochRsi> | null = null;
+  if (pane) {
+    paneSeries = drawIndicatorPane(ctx, pane, scale);
   }
 
   if (pos) {
@@ -964,10 +1061,129 @@ function drawHud(pos: { px: number; py: number } | null) {
     const candle = nearestCandle(pxToX(pos.px, w));
     if (candle && appearance.showTooltip) {
       ctx.font = `${smallFontPx}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
-      drawTooltip(ctx, pos.px + 8 * scale, pos.py - 8 * scale, candle);
+      if (pane && paneSeries && pos.py >= pane.top) {
+        drawIndicatorTooltip(ctx, pos.px + 8 * scale, pos.py - 8 * scale, candle.x, paneSeries);
+      } else {
+        drawTooltip(ctx, pos.px + 8 * scale, pos.py - 8 * scale, candle);
+      }
     }
   }
   ctx.restore();
+}
+
+function drawIndicatorPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const series = state
+    ? computeStochRsi(
+        state.candles,
+        appearance.stochRsiRsiPeriod,
+        appearance.stochRsiPeriod,
+        appearance.stochRsiKPeriod,
+        appearance.stochRsiDPeriod,
+      )
+    : { k: new Float32Array(), d: new Float32Array() };
+  ctx.save();
+  ctx.fillStyle = hexToRgba(appearance.backgroundColor, 0.97);
+  ctx.fillRect(0, pane.top, ctx.canvas.width, pane.height);
+  ctx.strokeStyle = hexToRgba(appearance.gridColor, 0.7);
+  ctx.beginPath();
+  ctx.moveTo(0, pane.top + 0.5);
+  ctx.lineTo(ctx.canvas.width, pane.top + 0.5);
+  ctx.stroke();
+
+  ctx.font = `${Math.max(10 * scale, appearance.fontSize * scale * 0.86)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
+  for (const level of [80, 50, 20]) {
+    const y = indicatorValueToPx(level, pane);
+    ctx.strokeStyle = hexToRgba(appearance.gridColor, level === 50 ? 0.46 : 0.3);
+    ctx.beginPath();
+    ctx.moveTo(0, y + 0.5);
+    ctx.lineTo(ctx.canvas.width, y + 0.5);
+    ctx.stroke();
+    const label = String(level);
+    ctx.fillText(
+      label,
+      Math.max(4 * scale, ctx.canvas.width - ctx.measureText(label).width - 6 * scale),
+      y,
+    );
+  }
+
+  drawIndicatorLine(ctx, series.k, pane, appearance.stochRsiKColor, 0.95, 1.4 * scale);
+  drawIndicatorLine(ctx, series.d, pane, appearance.stochRsiDColor, 0.88, 1.4 * scale);
+
+  const titleY = pane.top + Math.max(12 * scale, appearance.fontSize * scale * 0.9);
+  ctx.fillStyle = hexToRgba(appearance.textColor, 0.9);
+  ctx.fillText("Stoch RSI", 8 * scale, titleY);
+  const latestK = lastVisibleLineValue(series.k);
+  const latestD = lastVisibleLineValue(series.d);
+  let x = 96 * scale;
+  if (latestK != null) {
+    ctx.fillStyle = appearance.stochRsiKColor;
+    const label = `K ${formatIndicatorValue(latestK)}`;
+    ctx.fillText(label, x, titleY);
+    x += ctx.measureText(label).width + 12 * scale;
+  }
+  if (latestD != null) {
+    ctx.fillStyle = appearance.stochRsiDColor;
+    ctx.fillText(`D ${formatIndicatorValue(latestD)}`, x, titleY);
+  }
+  ctx.restore();
+  return series;
+}
+
+function drawIndicatorLine(
+  ctx: CanvasRenderingContext2D,
+  line: Float32Array,
+  pane: IndicatorPaneLayout,
+  color: string,
+  alpha: number,
+  width: number,
+) {
+  if (line.length < 4) return;
+  ctx.save();
+  ctx.strokeStyle = hexToRgba(color, alpha);
+  ctx.lineWidth = Math.max(1, width);
+  ctx.beginPath();
+  let drawing = false;
+  let hasPoint = false;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  for (let i = 0; i < line.length; i += 2) {
+    const x = line[i];
+    const value = line[i + 1];
+    if (!Number.isFinite(x) || !Number.isFinite(value) || x < minX || x > maxX) {
+      drawing = false;
+      continue;
+    }
+    const px = xToPx(x, ctx.canvas.width);
+    const py = indicatorValueToPx(value, pane);
+    if (!drawing) ctx.moveTo(px, py);
+    else ctx.lineTo(px, py);
+    drawing = true;
+    hasPoint = true;
+  }
+  if (hasPoint) ctx.stroke();
+  ctx.restore();
+}
+
+function drawIndicatorTooltip(
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  candleX: number,
+  series: { k: Float32Array; d: Float32Array },
+) {
+  const k = lineValueNearX(series.k, candleX);
+  const d = lineValueNearX(series.d, candleX);
+  if (k == null && d == null) return;
+  const parts = ["Stoch RSI"];
+  if (k != null) parts.push(`K ${formatIndicatorValue(k)}`);
+  if (d != null) parts.push(`D ${formatIndicatorValue(d)}`);
+  drawTextBox(ctx, x, y, parts.join("  "));
 }
 
 function drawTooltip(
@@ -979,6 +1195,10 @@ function drawTooltip(
   const text = `O ${formatPrice(candle.o)} H ${formatPrice(candle.h)} L ${formatPrice(
     candle.l,
   )} C ${formatPrice(candle.c)}`;
+  drawTextBox(ctx, x, y, text);
+}
+
+function drawTextBox(ctx: CanvasRenderingContext2D, x: number, y: number, text: string) {
   const appearance = resolvedAppearance.value;
   const scale = canvasScale(ctx.canvas);
   const padX = 8 * scale;
@@ -992,6 +1212,38 @@ function drawTooltip(
   ctx.fillRect(boxX, boxY - height, width, height);
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.95);
   ctx.fillText(text, boxX + padX, boxY - height / 2);
+}
+
+function indicatorValueToPx(value: number, pane: IndicatorPaneLayout) {
+  const bounded = Math.max(0, Math.min(100, value));
+  return pane.innerTop + (1 - bounded / 100) * pane.innerHeight;
+}
+
+function lastVisibleLineValue(line: Float32Array) {
+  const minX = Math.min(view.minX, view.maxX) - 0.5;
+  const maxX = Math.max(view.minX, view.maxX) + 0.5;
+  for (let i = line.length - 2; i >= 0; i -= 2) {
+    const x = line[i];
+    const value = line[i + 1];
+    if (Number.isFinite(x) && Number.isFinite(value) && x >= minX && x <= maxX) return value;
+  }
+  return null;
+}
+
+function lineValueNearX(line: Float32Array, targetX: number) {
+  let best: number | null = null;
+  let bestDistance = Infinity;
+  for (let i = 0; i < line.length; i += 2) {
+    const x = line[i];
+    const value = line[i + 1];
+    if (!Number.isFinite(x) || !Number.isFinite(value)) continue;
+    const distance = Math.abs(x - targetX);
+    if (distance < bestDistance) {
+      best = value;
+      bestDistance = distance;
+    }
+  }
+  return bestDistance <= 1 ? best : null;
 }
 
 function nearestCandle(x: number) {
@@ -1010,6 +1262,10 @@ function nearestCandle(x: number) {
 
 function yToPx(y: number, height: number) {
   return (1 - (y - view.minY) / (view.maxY - view.minY)) * height;
+}
+
+function xToPx(x: number, width: number) {
+  return ((x - view.minX) / (view.maxX - view.minX)) * width;
 }
 
 function pxToX(px: number, width: number) {
@@ -1044,6 +1300,13 @@ function formatPrice(value: number) {
   return value.toLocaleString("en-US", {
     minimumFractionDigits: 0,
     maximumFractionDigits,
+  });
+}
+
+function formatIndicatorValue(value: number) {
+  return value.toLocaleString("en-US", {
+    minimumFractionDigits: 1,
+    maximumFractionDigits: 1,
   });
 }
 
