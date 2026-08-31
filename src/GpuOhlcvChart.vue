@@ -97,6 +97,19 @@
             @input="setIndicatorNumber(field.key, $event)"
           />
         </label>
+        <label
+          v-for="field in activeIndicatorToggleFields"
+          :key="field.key"
+          class="gpu-chart-indicator-toggle"
+        >
+          <input
+            type="checkbox"
+            class="gpu-chart-indicator-check"
+            :checked="resolvedAppearance[field.key]"
+            @change="setIndicatorBool(field.key, $event)"
+          />
+          <span>{{ field.label }}</span>
+        </label>
       </div>
     </div>
     <div
@@ -225,12 +238,17 @@ type IndicatorNumberField = Extract<
   | "rsiRangeLower"
   | "rsiRangeUpper"
 >;
+type IndicatorToggleField = Extract<
+  keyof GpuChartAppearance,
+  "stochRsiSmooth" | "rsiSmooth"
+>;
 
 interface IndicatorPaneOption {
   id: GpuChartIndicatorPane;
   label: string;
   showKey: Extract<keyof GpuChartAppearance, "showStochRsi" | "showRsi">;
   colorFields: Array<{ key: IndicatorColorField; label: string }>;
+  toggleFields: Array<{ key: IndicatorToggleField; label: string }>;
   numberFields: Array<{
     key: IndicatorNumberField;
     label: string;
@@ -252,6 +270,11 @@ interface IndicatorRangeBand {
   color: string;
 }
 
+interface VisibleWindowExtrema {
+  high: number;
+  low: number;
+}
+
 type IndicatorPaneSeries =
   | { id: "stochRsi"; k: Float32Array; d: Float32Array }
   | { id: "rsi"; rsi: Float32Array };
@@ -270,6 +293,9 @@ const stochRsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "stochRsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
   { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
+const stochRsiToggleFields: IndicatorPaneOption["toggleFields"] = [
+  { key: "stochRsiSmooth", label: "Smooth Line" },
+];
 const rsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "rsiColor", label: "RSI Color" },
   { key: "rsiRangeColor", label: "Range Color" },
@@ -280,12 +306,16 @@ const rsiNumberFields: IndicatorPaneOption["numberFields"] = [
   { key: "rsiRangeUpper", label: "Range High", min: 0, max: 100, step: 1 },
   { key: "stochRsiPaneHeight", label: "Pane Height", min: 0.12, max: 0.4, step: 0.01 },
 ];
+const rsiToggleFields: IndicatorPaneOption["toggleFields"] = [
+  { key: "rsiSmooth", label: "Smooth Line" },
+];
 const INDICATOR_PANES: IndicatorPaneOption[] = [
   {
     id: "stochRsi",
     label: "Stoch RSI",
     showKey: "showStochRsi",
     colorFields: stochRsiColorFields,
+    toggleFields: stochRsiToggleFields,
     numberFields: stochRsiNumberFields,
   },
   {
@@ -293,6 +323,7 @@ const INDICATOR_PANES: IndicatorPaneOption[] = [
     label: "RSI",
     showKey: "showRsi",
     colorFields: rsiColorFields,
+    toggleFields: rsiToggleFields,
     numberFields: rsiNumberFields,
   },
 ];
@@ -399,6 +430,7 @@ const activeIndicatorPaneId = computed(() => activeIndicatorPane.value?.id ?? nu
 const activeIndicatorPaneLabel = computed(() => activeIndicatorPane.value?.label ?? "Indicator");
 const activeIndicatorColorFields = computed(() => activeIndicatorPane.value?.colorFields ?? []);
 const activeIndicatorNumberFields = computed(() => activeIndicatorPane.value?.numberFields ?? []);
+const activeIndicatorToggleFields = computed(() => activeIndicatorPane.value?.toggleFields ?? []);
 const indicatorPaneDividerStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
   return {
@@ -946,6 +978,10 @@ function setIndicatorNumber(field: IndicatorNumberField, event: Event) {
   patchAppearance({ [field]: Number(inputValue(event)) });
 }
 
+function setIndicatorBool(field: IndicatorToggleField, event: Event) {
+  patchAppearance({ [field]: (event.target as HTMLInputElement).checked });
+}
+
 function inputValue(event: Event) {
   return (event.target as HTMLInputElement).value;
 }
@@ -1363,6 +1399,34 @@ function drawHud(pos: { px: number; py: number } | null) {
     }
   }
 
+  if (appearance.showWindowHighLow) {
+    const extrema = visibleWindowExtrema();
+    if (extrema) {
+      drawWindowPriceLine(
+        ctx,
+        extrema.high,
+        "H",
+        appearance.windowHighColor,
+        priceBottom,
+        fontPx,
+        pad,
+        scale,
+      );
+      if (extrema.low !== extrema.high) {
+        drawWindowPriceLine(
+          ctx,
+          extrema.low,
+          "L",
+          appearance.windowLowColor,
+          priceBottom,
+          fontPx,
+          pad,
+          scale,
+        );
+      }
+    }
+  }
+
   const last = state?.candles[state.candles.length - 1];
   if (last && appearance.showLastPriceLine) {
     const y = yToPx(last.c, h);
@@ -1463,8 +1527,24 @@ function drawStochRsiPane(
         appearance.stochRsiDPeriod,
       )
     : { k: new Float32Array(), d: new Float32Array() };
-  drawIndicatorLine(ctx, series.k, pane, appearance.stochRsiKColor, 0.95, 1.4 * scale);
-  drawIndicatorLine(ctx, series.d, pane, appearance.stochRsiDColor, 0.88, 1.4 * scale);
+  drawIndicatorLine(
+    ctx,
+    series.k,
+    pane,
+    appearance.stochRsiKColor,
+    0.95,
+    1.4 * scale,
+    appearance.stochRsiSmooth,
+  );
+  drawIndicatorLine(
+    ctx,
+    series.d,
+    pane,
+    appearance.stochRsiDColor,
+    0.88,
+    1.4 * scale,
+    appearance.stochRsiSmooth,
+  );
   return { id: "stochRsi", k: series.k, d: series.d };
 }
 
@@ -1475,7 +1555,7 @@ function drawRsiPane(
   appearance: GpuChartAppearance,
 ): IndicatorPaneSeries {
   const rsi = state ? computeRsiLine(state.candles, appearance.rsiPeriod) : new Float32Array();
-  drawIndicatorLine(ctx, rsi, pane, appearance.rsiColor, 0.95, 1.5 * scale);
+  drawIndicatorLine(ctx, rsi, pane, appearance.rsiColor, 0.95, 1.5 * scale, appearance.rsiSmooth);
   return { id: "rsi", rsi };
 }
 
@@ -1597,31 +1677,62 @@ function drawIndicatorLine(
   color: string,
   alpha: number,
   width: number,
+  smooth = false,
 ) {
   if (line.length < 4) return;
   ctx.save();
   ctx.strokeStyle = hexToRgba(color, alpha);
   ctx.lineWidth = Math.max(1, width);
-  ctx.beginPath();
-  let drawing = false;
-  let hasPoint = false;
+  let segment: Array<{ x: number; y: number }> = [];
   const minX = Math.min(view.minX, view.maxX) - 1;
   const maxX = Math.max(view.minX, view.maxX) + 1;
+  const flushSegment = () => {
+    if (segment.length < 2) {
+      segment = [];
+      return;
+    }
+    const first = segment[0];
+    if (!first) {
+      segment = [];
+      return;
+    }
+    ctx.beginPath();
+    ctx.moveTo(first.x, first.y);
+    if (smooth && segment.length > 2) {
+      for (let i = 1; i < segment.length - 1; i++) {
+        const current = segment[i];
+        const next = segment[i + 1];
+        if (!current || !next) continue;
+        ctx.quadraticCurveTo(
+          current.x,
+          current.y,
+          (current.x + next.x) / 2,
+          (current.y + next.y) / 2,
+        );
+      }
+      const last = segment[segment.length - 1];
+      if (last) ctx.lineTo(last.x, last.y);
+    } else {
+      for (let i = 1; i < segment.length; i++) {
+        const point = segment[i];
+        if (point) ctx.lineTo(point.x, point.y);
+      }
+    }
+    ctx.stroke();
+    segment = [];
+  };
   for (let i = 0; i < line.length; i += 2) {
     const x = line[i];
     const value = line[i + 1];
     if (!Number.isFinite(x) || !Number.isFinite(value) || x < minX || x > maxX) {
-      drawing = false;
+      flushSegment();
       continue;
     }
     const px = xToPx(x, ctx.canvas.width);
     const py = indicatorValueToPx(value, pane);
-    if (!drawing) ctx.moveTo(px, py);
-    else ctx.lineTo(px, py);
-    drawing = true;
-    hasPoint = true;
+    segment.push({ x: px, y: py });
   }
-  if (hasPoint) ctx.stroke();
+  flushSegment();
   ctx.restore();
 }
 
@@ -1658,6 +1769,55 @@ function drawTooltip(
     candle.l,
   )} C ${formatPrice(candle.c)}`;
   drawTextBox(ctx, x, y, text);
+}
+
+function visibleWindowExtrema(): VisibleWindowExtrema | null {
+  if (!state?.candles.length) return null;
+  const minX = Math.min(view.minX, view.maxX) - 0.5;
+  const maxX = Math.max(view.minX, view.maxX) + 0.5;
+  let high = Number.NEGATIVE_INFINITY;
+  let low = Number.POSITIVE_INFINITY;
+  for (const candle of state.candles) {
+    if (candle.x < minX || candle.x > maxX) continue;
+    if (Number.isFinite(candle.h)) high = Math.max(high, candle.h);
+    if (Number.isFinite(candle.l)) low = Math.min(low, candle.l);
+  }
+  return Number.isFinite(high) && Number.isFinite(low) ? { high, low } : null;
+}
+
+function drawWindowPriceLine(
+  ctx: CanvasRenderingContext2D,
+  value: number,
+  prefix: string,
+  color: string,
+  priceBottom: number,
+  fontPx: number,
+  pad: number,
+  scale: number,
+) {
+  const y = yToPx(value, ctx.canvas.height);
+  if (y < 0 || y > priceBottom) return;
+  ctx.save();
+  ctx.setLineDash([6 * scale, 5 * scale]);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.strokeStyle = hexToRgba(color, 0.76);
+  ctx.beginPath();
+  ctx.moveTo(0, y + 0.5);
+  ctx.lineTo(ctx.canvas.width, y + 0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const label = `${prefix} ${formatPrice(value)}`;
+  const labelWidth = ctx.measureText(label).width;
+  const boxWidth = labelWidth + pad * 2;
+  const boxHeight = fontPx + pad * 1.2;
+  const boxX = Math.max(0, ctx.canvas.width - boxWidth - 4 * scale);
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2));
+  ctx.fillStyle = hexToRgba(color, 0.88);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.fillStyle = "white";
+  ctx.fillText(label, boxX + pad, boxY + boxHeight / 2);
+  ctx.restore();
 }
 
 function drawTextBox(ctx: CanvasRenderingContext2D, x: number, y: number, text: string) {
@@ -1942,6 +2102,22 @@ function setError(message: string | null) {
   min-width: 0;
   color: var(--gpu-chart-indicator-muted, rgba(255, 255, 255, 0.68));
   font-size: 11px;
+}
+
+.gpu-chart-indicator-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--gpu-chart-indicator-text, rgba(255, 255, 255, 0.9));
+  font-size: 11px;
+}
+
+.gpu-chart-indicator-check {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  accent-color: #d6a23d;
 }
 
 .gpu-chart-indicator-range-label {

@@ -6,6 +6,7 @@ export interface OhlcvPoint {
     c: number;
     v_base?: number;
     v_quote?: number;
+    ver?: number;
 }
 export interface CandleRecord extends OhlcvPoint {
     bucket: number;

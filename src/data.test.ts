@@ -42,6 +42,23 @@ describe("gpu chart data utilities", () => {
     expect(candlesToBytes(state.candles).byteLength).toBe(2 * 5 * 4);
   });
 
+  it("collapses duplicate historical buckets by latest candle version", () => {
+    const state = packHistoricalCandles(
+      [
+        { ts: 180, o: 10, h: 12, l: 9, c: 11, ver: 1 },
+        { ts: 60, o: 1, h: 2, l: 0.5, c: 1.5, ver: 1 },
+        { ts: 180, o: 11, h: 13, l: 10, c: 12, ver: 2 },
+        { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, ver: 1 },
+      ],
+      "1m",
+      500,
+    );
+
+    expect(state.candles.map((candle) => candle.ts)).toEqual([60, 120, 180]);
+    expect(state.candles.map((candle) => candle.x)).toEqual([0, 1, 2]);
+    expect(state.candles[2]).toMatchObject({ o: 11, h: 13, l: 10, c: 12, ver: 2 });
+  });
+
   it("replaces same-bucket live updates", () => {
     const state = packHistoricalCandles(
       [
@@ -67,7 +84,7 @@ describe("gpu chart data utilities", () => {
     const state = packHistoricalCandles(
       [
         { ts: 60, o: 1, h: 2, l: 0.5, c: 1.5 },
-        { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5 },
+        { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, ver: 1 },
       ],
       "1m",
       500,
@@ -75,12 +92,34 @@ describe("gpu chart data utilities", () => {
 
     const result = mergeLiveCandle(
       state,
-      { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5 },
+      { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, ver: 2 },
       500,
     );
 
     expect(result.kind).toBe("ignore");
     expect(result.kind === "ignore" ? result.reason : "").toBe("unchanged");
+    expect(state.candles[1].ver).toBe(2);
+  });
+
+  it("ignores older same-bucket live versions", () => {
+    const state = packHistoricalCandles(
+      [
+        { ts: 60, o: 1, h: 2, l: 0.5, c: 1.5, ver: 1 },
+        { ts: 120, o: 1.5, h: 3, l: 1, c: 2.5, ver: 3 },
+      ],
+      "1m",
+      500,
+    );
+
+    const result = mergeLiveCandle(
+      state,
+      { ts: 120, o: 4, h: 5, l: 3, c: 4.5, ver: 2 },
+      500,
+    );
+
+    expect(result.kind).toBe("ignore");
+    expect(result.kind === "ignore" ? result.reason : "").toBe("stale-version");
+    expect(state.candles[1].c).toBe(2.5);
   });
 
   it("parses backend OffsetDateTime tuple timestamps", () => {

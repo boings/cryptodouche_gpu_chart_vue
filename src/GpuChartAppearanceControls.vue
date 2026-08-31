@@ -109,6 +109,8 @@ type ColorField = Extract<
   | "textColor"
   | "crosshairColor"
   | "lastPriceColor"
+  | "windowHighColor"
+  | "windowLowColor"
   | "tooltipBackgroundColor"
 >;
 type NumberField = Extract<
@@ -126,6 +128,7 @@ type ToggleField = Extract<
   keyof GpuChartAppearance,
   | "showGrid"
   | "showLastPriceLine"
+  | "showWindowHighLow"
   | "showCrosshair"
   | "showTooltip"
   | "showBadge"
@@ -149,6 +152,8 @@ const colorFields: Array<{ key: ColorField; label: string }> = [
   { key: "textColor", label: "Text" },
   { key: "crosshairColor", label: "Crosshair" },
   { key: "lastPriceColor", label: "Last Price" },
+  { key: "windowHighColor", label: "Window High" },
+  { key: "windowLowColor", label: "Window Low" },
   { key: "tooltipBackgroundColor", label: "Tooltip" },
 ];
 
@@ -175,6 +180,7 @@ const indicatorNumberFields: Array<{
 const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showGrid", label: "Grid" },
   { key: "showLastPriceLine", label: "Last Price" },
+  { key: "showWindowHighLow", label: "High/Low" },
   { key: "showCrosshair", label: "Crosshair" },
   { key: "showTooltip", label: "Tooltip" },
   { key: "showBadge", label: "Badge" },

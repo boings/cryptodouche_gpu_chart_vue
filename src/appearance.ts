@@ -21,6 +21,8 @@ export interface GpuChartAppearance {
   textColor: string;
   crosshairColor: string;
   lastPriceColor: string;
+  windowHighColor: string;
+  windowLowColor: string;
   tooltipBackgroundColor: string;
   candleWidth: number;
   wickWidth: number;
@@ -37,13 +39,16 @@ export interface GpuChartAppearance {
   stochRsiPaneHeight: number;
   stochRsiRangeLower: number;
   stochRsiRangeUpper: number;
+  stochRsiSmooth: boolean;
   rsiPeriod: number;
   rsiRangeLower: number;
   rsiRangeUpper: number;
+  rsiSmooth: boolean;
   activeIndicatorPane: GpuChartIndicatorPane;
   indicatorPaneMinimized: boolean;
   showGrid: boolean;
   showLastPriceLine: boolean;
+  showWindowHighLow: boolean;
   showCrosshair: boolean;
   showTooltip: boolean;
   showBadge: boolean;
@@ -75,6 +80,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   textColor: "#aeb7c2",
   crosshairColor: "#e5edf7",
   lastPriceColor: "#f87171",
+  windowHighColor: "#38bdf8",
+  windowLowColor: "#f97316",
   tooltipBackgroundColor: "#05070c",
   candleWidth: 5,
   wickWidth: 1,
@@ -91,13 +98,16 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   stochRsiPaneHeight: 0.24,
   stochRsiRangeLower: 20,
   stochRsiRangeUpper: 80,
+  stochRsiSmooth: false,
   rsiPeriod: 14,
   rsiRangeLower: 20,
   rsiRangeUpper: 80,
+  rsiSmooth: false,
   activeIndicatorPane: "stochRsi",
   indicatorPaneMinimized: false,
   showGrid: true,
   showLastPriceLine: true,
+  showWindowHighLow: true,
   showCrosshair: true,
   showTooltip: true,
   showBadge: true,
@@ -111,6 +121,7 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   ...DEFAULT_GPU_CHART_APPEARANCE,
   candleWidth: 3,
   fontSize: 10,
+  showWindowHighLow: false,
   showStochRsi: false,
   showRsi: false,
 };
@@ -155,6 +166,8 @@ export function normalizeGpuChartAppearance(
     textColor: colorValue(value.textColor, defaults.textColor),
     crosshairColor: colorValue(value.crosshairColor, defaults.crosshairColor),
     lastPriceColor: colorValue(value.lastPriceColor, defaults.lastPriceColor),
+    windowHighColor: colorValue(value.windowHighColor, defaults.windowHighColor),
+    windowLowColor: colorValue(value.windowLowColor, defaults.windowLowColor),
     tooltipBackgroundColor: colorValue(value.tooltipBackgroundColor, defaults.tooltipBackgroundColor),
     candleWidth: clampNumber(value.candleWidth, 1, 24, defaults.candleWidth),
     wickWidth: clampNumber(value.wickWidth, 0.5, 8, defaults.wickWidth),
@@ -216,9 +229,11 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.stochRsiRangeUpper,
     ),
+    stochRsiSmooth: boolValue(value.stochRsiSmooth, defaults.stochRsiSmooth),
     rsiPeriod: clampInteger(value.rsiPeriod, 2, 100, defaults.rsiPeriod),
     rsiRangeLower: clampNumber(value.rsiRangeLower, 0, 100, defaults.rsiRangeLower),
     rsiRangeUpper: clampNumber(value.rsiRangeUpper, 0, 100, defaults.rsiRangeUpper),
+    rsiSmooth: boolValue(value.rsiSmooth, defaults.rsiSmooth),
     activeIndicatorPane: indicatorPaneValue(
       value.activeIndicatorPane,
       defaults.activeIndicatorPane,
@@ -229,6 +244,7 @@ export function normalizeGpuChartAppearance(
     ),
     showGrid: boolValue(value.showGrid, defaults.showGrid),
     showLastPriceLine: boolValue(value.showLastPriceLine, defaults.showLastPriceLine),
+    showWindowHighLow: boolValue(value.showWindowHighLow, defaults.showWindowHighLow),
     showCrosshair: boolValue(value.showCrosshair, defaults.showCrosshair),
     showTooltip: boolValue(value.showTooltip, defaults.showTooltip),
     showBadge: boolValue(value.showBadge, defaults.showBadge),

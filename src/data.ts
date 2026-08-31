@@ -8,6 +8,10 @@ import type {
 
 const FLOATS_PER_CANDLE = 5;
 
+interface RankedOhlcvPoint extends OhlcvPoint {
+  sourceOrder: number;
+}
+
 export function timeframeToSeconds(timeframe: string | number): number {
   const raw = String(timeframe).trim().toLowerCase();
   if (raw.endsWith("m")) return parseInt(raw, 10) * 60;
@@ -45,6 +49,7 @@ export function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null {
     c,
     v_base: finiteNumber(record.v_base),
     v_quote: finiteNumber(record.v_quote),
+    ver: finiteNumber(record.ver),
   };
 }
 
@@ -54,10 +59,12 @@ export function packHistoricalCandles(
   limit: number,
 ): GpuSeriesState {
   const timeframeSec = timeframeToSeconds(timeframe);
-  const normalized = rawRows
-    .map(normalizeOhlcvPoint)
-    .filter((row): row is OhlcvPoint => row != null)
-    .sort((a, b) => a.ts - b.ts)
+  const normalized = collapseDuplicateBuckets(
+    rawRows
+      .map((row, sourceOrder) => normalizeRankedOhlcvPoint(row, sourceOrder))
+      .filter((row): row is RankedOhlcvPoint => row != null),
+    timeframeSec,
+  )
     .slice(-Math.max(1, limit));
 
   if (!normalized.length) {
@@ -92,11 +99,12 @@ export function prependHistoricalCandles(
   rawRows: unknown[],
   timeframe: string | number,
 ): number {
+  const previousLength = state.candles.length;
   const rows = rawRows
-    .map(normalizeOhlcvPoint)
-    .filter((row): row is OhlcvPoint => row != null)
+    .map((row, sourceOrder) => normalizeRankedOhlcvPoint(row, sourceOrder))
+    .filter((row): row is RankedOhlcvPoint => row != null)
     .filter((row) => bucketStart(row.ts, state.timeframeSec) < state.firstBucket)
-    .sort((a, b) => a.ts - b.ts);
+    .sort(compareHistoricalCandles);
 
   if (!rows.length) return 0;
 
@@ -109,7 +117,7 @@ export function prependHistoricalCandles(
   state.firstBucket = next.firstBucket;
   state.candles = next.candles;
   state.positionByBucket = next.positionByBucket;
-  return rows.length;
+  return Math.max(0, state.candles.length - previousLength);
 }
 
 export function candlesToBytes(candles: CandleRecord[]): Uint8Array {
@@ -145,7 +153,11 @@ export function mergeLiveCandle(
   const candle: CandleRecord = { ...point, bucket, x };
 
   if (existingPosition != null) {
+    if (isStaleVersion(candle, state.candles[existingPosition])) {
+      return { kind: "ignore", reason: "stale-version" };
+    }
     if (candlesEqual(state.candles[existingPosition], candle)) {
+      state.candles[existingPosition] = candle;
       return { kind: "ignore", reason: "unchanged" };
     }
     state.candles[existingPosition] = candle;
@@ -262,6 +274,39 @@ function rebuildPositions(state: GpuSeriesState): GpuSeriesState {
   return state;
 }
 
+function normalizeRankedOhlcvPoint(input: unknown, sourceOrder: number): RankedOhlcvPoint | null {
+  const point = normalizeOhlcvPoint(input);
+  return point ? { ...point, sourceOrder } : null;
+}
+
+function collapseDuplicateBuckets(rows: RankedOhlcvPoint[], timeframeSec: number): OhlcvPoint[] {
+  const byBucket = new Map<number, RankedOhlcvPoint>();
+  for (const row of rows) {
+    const bucket = bucketStart(row.ts, timeframeSec);
+    const previous = byBucket.get(bucket);
+    if (!previous || compareHistoricalCandles(row, previous) > 0) {
+      byBucket.set(bucket, row);
+    }
+  }
+
+  return Array.from(byBucket.entries())
+    .sort(([leftBucket], [rightBucket]) => leftBucket - rightBucket)
+    .map(([, row]) => stripRank(row));
+}
+
+function compareHistoricalCandles(left: RankedOhlcvPoint, right: RankedOhlcvPoint): number {
+  const leftVersion = left.ver ?? Number.NEGATIVE_INFINITY;
+  const rightVersion = right.ver ?? Number.NEGATIVE_INFINITY;
+  if (leftVersion !== rightVersion) return leftVersion - rightVersion;
+  if (left.ts !== right.ts) return left.ts - right.ts;
+  return left.sourceOrder - right.sourceOrder;
+}
+
+function stripRank(row: RankedOhlcvPoint): OhlcvPoint {
+  const { sourceOrder: _sourceOrder, ...point } = row;
+  return point;
+}
+
 function parseTimestamp(value: unknown): number | null {
   if (typeof value === "number") {
     if (!Number.isFinite(value)) return null;
@@ -317,6 +362,11 @@ function parseDateArray(value: unknown[]): number {
 
 function candlesEqual(left: CandleRecord, right: CandleRecord): boolean {
   return left.o === right.o && left.h === right.h && left.l === right.l && left.c === right.c;
+}
+
+function isStaleVersion(incoming: CandleRecord, existing: CandleRecord): boolean {
+  if (incoming.ver == null || existing.ver == null) return false;
+  return incoming.ver < existing.ver;
 }
 
 function finiteNumber(value: unknown): number | undefined {

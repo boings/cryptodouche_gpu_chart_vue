@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.8'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.9'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.8'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.9'
 ```
 
 Import the component and CSS:
@@ -120,10 +120,11 @@ Rows are normalized from objects with:
   c: number;
   v_base?: number;
   v_quote?: number;
+  ver?: number;
 }
 ```
 
-`ts` may be seconds, milliseconds, an ISO timestamp string, or the OffsetDateTime tuple shape used by the Cryptodouche backend.
+`ts` may be seconds, milliseconds, an ISO timestamp string, or the OffsetDateTime tuple shape used by the Cryptodouche backend. Duplicate buckets are collapsed before rendering; when `ver` is present, the latest version wins.
 
 ## Important Props
 
@@ -148,6 +149,8 @@ When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange
 `showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI and RSI, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
 
 Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, including period, upper/lower range, and range color. The range is shaded with dashed threshold lines. The divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
+
+The price pane can show the current visible-window high and low as dashed horizontal labels. Stoch RSI and RSI panes also include a per-indicator Smooth Line toggle in their gear menus.
 
 ## Interaction Model
 
@@ -219,7 +222,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.8
+git tag v0.1.9
 git push origin main --tags
 ```
 

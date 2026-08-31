@@ -41,11 +41,15 @@ describe("gpu chart appearance", () => {
       stochRsiRangeColor: "gray",
       stochRsiRangeLower: -10,
       stochRsiRangeUpper: 120,
+      stochRsiSmooth: "yes" as unknown as boolean,
       rsiColor: "lime",
       rsiPeriod: 1,
       rsiRangeColor: "gray",
       rsiRangeLower: -5,
       rsiRangeUpper: 105,
+      rsiSmooth: "yes" as unknown as boolean,
+      windowHighColor: "blue",
+      showWindowHighLow: "yes" as unknown as boolean,
       activeIndicatorPane: "macd" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
@@ -65,11 +69,15 @@ describe("gpu chart appearance", () => {
     expect(appearance.stochRsiRangeColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiRangeColor);
     expect(appearance.stochRsiRangeLower).toBe(0);
     expect(appearance.stochRsiRangeUpper).toBe(100);
+    expect(appearance.stochRsiSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.stochRsiSmooth);
     expect(appearance.rsiColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiColor);
     expect(appearance.rsiPeriod).toBe(2);
     expect(appearance.rsiRangeColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiRangeColor);
     expect(appearance.rsiRangeLower).toBe(0);
     expect(appearance.rsiRangeUpper).toBe(100);
+    expect(appearance.rsiSmooth).toBe(DEFAULT_GPU_CHART_APPEARANCE.rsiSmooth);
+    expect(appearance.windowHighColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.windowHighColor);
+    expect(appearance.showWindowHighLow).toBe(DEFAULT_GPU_CHART_APPEARANCE.showWindowHighLow);
     expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
@@ -87,14 +95,19 @@ describe("gpu chart appearance", () => {
         fontSize: 18,
         showBadge: false,
         showWma: true,
+        showWindowHighLow: false,
+        windowHighColor: "#0ea5e9",
+        windowLowColor: "#fb923c",
         showStochRsi: false,
         showRsi: false,
         stochRsiRangeColor: "#334155",
         stochRsiRangeLower: 25,
         stochRsiRangeUpper: 75,
+        stochRsiSmooth: true,
         rsiRangeColor: "#475569",
         rsiRangeLower: 30,
         rsiRangeUpper: 70,
+        rsiSmooth: true,
         activeIndicatorPane: "rsi",
         indicatorPaneMinimized: true,
       },
@@ -105,14 +118,19 @@ describe("gpu chart appearance", () => {
     expect(saved.fontSize).toBe(18);
     expect(saved.showBadge).toBe(false);
     expect(saved.showWma).toBe(true);
+    expect(saved.showWindowHighLow).toBe(false);
+    expect(saved.windowHighColor).toBe("#0ea5e9");
+    expect(saved.windowLowColor).toBe("#fb923c");
     expect(saved.showStochRsi).toBe(false);
     expect(saved.showRsi).toBe(false);
     expect(saved.stochRsiRangeColor).toBe("#334155");
     expect(saved.stochRsiRangeLower).toBe(25);
     expect(saved.stochRsiRangeUpper).toBe(75);
+    expect(saved.stochRsiSmooth).toBe(true);
     expect(saved.rsiRangeColor).toBe("#475569");
     expect(saved.rsiRangeLower).toBe(30);
     expect(saved.rsiRangeUpper).toBe(70);
+    expect(saved.rsiSmooth).toBe(true);
     expect(saved.activeIndicatorPane).toBe("rsi");
     expect(saved.indicatorPaneMinimized).toBe(true);
     expect(JSON.parse(storage.getItem(`${GPU_CHART_APPEARANCE_KEY}:single`) ?? "{}")).toMatchObject({
@@ -120,14 +138,19 @@ describe("gpu chart appearance", () => {
       fontSize: 18,
       showBadge: false,
       showWma: true,
+      showWindowHighLow: false,
+      windowHighColor: "#0ea5e9",
+      windowLowColor: "#fb923c",
       showStochRsi: false,
       showRsi: false,
       stochRsiRangeColor: "#334155",
       stochRsiRangeLower: 25,
       stochRsiRangeUpper: 75,
+      stochRsiSmooth: true,
       rsiRangeColor: "#475569",
       rsiRangeLower: 30,
       rsiRangeUpper: 70,
+      rsiSmooth: true,
       activeIndicatorPane: "rsi",
       indicatorPaneMinimized: true,
     });
@@ -156,6 +179,8 @@ describe("gpu chart appearance", () => {
     expect(loadGpuChartAppearance(storage, "single").showStochRsi).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showRsi).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showRsi).toBe(true);
+    expect(loadGpuChartAppearance(storage, "grid").showWindowHighLow).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showWindowHighLow).toBe(true);
   });
 
   it("converts hex colors into renderer color channels", () => {
