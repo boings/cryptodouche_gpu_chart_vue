@@ -2,6 +2,7 @@ export * from "./appearance";
 export * from "./data";
 export * from "./indicators";
 export * from "./scheduler";
+export * from "./timeAxis";
 export * from "./types";
 export * from "./viewport";
 export * from "./wasm";

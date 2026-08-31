@@ -221,6 +221,11 @@ import {
 } from "./appearance";
 import { cancelScheduledGpuRender, scheduleGpuRender } from "./scheduler";
 import {
+  estimateTimeAxisLabelWidth,
+  formatTimeAxisLabel,
+  timeAxisStepSeconds,
+} from "./timeAxis";
+import {
   clampXView,
   computeVisibleYBounds,
   isFollowingLatest,
@@ -248,39 +253,6 @@ const RIGHT_LABEL_MIN_RESERVE_PX = 88;
 const DEFAULT_INDICATOR_PANE_HEIGHT_RATIO = 0.24;
 const MIN_INDICATOR_PANE_HEIGHT_RATIO = 0.12;
 const MAX_INDICATOR_PANE_HEIGHT_RATIO = 0.4;
-const TIME_AXIS_STEPS_SEC = [
-  60,
-  120,
-  300,
-  600,
-  900,
-  1800,
-  3600,
-  7200,
-  14400,
-  21600,
-  43200,
-  86400,
-  172800,
-  259200,
-  604800,
-  1209600,
-  2592000,
-] as const;
-const MONTH_LABELS = [
-  "Jan",
-  "Feb",
-  "Mar",
-  "Apr",
-  "May",
-  "Jun",
-  "Jul",
-  "Aug",
-  "Sep",
-  "Oct",
-  "Nov",
-  "Dec",
-] as const;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -1838,7 +1810,11 @@ function drawVolumeOverlay(
   const slotWidth = ctx.canvas.width / span;
   const barWidth = Math.max(
     1 * scale,
-    Math.min(slotWidth * 0.72, Math.max(1 * scale, appearance.candleWidth * scale * 1.2)),
+    Math.min(
+      slotWidth * 0.82,
+      Math.max(2 * scale, slotWidth * 0.54, appearance.candleWidth * scale * 1.6),
+      18 * scale,
+    ),
   );
   const height = Math.max(
     18 * scale,
@@ -1921,9 +1897,9 @@ function drawTimeAxis(
 function timeAxisTicks(width: number, fontPx: number, scale: number) {
   if (!state?.candles.length || state.timeframeSec <= 0) return [];
   const spanSec = Math.max(1, (view.maxX - view.minX) * state.timeframeSec);
-  const estimatedLabelWidth = Math.max(58 * scale, fontPx * 5.5);
+  const estimatedLabelWidth = estimateTimeAxisLabelWidth(fontPx, scale, spanSec);
   const targetTickCount = Math.max(2, Math.floor(width / Math.max(1, estimatedLabelWidth)));
-  const stepSec = timeAxisStepSeconds(spanSec / targetTickCount, state.timeframeSec);
+  const stepSec = timeAxisStepSeconds(spanSec / targetTickCount, state.timeframeSec, spanSec);
   const minTs = state.firstBucket + view.minX * state.timeframeSec;
   const maxTs = state.firstBucket + view.maxX * state.timeframeSec;
   const ticks: Array<{ x: number; ts: number; label: string }> = [];
@@ -1933,45 +1909,14 @@ function timeAxisTicks(width: number, fontPx: number, scale: number) {
     const x = (ts - state.firstBucket) / state.timeframeSec;
     const px = xToPx(x, width);
     if (px >= -estimatedLabelWidth && px <= width + estimatedLabelWidth) {
-      ticks.push({ x, ts, label: formatTimeAxisLabel(ts, spanSec) });
+      ticks.push({ x, ts, label: formatTimeAxisLabel(ts, spanSec, stepSec) });
     }
   }
   return ticks;
 }
 
-function timeAxisStepSeconds(targetSec: number, timeframeSec: number) {
-  const minStep = Math.max(1, timeframeSec);
-  const target = Math.max(minStep, targetSec);
-  for (const step of TIME_AXIS_STEPS_SEC) {
-    if (step >= target && step >= minStep) return step;
-  }
-  return Math.ceil(target / minStep) * minStep;
-}
-
-function formatTimeAxisLabel(tsSec: number, spanSec: number) {
-  const date = new Date(tsSec * 1000);
-  if (spanSec >= 365 * 86400) {
-    return `${monthLabel(date)} ${date.getFullYear()}`;
-  }
-  if (spanSec >= 7 * 86400) {
-    return `${monthLabel(date)} ${date.getDate()}`;
-  }
-  if (spanSec >= 24 * 3600) {
-    return `${monthLabel(date)} ${date.getDate()} ${pad2(date.getHours())}:00`;
-  }
-  return `${pad2(date.getHours())}:${pad2(date.getMinutes())}`;
-}
-
 function timeAxisHeight(scale: number, fontPx: number) {
   return Math.max(18 * scale, fontPx * 1.5);
-}
-
-function monthLabel(date: Date) {
-  return MONTH_LABELS[date.getMonth()] ?? "";
-}
-
-function pad2(value: number) {
-  return String(value).padStart(2, "0");
 }
 
 function drawIndicatorPane(
@@ -2446,7 +2391,14 @@ function drawIndicatorHistogram(
   const minX = Math.min(view.minX, view.maxX) - 1;
   const maxX = Math.max(view.minX, view.maxX) + 1;
   const slotWidth = ctx.canvas.width / Math.max(1, view.maxX - view.minX);
-  const barWidth = Math.max(1 * scale, Math.min(slotWidth * 0.72, 10 * scale));
+  const barWidth = Math.max(
+    1 * scale,
+    Math.min(
+      slotWidth * 0.82,
+      Math.max(2 * scale, slotWidth * 0.54, appearance.candleWidth * scale * 1.6),
+      18 * scale,
+    ),
+  );
   const zeroY = indicatorValueToPx(0, pane, valueScale);
   ctx.save();
   for (let i = 0; i < line.length; i += 2) {
