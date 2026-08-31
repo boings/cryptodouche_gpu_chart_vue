@@ -211,6 +211,9 @@ const SMOOTH_X_EASE = 0.32;
 const SMOOTH_X_EPSILON_CANDLES = 0.002;
 const MIN_INDICATOR_PANE_HEIGHT_PX = 88;
 const MIN_PRICE_PANE_HEIGHT_PX = 180;
+const MIN_INDICATOR_WARMUP_CANDLES = 160;
+const MAX_HISTORY_LOAD_CANDLES = 5000;
+const RIGHT_LABEL_MIN_RESERVE_PX = 88;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -636,13 +639,14 @@ async function loadSeries() {
   setError(null);
   hasMoreHistory = true;
   try {
+    const loadLimit = historyLoadLimit();
     if (props.synthetic) {
-      state = makeSyntheticCandles(props.symbol, props.limit, props.timeframe);
+      state = makeSyntheticCandles(props.symbol, loadLimit, props.timeframe);
     } else if (props.candles) {
-      state = packHistoricalCandles(props.candles, props.timeframe, props.limit);
+      state = packHistoricalCandles(props.candles, props.timeframe, loadLimit);
     } else if (props.dataAdapter) {
-      const rows = await props.dataAdapter.loadLatest(dataQuery());
-      state = packHistoricalCandles(rows, props.timeframe, props.limit);
+      const rows = await props.dataAdapter.loadLatest(dataQuery({ limit: loadLimit }));
+      state = packHistoricalCandles(rows, props.timeframe, loadLimit);
     } else {
       throw new Error("No OHLCV data source provided");
     }
@@ -653,7 +657,7 @@ async function loadSeries() {
     chart?.push_ohlc(candlesToBytes(state.candles));
     updateOverlays();
     autoFitVisibleY = true;
-    updateView(computeViewBounds(state.candles, overlayLines()));
+    updateView(computeViewBounds(initialVisibleCandles()));
     fitVisibleY();
     applyView();
     drawHud(null);
@@ -704,7 +708,7 @@ function startSynthetic() {
     if (!state) return;
     const wasFollowingLatest = isViewFollowingLatest();
     const previousFirstBucket = state.firstBucket;
-    applyMergeResult(appendSyntheticCandle(state, props.limit), {
+    applyMergeResult(appendSyntheticCandle(state, liveRetentionLimit()), {
       previousFirstBucket,
       wasFollowingLatest,
     });
@@ -730,7 +734,8 @@ async function maybeLoadOlderCandles() {
   if (!first || view.minX > first.x + 1.5) return;
 
   const end = state.firstBucket;
-  const start = Math.max(0, end - state.timeframeSec * props.limit);
+  const pageLimit = historyPageLimit();
+  const start = Math.max(0, end - state.timeframeSec * pageLimit);
   if (end <= start) {
     hasMoreHistory = false;
     return;
@@ -738,7 +743,7 @@ async function maybeLoadOlderCandles() {
 
   historicalLoading.value = true;
   try {
-    const rows = await props.dataAdapter.loadRange(dataQuery({ start, end }));
+    const rows = await props.dataAdapter.loadRange(dataQuery({ start, end, limit: pageLimit }));
     const previousFirstBucket = state.firstBucket;
     const added = prependHistoricalCandles(state, rows, props.timeframe);
     if (added === 0) {
@@ -776,7 +781,7 @@ function dataQuery(extra: Partial<GpuChartDataQuery> = {}): GpuChartDataQuery {
     exchange: props.exchange,
     marketType: props.marketType,
     timeframe: normalizeRestTimeframe(props.timeframe),
-    limit: props.limit,
+    limit: extra.limit ?? historyPageLimit(),
     ...extra,
   };
 }
@@ -799,8 +804,8 @@ function applyLivePayload(payload: unknown) {
 }
 
 function liveRetentionLimit() {
-  if (props.synthetic || !state) return props.limit;
-  return Math.max(props.limit, state.candles.length + 1);
+  if (!state) return historyLoadLimit();
+  return Math.max(historyLoadLimit(), state.candles.length + 1);
 }
 
 function applyMergeResult(
@@ -836,7 +841,7 @@ function applyMergeResult(
   updateOverlays();
   if (wasFollowingLatest && state.candles.length) {
     const width = Math.max(1, view.maxX - view.minX);
-    const maxX = state.candles[state.candles.length - 1].x + RIGHT_EDGE_PADDING_CANDLES;
+    const maxX = state.candles[state.candles.length - 1].x + rightEdgePaddingCandles(width);
     view.minX = maxX - width;
     view.maxX = maxX;
   }
@@ -853,7 +858,8 @@ function updateSummaryMetrics() {
     changePct.value = null;
     return;
   }
-  const first = state.candles[0];
+  const visible = initialVisibleCandles();
+  const first = visible[0] ?? state.candles[0];
   const last = state.candles[state.candles.length - 1];
   lastClose.value = last.c;
   const base = Number.isFinite(first.o) && first.o !== 0 ? first.o : first.c;
@@ -876,10 +882,6 @@ function updateOverlays() {
     const [r, g, b] = hexToRgb01(item.color);
     chart.set_line_series(item.slot, lineToBytes(item.line), r, g, b, item.alpha);
   }
-}
-
-function overlayLines() {
-  return indicatorSeries().map((item) => item.line);
 }
 
 function indicatorSeries() {
@@ -914,7 +916,8 @@ function indicatorSeries() {
 }
 
 function updateView(bounds: ViewBounds) {
-  const paddedBounds = withRightPadding(bounds);
+  const visibleCount = visibleCandleCountForBounds(bounds);
+  const paddedBounds = withRightPadding(bounds, rightEdgePaddingCandles(visibleCount));
   const xSpan = Math.max(1, paddedBounds.maxX - paddedBounds.minX);
   view = {
     minX: paddedBounds.minX,
@@ -1293,7 +1296,7 @@ function pricePaneHeightCss(rect: DOMRect) {
 
 function isViewFollowingLatest() {
   const last = state?.candles[state.candles.length - 1];
-  return isFollowingLatest(view, last?.x);
+  return isFollowingLatest(view, last?.x, rightEdgePaddingCandles());
 }
 
 function clampXBounds(nextView: ViewBounds, anchor?: { x: number; ratio: number }): ViewBounds {
@@ -1303,9 +1306,70 @@ function clampXBounds(nextView: ViewBounds, anchor?: { x: number; ratio: number 
     {
       firstX: state.candles[0].x,
       lastX: state.candles[state.candles.length - 1].x,
+      rightPaddingCandles: rightEdgePaddingCandles(nextView.maxX - nextView.minX),
     },
     anchor,
   );
+}
+
+function displayCandleLimit() {
+  return Math.max(1, Math.floor(Number.isFinite(props.limit) ? props.limit : 1));
+}
+
+function indicatorWarmupCandles() {
+  const appearance = resolvedAppearance.value;
+  return Math.max(
+    MIN_INDICATOR_WARMUP_CANDLES,
+    appearance.smaPeriod,
+    appearance.emaPeriod,
+    appearance.wmaPeriod,
+    appearance.bollingerPeriod,
+    appearance.rsiPeriod,
+    appearance.stochRsiRsiPeriod +
+      appearance.stochRsiPeriod +
+      appearance.stochRsiKPeriod +
+      appearance.stochRsiDPeriod,
+  );
+}
+
+function historyLoadLimit() {
+  const visible = displayCandleLimit();
+  return Math.min(
+    MAX_HISTORY_LOAD_CANDLES,
+    Math.max(visible * 2, visible + indicatorWarmupCandles()),
+  );
+}
+
+function historyPageLimit() {
+  return Math.min(MAX_HISTORY_LOAD_CANDLES, Math.max(displayCandleLimit(), indicatorWarmupCandles()));
+}
+
+function initialVisibleCandles() {
+  if (!state?.candles.length) return [];
+  return state.candles.slice(-displayCandleLimit());
+}
+
+function visibleCandleCountForBounds(bounds: Pick<ViewBounds, "minX" | "maxX">) {
+  return Math.max(1, Math.round(Math.abs(bounds.maxX - bounds.minX)) + 1);
+}
+
+function rightEdgePaddingCandles(visibleCandles = displayCandleLimit()) {
+  const hud = hudRef.value;
+  const widthPx = hud?.width ?? 0;
+  const scale = hud ? canvasScale(hud) : Math.max(1, window.devicePixelRatio || 1);
+  const reservePx = Math.max(
+    RIGHT_LABEL_MIN_RESERVE_PX * scale,
+    resolvedAppearance.value.fontSize * scale * 5,
+  );
+  const visible = Math.max(
+    1,
+    Number.isFinite(visibleCandles) ? visibleCandles : displayCandleLimit(),
+  );
+  if (!Number.isFinite(widthPx) || widthPx <= 0 || reservePx >= widthPx * 0.45) {
+    return RIGHT_EDGE_PADDING_CANDLES;
+  }
+  const padding = Math.ceil((reservePx * visible) / Math.max(1, widthPx - reservePx)) + 1;
+  return Math.max(RIGHT_EDGE_PADDING_CANDLES, padding);
 }
 
 function clampViewX(anchor?: { x: number; ratio: number }) {

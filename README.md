@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.9'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.10'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.9'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.10'
 ```
 
 Import the component and CSS:
@@ -107,7 +107,7 @@ export interface GpuChartDataAdapter {
 }
 ```
 
-`loadLatest` is required unless using the `candles` or `synthetic` props. `loadRange` is optional and enables older candle loading when the user pans or scrolls left. `subscribe` is optional and enables live candle updates.
+`loadLatest` is required unless using the `candles` or `synthetic` props. `loadRange` is optional and enables older candle loading when the user pans or scrolls left. `subscribe` is optional and enables live candle updates. The chart may request more rows than the visible `limit` so indicators have warm-up history before the first visible candle.
 
 Rows are normalized from objects with:
 
@@ -150,7 +150,7 @@ When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange
 
 Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, including period, upper/lower range, and range color. The range is shaded with dashed threshold lines. The divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
 
-The price pane can show the current visible-window high and low as dashed horizontal labels. Stoch RSI and RSI panes also include a per-indicator Smooth Line toggle in their gear menus.
+The price pane can show the current visible-window high and low as dashed horizontal labels. Stoch RSI and RSI panes also include a per-indicator Smooth Line toggle in their gear menus. The right edge reserves label space so the latest candle and price marker do not overlap.
 
 ## Interaction Model
 
@@ -222,7 +222,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.9
+git tag v0.1.10
 git push origin main --tags
 ```
 

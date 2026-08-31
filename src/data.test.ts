@@ -306,7 +306,7 @@ describe("gpu chart data utilities", () => {
 
     expect(
       clampXView({ minX: 120, maxX: 128, minY: 0, maxY: 1 }, { firstX: 0, lastX: 99 }),
-    ).toMatchObject({ minX: 99, maxX: 107 });
+    ).toMatchObject({ minX: 93, maxX: 101 });
   });
 
   it("adds initial right-side padding so the latest candle is not clipped", () => {
