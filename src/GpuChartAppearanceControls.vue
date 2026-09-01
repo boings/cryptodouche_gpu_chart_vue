@@ -137,6 +137,8 @@ type ToggleField = Extract<
   | "showCrosshair"
   | "showTooltip"
   | "showBadge"
+  | "showSma"
+  | "showEma"
   | "showWma"
   | "showBollinger"
   | "showStochRsi"
@@ -197,6 +199,8 @@ const toggleFields: Array<{ key: ToggleField; label: string }> = [
   { key: "showCrosshair", label: "Crosshair" },
   { key: "showTooltip", label: "Tooltip" },
   { key: "showBadge", label: "Badge" },
+  { key: "showSma", label: "SMA" },
+  { key: "showEma", label: "EMA" },
   { key: "showWma", label: "WMA" },
   { key: "showBollinger", label: "Bollinger" },
   { key: "showStochRsi", label: "Stoch RSI" },

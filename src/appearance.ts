@@ -68,6 +68,8 @@ export interface GpuChartAppearance {
   showCrosshair: boolean;
   showTooltip: boolean;
   showBadge: boolean;
+  showSma: boolean;
+  showEma: boolean;
   showWma: boolean;
   showBollinger: boolean;
   showStochRsi: boolean;
@@ -78,7 +80,7 @@ export interface GpuChartAppearance {
 }
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
-export type GpuChartAppearanceScope = "single" | "grid";
+export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
 
 export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   backgroundColor: "#03060b",
@@ -146,6 +148,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showCrosshair: true,
   showTooltip: true,
   showBadge: true,
+  showSma: true,
+  showEma: true,
   showWma: false,
   showBollinger: false,
   showStochRsi: true,
@@ -322,6 +326,8 @@ export function normalizeGpuChartAppearance(
     showCrosshair: boolValue(value.showCrosshair, defaults.showCrosshair),
     showTooltip: boolValue(value.showTooltip, defaults.showTooltip),
     showBadge: boolValue(value.showBadge, defaults.showBadge),
+    showSma: boolValue(value.showSma, defaults.showSma),
+    showEma: boolValue(value.showEma, defaults.showEma),
     showWma: boolValue(value.showWma, defaults.showWma),
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),

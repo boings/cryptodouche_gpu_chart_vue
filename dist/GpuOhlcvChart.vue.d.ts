@@ -14,6 +14,7 @@ type __VLS_Props = {
     title?: string;
     openOnChartClick?: boolean;
     showIndicatorPanes?: boolean;
+    showChartSettings?: boolean;
     appearance?: Partial<GpuChartAppearance>;
 };
 declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -21,21 +22,26 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     error: (message: string | null) => any;
     streaming: (active: boolean) => any;
     "update:appearance": (value: GpuChartAppearance) => any;
+    "save-appearance": (value: GpuChartAppearance) => any;
+    "reset-appearance": () => any;
 }, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{
     onOpen?: ((payload: GpuChartOpenPayload) => any) | undefined;
     onError?: ((message: string | null) => any) | undefined;
     onStreaming?: ((active: boolean) => any) | undefined;
     "onUpdate:appearance"?: ((value: GpuChartAppearance) => any) | undefined;
+    "onSave-appearance"?: ((value: GpuChartAppearance) => any) | undefined;
+    "onReset-appearance"?: (() => any) | undefined;
 }>, {
+    showSma: boolean;
+    showEma: boolean;
     title: string;
     exchange: string;
     marketType: string;
     candles: unknown[];
     dataAdapter: GpuChartDataAdapter;
-    showSma: boolean;
-    showEma: boolean;
     synthetic: boolean;
     openOnChartClick: boolean;
     showIndicatorPanes: boolean;
+    showChartSettings: boolean;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

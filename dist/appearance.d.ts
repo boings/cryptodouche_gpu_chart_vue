@@ -65,6 +65,8 @@ export interface GpuChartAppearance {
     showCrosshair: boolean;
     showTooltip: boolean;
     showBadge: boolean;
+    showSma: boolean;
+    showEma: boolean;
     showWma: boolean;
     showBollinger: boolean;
     showStochRsi: boolean;
@@ -74,7 +76,7 @@ export interface GpuChartAppearance {
     showVolume: boolean;
 }
 export declare const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
-export type GpuChartAppearanceScope = "single" | "grid";
+export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
 export declare const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance;
 export declare const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance;
 interface StorageLike {
@@ -149,6 +151,8 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showCrosshair: boolean;
     showTooltip: boolean;
     showBadge: boolean;
+    showSma: boolean;
+    showEma: boolean;
     showWma: boolean;
     showBollinger: boolean;
     showStochRsi: boolean;
@@ -225,6 +229,8 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showCrosshair: boolean;
     showTooltip: boolean;
     showBadge: boolean;
+    showSma: boolean;
+    showEma: boolean;
     showWma: boolean;
     showBollinger: boolean;
     showStochRsi: boolean;
@@ -300,6 +306,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showCrosshair: boolean;
         showTooltip: boolean;
         showBadge: boolean;
+        showSma: boolean;
+        showEma: boolean;
         showWma: boolean;
         showBollinger: boolean;
         showStochRsi: boolean;
@@ -373,6 +381,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showCrosshair: boolean;
         showTooltip: boolean;
         showBadge: boolean;
+        showSma: boolean;
+        showEma: boolean;
         showWma: boolean;
         showBollinger: boolean;
         showStochRsi: boolean;

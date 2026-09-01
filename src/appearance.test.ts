@@ -68,6 +68,8 @@ describe("gpu chart appearance", () => {
       showWindowHighLow: "yes" as unknown as boolean,
       activeIndicatorPane: "not-a-pane" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
+      showSma: "yes" as unknown as boolean,
+      showEma: "yes" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
       showRsi: "yes" as unknown as boolean,
       showMacd: "yes" as unknown as boolean,
@@ -121,6 +123,8 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
     );
+    expect(appearance.showSma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showSma);
+    expect(appearance.showEma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showEma);
     expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
     expect(appearance.showRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsi);
     expect(appearance.showMacd).toBe(DEFAULT_GPU_CHART_APPEARANCE.showMacd);
@@ -136,6 +140,8 @@ describe("gpu chart appearance", () => {
         backgroundColor: "#111827",
         fontSize: 18,
         showBadge: false,
+        showSma: false,
+        showEma: false,
         showWma: true,
         showWindowHighLow: false,
         windowHighColor: "#0ea5e9",
@@ -178,6 +184,8 @@ describe("gpu chart appearance", () => {
     expect(saved.backgroundColor).toBe("#111827");
     expect(saved.fontSize).toBe(18);
     expect(saved.showBadge).toBe(false);
+    expect(saved.showSma).toBe(false);
+    expect(saved.showEma).toBe(false);
     expect(saved.showWma).toBe(true);
     expect(saved.showWindowHighLow).toBe(false);
     expect(saved.windowHighColor).toBe("#0ea5e9");
@@ -217,6 +225,8 @@ describe("gpu chart appearance", () => {
       backgroundColor: "#111827",
       fontSize: 18,
       showBadge: false,
+      showSma: false,
+      showEma: false,
       showWma: true,
       showWindowHighLow: false,
       windowHighColor: "#0ea5e9",
@@ -263,6 +273,19 @@ describe("gpu chart appearance", () => {
 
     expect(loadGpuChartAppearance(storage, "single").fontSize).toBe(single.fontSize);
     expect(loadGpuChartAppearance(storage, "grid").fontSize).toBe(grid.fontSize);
+  });
+
+  it("persists custom chart scopes independently", () => {
+    const storage = new MemoryStorage();
+
+    const first = saveGpuChartAppearance({ fontSize: 16 }, storage, "single:chart-0");
+    const second = saveGpuChartAppearance({ fontSize: 21 }, storage, "single:chart-1");
+
+    expect(loadGpuChartAppearance(storage, "single:chart-0").fontSize).toBe(first.fontSize);
+    expect(loadGpuChartAppearance(storage, "single:chart-1").fontSize).toBe(second.fontSize);
+    expect(loadGpuChartAppearance(storage, "single").fontSize).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.fontSize,
+    );
   });
 
   it("uses a smaller grid default", () => {

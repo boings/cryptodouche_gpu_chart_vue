@@ -140,6 +140,188 @@
       </div>
     </div>
     <div
+      v-if="chartSettingsOpen"
+      ref="chartSettingsRef"
+      class="gpu-chart-settings-modal"
+      :style="chartSettingsModalStyle"
+      @click.stop
+      @mousedown.stop
+      @dblclick.stop
+      @wheel.stop
+    >
+      <div
+        class="gpu-chart-settings-header"
+        :class="{ dragging: chartSettingsDragging }"
+        title="Drag to move"
+        @mousedown.stop.prevent="startChartSettingsDrag"
+      >
+        <span class="gpu-chart-settings-title">{{ displaySymbol }} Settings</span>
+        <button
+          type="button"
+          class="gpu-chart-settings-close"
+          aria-label="Close chart settings"
+          title="Close"
+          @click="closeChartSettings"
+        >
+          x
+        </button>
+      </div>
+      <div class="gpu-chart-settings-tabs">
+        <button
+          v-for="tab in chartSettingsTabs"
+          :key="tab.id"
+          type="button"
+          class="gpu-chart-settings-tab"
+          :class="{ active: chartSettingsTab === tab.id }"
+          @click="chartSettingsTab = tab.id"
+        >
+          {{ tab.label }}
+        </button>
+      </div>
+      <div class="gpu-chart-settings-body">
+        <div v-if="chartSettingsTab === 'appearance'" class="gpu-chart-settings-grid">
+          <label
+            v-for="field in chartAppearanceColorFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span>{{ field.label }}</span>
+            <input
+              type="color"
+              class="gpu-chart-settings-color"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartColor(field.key, $event)"
+            />
+          </label>
+          <label
+            v-for="field in chartAppearanceNumberFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span class="gpu-chart-settings-range-label">
+              <span>{{ field.label }}</span>
+              <span>{{ formatChartSetting(field.key) }}</span>
+            </span>
+            <input
+              type="range"
+              :min="field.min"
+              :max="field.max"
+              :step="field.step"
+              class="gpu-chart-settings-range"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartNumber(field.key, $event)"
+            />
+          </label>
+        </div>
+        <div v-else-if="chartSettingsTab === 'bollinger'" class="gpu-chart-settings-grid">
+          <label
+            v-for="field in chartBollingerToggleFields"
+            :key="field.key"
+            class="gpu-chart-settings-toggle"
+          >
+            <input
+              type="checkbox"
+              class="gpu-chart-settings-check"
+              :checked="resolvedAppearance[field.key]"
+              @change="setChartBool(field.key, $event)"
+            />
+            <span>{{ field.label }}</span>
+          </label>
+          <label
+            v-for="field in chartBollingerColorFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span>{{ field.label }}</span>
+            <input
+              type="color"
+              class="gpu-chart-settings-color"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartColor(field.key, $event)"
+            />
+          </label>
+          <label
+            v-for="field in chartBollingerNumberFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span class="gpu-chart-settings-range-label">
+              <span>{{ field.label }}</span>
+              <span>{{ formatChartSetting(field.key) }}</span>
+            </span>
+            <input
+              type="range"
+              :min="field.min"
+              :max="field.max"
+              :step="field.step"
+              class="gpu-chart-settings-range"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartNumber(field.key, $event)"
+            />
+          </label>
+        </div>
+        <div v-else class="gpu-chart-settings-grid">
+          <label
+            v-for="field in chartIndicatorToggleFields"
+            :key="field.key"
+            class="gpu-chart-settings-toggle"
+          >
+            <input
+              type="checkbox"
+              class="gpu-chart-settings-check"
+              :checked="resolvedAppearance[field.key]"
+              @change="setChartBool(field.key, $event)"
+            />
+            <span>{{ field.label }}</span>
+          </label>
+          <label
+            v-for="field in chartIndicatorColorFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span>{{ field.label }}</span>
+            <input
+              type="color"
+              class="gpu-chart-settings-color"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartColor(field.key, $event)"
+            />
+          </label>
+          <label
+            v-for="field in chartIndicatorNumberFields"
+            :key="field.key"
+            class="gpu-chart-settings-field"
+          >
+            <span class="gpu-chart-settings-range-label">
+              <span>{{ field.label }}</span>
+              <span>{{ formatChartSetting(field.key) }}</span>
+            </span>
+            <input
+              type="range"
+              :min="field.min"
+              :max="field.max"
+              :step="field.step"
+              class="gpu-chart-settings-range"
+              :value="resolvedAppearance[field.key]"
+              @input="setChartNumber(field.key, $event)"
+            />
+          </label>
+        </div>
+      </div>
+      <div class="gpu-chart-settings-actions">
+        <button type="button" class="gpu-chart-settings-action" @click="resetChartSettings">
+          Reset
+        </button>
+        <button
+          type="button"
+          class="gpu-chart-settings-action primary"
+          @click="saveChartSettings"
+        >
+          Save
+        </button>
+      </div>
+    </div>
+    <div
       v-if="indicatorTabsVisible"
       class="gpu-chart-indicator-tabs"
       :style="indicatorPaneTabsStyle"
@@ -168,12 +350,34 @@
     >
       <span class="gpu-chart-dot" :class="{ live: streaming }"></span>
       <span class="gpu-chart-symbol">{{ displaySymbol }}</span>
+      <button
+        v-if="chartSettingsEnabled"
+        type="button"
+        class="gpu-chart-badge-gear"
+        :aria-expanded="chartSettingsOpen"
+        :aria-label="`${displaySymbol} settings`"
+        :title="`${displaySymbol} settings`"
+        @click.stop.prevent="toggleChartSettings"
+      >
+        &#9881;
+      </button>
       <span v-if="lastCloseText" class="gpu-chart-price">{{ lastCloseText }}</span>
       <span v-if="changePctText" class="gpu-chart-change" :class="changeClass">
         {{ changePctText }}
       </span>
       <span class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
     </component>
+    <button
+      v-else-if="chartSettingsEnabled"
+      type="button"
+      class="gpu-chart-floating-settings"
+      :aria-expanded="chartSettingsOpen"
+      :aria-label="`${displaySymbol} settings`"
+      :title="`${displaySymbol} settings`"
+      @click.stop.prevent="toggleChartSettings"
+    >
+      &#9881;
+    </button>
     <div v-if="loading" class="gpu-chart-state">Loading</div>
     <div v-else-if="error" class="gpu-chart-state error">{{ error }}</div>
   </div>
@@ -213,6 +417,7 @@ import {
   lineToBytes,
 } from "./indicators";
 import {
+  defaultGpuChartAppearance,
   hexToRgb01,
   hexToRgba,
   normalizeGpuChartAppearance,
@@ -296,6 +501,60 @@ type IndicatorNumberField = Extract<
 type IndicatorToggleField = Extract<
   keyof GpuChartAppearance,
   "stochRsiSmooth" | "rsiSmooth" | "macdSmooth" | "atrSmooth"
+>;
+type ChartSettingsTab = "appearance" | "bollinger" | "indicators";
+type ChartSettingsColorField = Extract<
+  keyof GpuChartAppearance,
+  | "backgroundColor"
+  | "upColor"
+  | "downColor"
+  | "volumeUpColor"
+  | "volumeDownColor"
+  | "gridColor"
+  | "textColor"
+  | "crosshairColor"
+  | "lastPriceColor"
+  | "windowHighColor"
+  | "windowLowColor"
+  | "tooltipBackgroundColor"
+  | "smaColor"
+  | "emaColor"
+  | "wmaColor"
+  | "bollingerBasisColor"
+  | "bollingerUpperColor"
+  | "bollingerLowerColor"
+>;
+type ChartSettingsNumberField = Extract<
+  keyof GpuChartAppearance,
+  | "candleWidth"
+  | "wickWidth"
+  | "fontSize"
+  | "volumeHeightRatio"
+  | "volumeOpacity"
+  | "smaPeriod"
+  | "emaPeriod"
+  | "wmaPeriod"
+  | "bollingerPeriod"
+  | "bollingerStdDev"
+>;
+type ChartSettingsToggleField = Extract<
+  keyof GpuChartAppearance,
+  | "showGrid"
+  | "showTimeAxis"
+  | "showLastPriceLine"
+  | "showWindowHighLow"
+  | "showCrosshair"
+  | "showTooltip"
+  | "showBadge"
+  | "showSma"
+  | "showEma"
+  | "showWma"
+  | "showBollinger"
+  | "showStochRsi"
+  | "showRsi"
+  | "showMacd"
+  | "showAtr"
+  | "showVolume"
 >;
 
 interface IndicatorPaneOption {
@@ -429,6 +688,89 @@ const INDICATOR_PANES: IndicatorPaneOption[] = [
     numberFields: atrNumberFields,
   },
 ];
+const chartSettingsTabs: Array<{ id: ChartSettingsTab; label: string }> = [
+  { id: "appearance", label: "Appearance" },
+  { id: "bollinger", label: "Bollinger" },
+  { id: "indicators", label: "Indicators" },
+];
+const chartAppearanceColorFields: Array<{ key: ChartSettingsColorField; label: string }> = [
+  { key: "backgroundColor", label: "Background" },
+  { key: "upColor", label: "Up" },
+  { key: "downColor", label: "Down" },
+  { key: "volumeUpColor", label: "Volume Up" },
+  { key: "volumeDownColor", label: "Volume Down" },
+  { key: "gridColor", label: "Grid" },
+  { key: "textColor", label: "Text" },
+  { key: "crosshairColor", label: "Crosshair" },
+  { key: "lastPriceColor", label: "Last Price" },
+  { key: "windowHighColor", label: "Window High" },
+  { key: "windowLowColor", label: "Window Low" },
+  { key: "tooltipBackgroundColor", label: "Tooltip" },
+];
+const chartAppearanceNumberFields: Array<{
+  key: ChartSettingsNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "candleWidth", label: "Candle Width", min: 1, max: 24, step: 0.5 },
+  { key: "wickWidth", label: "Wick Width", min: 0.5, max: 8, step: 0.5 },
+  { key: "fontSize", label: "Font Size", min: 10, max: 28, step: 1 },
+  { key: "volumeHeightRatio", label: "Volume Height", min: 0.05, max: 0.35, step: 0.01 },
+  { key: "volumeOpacity", label: "Volume Opacity", min: 0.05, max: 1, step: 0.05 },
+];
+const chartBollingerToggleFields: Array<{ key: ChartSettingsToggleField; label: string }> = [
+  { key: "showBollinger", label: "Show Bollinger" },
+];
+const chartBollingerColorFields: Array<{ key: ChartSettingsColorField; label: string }> = [
+  { key: "bollingerBasisColor", label: "Basis Color" },
+  { key: "bollingerUpperColor", label: "Upper Color" },
+  { key: "bollingerLowerColor", label: "Lower Color" },
+];
+const chartBollingerNumberFields: Array<{
+  key: ChartSettingsNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "bollingerPeriod", label: "Period", min: 2, max: 250, step: 1 },
+  { key: "bollingerStdDev", label: "Std Dev", min: 0.5, max: 5, step: 0.25 },
+];
+const chartIndicatorToggleFields: Array<{ key: ChartSettingsToggleField; label: string }> = [
+  { key: "showSma", label: "SMA" },
+  { key: "showEma", label: "EMA" },
+  { key: "showWma", label: "WMA" },
+  { key: "showVolume", label: "Volume" },
+  { key: "showStochRsi", label: "Stoch RSI Pane" },
+  { key: "showRsi", label: "RSI Pane" },
+  { key: "showMacd", label: "MACD Pane" },
+  { key: "showAtr", label: "ATR Pane" },
+  { key: "showGrid", label: "Grid" },
+  { key: "showTimeAxis", label: "Time Axis" },
+  { key: "showLastPriceLine", label: "Last Price" },
+  { key: "showWindowHighLow", label: "Window High/Low" },
+  { key: "showCrosshair", label: "Crosshair" },
+  { key: "showTooltip", label: "Tooltip" },
+  { key: "showBadge", label: "Badge" },
+];
+const chartIndicatorColorFields: Array<{ key: ChartSettingsColorField; label: string }> = [
+  { key: "smaColor", label: "SMA Color" },
+  { key: "emaColor", label: "EMA Color" },
+  { key: "wmaColor", label: "WMA Color" },
+];
+const chartIndicatorNumberFields: Array<{
+  key: ChartSettingsNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "smaPeriod", label: "SMA Period", min: 2, max: 250, step: 1 },
+  { key: "emaPeriod", label: "EMA Period", min: 2, max: 250, step: 1 },
+  { key: "wmaPeriod", label: "WMA Period", min: 2, max: 250, step: 1 },
+];
 
 const props = withDefaults(
   defineProps<{
@@ -445,6 +787,7 @@ const props = withDefaults(
     title?: string;
     openOnChartClick?: boolean;
     showIndicatorPanes?: boolean;
+    showChartSettings?: boolean;
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -458,6 +801,7 @@ const props = withDefaults(
     title: "",
     openOnChartClick: false,
     showIndicatorPanes: false,
+    showChartSettings: false,
   },
 );
 
@@ -466,12 +810,15 @@ const emit = defineEmits<{
   error: [message: string | null];
   open: [payload: GpuChartOpenPayload];
   "update:appearance": [value: GpuChartAppearance];
+  "save-appearance": [value: GpuChartAppearance];
+  "reset-appearance": [];
 }>();
 
 const shellRef = ref<HTMLElement | null>(null);
 const canvasRef = ref<HTMLCanvasElement | null>(null);
 const hudRef = ref<HTMLCanvasElement | null>(null);
 const indicatorSettingsRef = ref<HTMLDivElement | null>(null);
+const chartSettingsRef = ref<HTMLDivElement | null>(null);
 const loading = ref(false);
 const error = ref<string | null>(null);
 const streaming = ref(false);
@@ -495,6 +842,10 @@ const indicatorSettingsOpen = ref(false);
 const indicatorSettingsDragging = ref(false);
 const indicatorSettingsPosition = ref<{ left: number; top: number } | null>(null);
 const indicatorPaneResizing = ref(false);
+const chartSettingsOpen = ref(false);
+const chartSettingsDragging = ref(false);
+const chartSettingsPosition = ref<{ left: number; top: number } | null>(null);
+const chartSettingsTab = ref<ChartSettingsTab>("appearance");
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
@@ -512,8 +863,10 @@ let smoothXFrame: number | null = null;
 let smoothXTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
 let stopPaneResizeDrag: (() => void) | null = null;
 let stopSettingsDrag: (() => void) | null = null;
+let stopChartSettingsDrag: (() => void) | null = null;
 
 const resolvedAppearance = computed(() => localAppearance.value);
+const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
 const shellStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
   return {
@@ -582,6 +935,19 @@ const indicatorSettingsModalStyle = computed<Record<string, string>>(() => {
     "--gpu-chart-indicator-border": hexToRgba(appearance.gridColor, 0.76),
   };
 });
+const chartSettingsModalStyle = computed<Record<string, string>>(() => {
+  const appearance = resolvedAppearance.value;
+  const position = chartSettingsPosition.value ?? defaultChartSettingsPosition();
+  return {
+    left: `${position.left}px`,
+    top: `${position.top}px`,
+    "--gpu-chart-settings-font-size": `${Math.max(11, appearance.fontSize * 0.86)}px`,
+    "--gpu-chart-settings-text": hexToRgba(appearance.textColor, 0.92),
+    "--gpu-chart-settings-muted": hexToRgba(appearance.textColor, 0.68),
+    "--gpu-chart-settings-panel-bg": hexToRgba(appearance.tooltipBackgroundColor, 0.96),
+    "--gpu-chart-settings-border": hexToRgba(appearance.gridColor, 0.76),
+  };
+});
 const indicatorPaneTabsStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
   return {
@@ -644,6 +1010,8 @@ onBeforeUnmount(() => {
   stopPaneResizeDrag = null;
   stopSettingsDrag?.();
   stopSettingsDrag = null;
+  stopChartSettingsDrag?.();
+  stopChartSettingsDrag = null;
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -736,6 +1104,7 @@ async function boot() {
       fitCanvases();
       chart?.resize();
       if (indicatorSettingsOpen.value) placeIndicatorSettingsModal();
+      if (chartSettingsOpen.value) placeChartSettingsModal();
       fitVisibleYIfEnabled();
       applyView();
       drawHud(mousePos);
@@ -1018,10 +1387,10 @@ function indicatorSeries() {
     if (line.length >= 4) series.push({ slot, line, color, alpha });
   };
 
-  if (props.showSma) {
+  if (props.showSma && appearance.showSma) {
     add(0, computeSmaLine(state.candles, appearance.smaPeriod), appearance.smaColor);
   }
-  if (props.showEma) {
+  if (props.showEma && appearance.showEma) {
     add(1, computeEmaLine(state.candles, appearance.emaPeriod), appearance.emaColor);
   }
   if (appearance.showWma) {
@@ -1100,6 +1469,7 @@ function toggleIndicatorSettings() {
     closeIndicatorSettings();
     return;
   }
+  closeChartSettings();
   indicatorSettingsOpen.value = true;
   placeIndicatorSettingsModal();
 }
@@ -1130,6 +1500,125 @@ function setIndicatorNumber(field: IndicatorNumberField, event: Event) {
 
 function setIndicatorBool(field: IndicatorToggleField, event: Event) {
   patchAppearance({ [field]: (event.target as HTMLInputElement).checked });
+}
+
+function toggleChartSettings() {
+  if (chartSettingsOpen.value) {
+    closeChartSettings();
+    return;
+  }
+  closeIndicatorSettings();
+  chartSettingsOpen.value = true;
+  placeChartSettingsModal();
+}
+
+function closeChartSettings() {
+  stopChartSettingsDrag?.();
+  chartSettingsOpen.value = false;
+}
+
+function placeChartSettingsModal() {
+  if (!chartSettingsPosition.value) {
+    chartSettingsPosition.value = defaultChartSettingsPosition();
+  }
+  chartSettingsPosition.value = clampChartSettingsPosition(chartSettingsPosition.value);
+  void nextTick(() => {
+    if (!chartSettingsOpen.value || !chartSettingsPosition.value) return;
+    chartSettingsPosition.value = clampChartSettingsPosition(chartSettingsPosition.value);
+  });
+}
+
+function setChartColor(field: ChartSettingsColorField, event: Event) {
+  patchAppearance({ [field]: inputValue(event) });
+}
+
+function setChartNumber(field: ChartSettingsNumberField, event: Event) {
+  patchAppearance({ [field]: Number(inputValue(event)) });
+}
+
+function setChartBool(field: ChartSettingsToggleField, event: Event) {
+  patchAppearance({ [field]: (event.target as HTMLInputElement).checked });
+}
+
+function resetChartSettings() {
+  const next = defaultGpuChartAppearance();
+  localAppearance.value = next;
+  emit("update:appearance", next);
+  emit("reset-appearance");
+}
+
+function saveChartSettings() {
+  emit("save-appearance", resolvedAppearance.value);
+}
+
+function startChartSettingsDrag(event: MouseEvent) {
+  if (event.button !== 0) return;
+  stopChartSettingsDrag?.();
+  chartSettingsDragging.value = true;
+  const startPosition = chartSettingsPosition.value ?? defaultChartSettingsPosition();
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const previousCursor = document.body.style.cursor;
+  document.body.style.cursor = "grabbing";
+
+  const onMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    chartSettingsPosition.value = clampChartSettingsPosition({
+      left: startPosition.left + moveEvent.clientX - startX,
+      top: startPosition.top + moveEvent.clientY - startY,
+    });
+  };
+  const onUp = () => {
+    stopChartSettingsDrag?.();
+  };
+
+  stopChartSettingsDrag = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    document.body.style.cursor = previousCursor;
+    chartSettingsDragging.value = false;
+    stopChartSettingsDrag = null;
+  };
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+function defaultChartSettingsPosition() {
+  const shell = shellRef.value;
+  const shellWidth = shell?.clientWidth ?? 640;
+  const size = chartSettingsSize();
+  return {
+    left: Math.max(8, Math.min(shellWidth - size.width - 8, 8)),
+    top: 34,
+  };
+}
+
+function chartSettingsSize() {
+  const rect = chartSettingsRef.value?.getBoundingClientRect();
+  return {
+    width: rect?.width && Number.isFinite(rect.width) ? rect.width : 448,
+    height: rect?.height && Number.isFinite(rect.height) ? rect.height : 420,
+  };
+}
+
+function clampChartSettingsPosition(position: { left: number; top: number }) {
+  const shell = shellRef.value;
+  const width = shell?.clientWidth ?? 640;
+  const height = shell?.clientHeight ?? 360;
+  const size = chartSettingsSize();
+  const pad = 8;
+  const maxLeft = Math.max(pad, width - size.width - pad);
+  const maxTop = Math.max(pad, height - size.height - pad);
+  return {
+    left: Math.max(pad, Math.min(maxLeft, position.left)),
+    top: Math.max(pad, Math.min(maxTop, position.top)),
+  };
+}
+
+function formatChartSetting(field: ChartSettingsNumberField) {
+  const value = resolvedAppearance.value[field];
+  return Number.isInteger(value) ? String(value) : value.toFixed(2);
 }
 
 function inputValue(event: Event) {
@@ -2979,6 +3468,209 @@ function setError(message: string | null) {
   border-radius: 5px;
   background: transparent;
   cursor: pointer;
+}
+
+.gpu-chart-settings-modal {
+  position: absolute;
+  z-index: 10;
+  display: flex;
+  width: min(448px, calc(100% - 16px));
+  height: min(420px, calc(100% - 16px));
+  flex-direction: column;
+  overflow: hidden;
+  border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  border-radius: 6px;
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.9));
+  font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+  font-size: var(--gpu-chart-settings-font-size, 12px);
+  background: var(--gpu-chart-settings-panel-bg, rgba(3, 6, 11, 0.96));
+  box-shadow: 0 16px 38px rgba(0, 0, 0, 0.44);
+  pointer-events: auto;
+}
+
+.gpu-chart-settings-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 8px 10px;
+  border-bottom: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  cursor: grab;
+  user-select: none;
+}
+
+.gpu-chart-settings-header.dragging {
+  cursor: grabbing;
+}
+
+.gpu-chart-settings-title {
+  min-width: 0;
+  overflow: hidden;
+  font-weight: 700;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpu-chart-settings-close,
+.gpu-chart-badge-gear,
+.gpu-chart-floating-settings {
+  display: inline-grid;
+  place-items: center;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-settings-muted, rgba(255, 255, 255, 0.66));
+  cursor: pointer;
+  font: inherit;
+  line-height: 1;
+}
+
+.gpu-chart-settings-close {
+  width: 22px;
+  height: 22px;
+  flex: 0 0 auto;
+}
+
+.gpu-chart-badge-gear {
+  width: 19px;
+  height: 19px;
+  flex: 0 0 auto;
+  color: var(--gpu-chart-text-color, rgba(255, 255, 255, 0.72));
+  opacity: 0.86;
+}
+
+.gpu-chart-floating-settings {
+  position: absolute;
+  left: 6px;
+  top: 5px;
+  z-index: 6;
+  width: 24px;
+  height: 24px;
+  border-color: var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.5));
+  color: var(--gpu-chart-text-color, rgba(255, 255, 255, 0.82));
+  background: var(--gpu-chart-badge-bg, rgba(0, 0, 0, 0.42));
+}
+
+.gpu-chart-settings-close:hover,
+.gpu-chart-badge-gear:hover,
+.gpu-chart-badge-gear[aria-expanded="true"],
+.gpu-chart-floating-settings:hover,
+.gpu-chart-floating-settings[aria-expanded="true"] {
+  border-color: var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.92));
+  background: rgba(255, 255, 255, 0.08);
+  opacity: 1;
+}
+
+.gpu-chart-settings-tabs {
+  display: flex;
+  gap: 4px;
+  padding: 6px;
+  border-bottom: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  overflow-x: auto;
+}
+
+.gpu-chart-settings-tab {
+  flex: 0 0 auto;
+  padding: 6px 9px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-settings-muted, rgba(255, 255, 255, 0.68));
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+  white-space: nowrap;
+}
+
+.gpu-chart-settings-tab:hover,
+.gpu-chart-settings-tab.active {
+  border-color: var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.92));
+  background: rgba(255, 255, 255, 0.08);
+}
+
+.gpu-chart-settings-body {
+  min-height: 0;
+  flex: 1 1 auto;
+  overflow-y: auto;
+}
+
+.gpu-chart-settings-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+  padding: 10px;
+}
+
+.gpu-chart-settings-field {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: var(--gpu-chart-settings-muted, rgba(255, 255, 255, 0.68));
+  font-size: 11px;
+}
+
+.gpu-chart-settings-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.9));
+  font-size: 11px;
+}
+
+.gpu-chart-settings-check {
+  width: 13px;
+  height: 13px;
+  flex: 0 0 auto;
+  accent-color: #d6a23d;
+}
+
+.gpu-chart-settings-range-label {
+  display: flex;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.gpu-chart-settings-range,
+.gpu-chart-settings-color {
+  width: 100%;
+  accent-color: #d6a23d;
+}
+
+.gpu-chart-settings-color {
+  height: 28px;
+  padding: 0;
+  border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  border-radius: 5px;
+  background: transparent;
+  cursor: pointer;
+}
+
+.gpu-chart-settings-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  padding: 8px 10px;
+  border-top: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+}
+
+.gpu-chart-settings-action {
+  padding: 6px 10px;
+  border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.9));
+  cursor: pointer;
+  font: inherit;
+  font-weight: 700;
+}
+
+.gpu-chart-settings-action:hover,
+.gpu-chart-settings-action.primary {
+  background: rgba(214, 162, 61, 0.16);
+  border-color: rgba(214, 162, 61, 0.82);
 }
 
 .gpu-chart-indicator-tabs {
