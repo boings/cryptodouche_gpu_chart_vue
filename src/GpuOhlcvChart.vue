@@ -236,18 +236,25 @@
                 class="gpu-chart-indicator-row"
                 :class="{ selected: indicator.selected }"
               >
-                <label class="gpu-chart-indicator-row-toggle">
-                  <input
-                    type="checkbox"
-                    class="gpu-chart-settings-check"
-                    :checked="indicator.enabled"
-                    @change="setChartIndicatorInstanceEnabled(indicator.id, $event)"
-                  />
+                <input
+                  type="checkbox"
+                  class="gpu-chart-settings-check"
+                  :checked="indicator.enabled"
+                  @click.stop
+                  @mousedown.stop
+                  @change="setChartIndicatorInstanceEnabled(indicator.id, $event)"
+                />
+                <button
+                  type="button"
+                  class="gpu-chart-indicator-row-main"
+                  :aria-label="`${indicator.label} settings`"
+                  @click="configureChartIndicator(indicator.id)"
+                >
                   <span class="gpu-chart-indicator-row-text">
                     <span class="gpu-chart-indicator-row-label">{{ indicator.label }}</span>
                     <span class="gpu-chart-indicator-row-meta">{{ indicator.meta }}</span>
                   </span>
-                </label>
+                </button>
                 <div class="gpu-chart-indicator-row-actions">
                   <button
                     v-if="indicator.canAdd"
@@ -497,8 +504,10 @@ import {
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
+  computeSupportResistanceZones,
   computeWmaLine,
   lineToBytes,
+  type SupportResistanceZone,
 } from "./indicators";
 import {
   GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE,
@@ -660,6 +669,8 @@ type ChartIndicatorColorField = Extract<
   | "bollingerBasisColor"
   | "bollingerUpperColor"
   | "bollingerLowerColor"
+  | "srSupportZoneColor"
+  | "srResistanceZoneColor"
   | "volumeUpColor"
   | "volumeDownColor"
   | "stochRsiKColor"
@@ -680,6 +691,10 @@ type ChartIndicatorNumberField = Extract<
   | "wmaPeriod"
   | "bollingerPeriod"
   | "bollingerStdDev"
+  | "srZoneLookback"
+  | "srZonePivotStrength"
+  | "srZoneMaxZones"
+  | "srZoneThicknessBps"
   | "volumeHeightRatio"
   | "volumeOpacity"
   | "stochRsiRsiPeriod"
@@ -911,6 +926,22 @@ const chartBollingerNumberFields: Array<{
   { key: "bollingerPeriod", label: "Period", min: 2, max: 250, step: 1 },
   { key: "bollingerStdDev", label: "Std Dev", min: 0.5, max: 5, step: 0.25 },
 ];
+const chartSrZonesColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
+  { key: "srSupportZoneColor", label: "Support Color" },
+  { key: "srResistanceZoneColor", label: "Resistance Color" },
+];
+const chartSrZonesNumberFields: Array<{
+  key: ChartIndicatorNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "srZoneLookback", label: "Lookback", min: 20, max: 1000, step: 10 },
+  { key: "srZonePivotStrength", label: "Pivot Strength", min: 1, max: 20, step: 1 },
+  { key: "srZoneMaxZones", label: "Max Zones", min: 1, max: 12, step: 1 },
+  { key: "srZoneThicknessBps", label: "Width bps", min: 1, max: 100, step: 1 },
+];
 const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
   {
     type: "sma",
@@ -943,6 +974,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     colorFields: chartBollingerColorFields,
     toggleFields: [],
     numberFields: chartBollingerNumberFields,
+  },
+  {
+    type: "srZones",
+    label: "Auto S/R",
+    placement: "price",
+    colorFields: chartSrZonesColorFields,
+    toggleFields: [],
+    numberFields: chartSrZonesNumberFields,
   },
   {
     type: "volume",
@@ -1104,7 +1143,7 @@ const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
 const chartIndicatorRows = computed<ChartIndicatorRow[]>(() => {
   const appearance = resolvedAppearance.value;
   const movingAverageCounts = movingAverageInstanceCounts(appearance.indicators);
-  return appearance.indicators.map((indicator) => ({
+  return orderedChartIndicators(appearance.indicators).map((indicator) => ({
     id: indicator.id,
     type: indicator.type,
     label: chartIndicatorInstanceLabel(indicator, appearance),
@@ -1922,6 +1961,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `WMA ${appearance.wmaPeriod}`;
     case "bollinger":
       return `BB ${appearance.bollingerPeriod} ${formatCompactNumber(appearance.bollingerStdDev)}`;
+    case "srZones":
+      return `S/R ${appearance.srZoneLookback}`;
     case "volume":
       return "Volume";
     case "stochRsi":
@@ -1956,6 +1997,21 @@ function chartIndicatorInstanceMeta(
     )}`;
   }
   return chartIndicatorPlacementLabel(indicator.placement);
+}
+
+function orderedChartIndicators(instances: GpuChartIndicatorInstance[]) {
+  const order = new Map(
+    CHART_INDICATOR_OPTIONS.map((indicator, index) => [indicator.type, index]),
+  );
+  return instances
+    .map((indicator, index) => ({ indicator, index }))
+    .sort(
+      (a, b) =>
+        (order.get(a.indicator.type) ?? Number.MAX_SAFE_INTEGER) -
+          (order.get(b.indicator.type) ?? Number.MAX_SAFE_INTEGER) ||
+        a.index - b.index,
+    )
+    .map((item) => item.indicator);
 }
 
 function movingAverageInstanceCounts(instances: GpuChartIndicatorInstance[]) {
@@ -2043,7 +2099,15 @@ function addChartIndicatorInstance(type: GpuChartIndicatorType) {
     color: nextMovingAverageColor(type, appearance),
   };
   selectedChartIndicatorId.value = nextIndicator.id;
-  patchAppearance({ indicators: [...appearance.indicators.map((item) => ({ ...item })), nextIndicator] });
+  const nextIndicators = appearance.indicators.map((item) => ({ ...item }));
+  const insertIndex =
+    nextIndicators.reduce(
+      (latestIndex, indicator, index) =>
+        indicator.type === type ? index : latestIndex,
+      -1,
+    ) + 1;
+  nextIndicators.splice(insertIndex || nextIndicators.length, 0, nextIndicator);
+  patchAppearance({ indicators: nextIndicators });
 }
 
 function removeChartIndicatorInstance(id: string) {
@@ -2817,6 +2881,7 @@ function indicatorWarmupCandles() {
     MIN_INDICATOR_WARMUP_CANDLES,
     movingAverageWarmup,
     appearance.bollingerPeriod,
+    chartIndicatorEnabled("srZones", appearance) ? appearance.srZoneLookback : 0,
     appearance.rsiPeriod,
     appearance.macdSlowPeriod + appearance.macdSignalPeriod,
     appearance.atrPeriod,
@@ -2984,6 +3049,9 @@ function drawHud(pos: { px: number; py: number } | null) {
       ctx.fillText(label, Math.max(4 * scale, w - labelWidth - pad), y);
     }
   }
+  if (chartIndicatorEnabled("srZones", appearance)) {
+    drawSupportResistanceZones(ctx, priceDecorationBottom, scale);
+  }
   if (chartIndicatorEnabled("volume", appearance)) {
     drawVolumeOverlay(ctx, priceDecorationBottom, scale);
   }
@@ -3131,6 +3199,81 @@ function drawVolumeOverlay(
     ctx.fillRect(px - barWidth / 2, Math.max(top, bottom - barHeight), barWidth, barHeight);
   }
   ctx.restore();
+}
+
+function drawSupportResistanceZones(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+) {
+  if (!state?.candles.length || priceBottom <= 0) return;
+  const appearance = resolvedAppearance.value;
+  const zones = computeSupportResistanceZones(state.candles, {
+    lookback: appearance.srZoneLookback,
+    pivotStrength: appearance.srZonePivotStrength,
+    maxZones: appearance.srZoneMaxZones,
+    thicknessBps: appearance.srZoneThicknessBps,
+  });
+  if (!zones.length) return;
+
+  const minY = Math.min(view.minY, view.maxY);
+  const maxY = Math.max(view.minY, view.maxY);
+  ctx.save();
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.78)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  for (const zone of zones) {
+    if (zone.high < minY || zone.low > maxY) continue;
+    drawSupportResistanceZone(ctx, zone, priceBottom, scale);
+  }
+  ctx.restore();
+}
+
+function drawSupportResistanceZone(
+  ctx: CanvasRenderingContext2D,
+  zone: SupportResistanceZone,
+  priceBottom: number,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const color =
+    zone.kind === "support"
+      ? appearance.srSupportZoneColor
+      : appearance.srResistanceZoneColor;
+  const highY = yToPx(zone.high, ctx.canvas.height);
+  const lowY = yToPx(zone.low, ctx.canvas.height);
+  const centerY = yToPx(zone.center, ctx.canvas.height);
+  let top = Math.max(0, Math.min(highY, lowY));
+  let bottom = Math.min(priceBottom, Math.max(highY, lowY));
+  if (bottom <= 0 || top >= priceBottom) return;
+  if (bottom - top < 2 * scale) {
+    top = Math.max(0, Math.min(priceBottom - 2 * scale, centerY - scale));
+    bottom = Math.min(priceBottom, Math.max(2 * scale, centerY + scale));
+  }
+
+  const strengthAlpha = Math.min(0.16, 0.07 + zone.touches * 0.018);
+  ctx.fillStyle = hexToRgba(color, strengthAlpha);
+  ctx.fillRect(0, top, ctx.canvas.width, Math.max(1, bottom - top));
+  ctx.setLineDash([4 * scale, 5 * scale]);
+  ctx.strokeStyle = hexToRgba(color, 0.48);
+  ctx.beginPath();
+  ctx.moveTo(0, top + 0.5);
+  ctx.lineTo(ctx.canvas.width, top + 0.5);
+  ctx.moveTo(0, bottom + 0.5);
+  ctx.lineTo(ctx.canvas.width, bottom + 0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const label = `${zone.kind === "support" ? "S" : "R"} ${formatPrice(zone.center)}`;
+  const padX = 5 * scale;
+  const boxHeight = Math.max(14 * scale, resolvedAppearance.value.fontSize * scale * 1.05);
+  const labelWidth = ctx.measureText(label).width;
+  const boxWidth = labelWidth + padX * 2;
+  const boxX = 4 * scale;
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, centerY - boxHeight / 2));
+  ctx.fillStyle = hexToRgba(color, 0.72);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.fillStyle = "white";
+  ctx.fillText(label, boxX + padX, boxY + boxHeight / 2);
 }
 
 function drawTimeAxis(
@@ -4574,12 +4717,16 @@ function setError(message: string | null) {
   background: rgba(255, 255, 255, 0.075);
 }
 
-.gpu-chart-indicator-row-toggle {
+.gpu-chart-indicator-row-main {
   display: inline-flex;
   align-items: center;
   gap: 7px;
   min-width: 0;
   flex: 1 1 auto;
+  border: 0;
+  padding: 0;
+  background: transparent;
+  text-align: left;
   cursor: pointer;
 }
 

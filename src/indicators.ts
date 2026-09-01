@@ -1,5 +1,22 @@
 import type { CandleRecord } from "./types";
 
+export interface SupportResistanceZone {
+  kind: "support" | "resistance";
+  low: number;
+  high: number;
+  center: number;
+  touches: number;
+  score: number;
+  lastX: number;
+}
+
+export interface SupportResistanceZoneOptions {
+  lookback?: number;
+  pivotStrength?: number;
+  maxZones?: number;
+  thicknessBps?: number;
+}
+
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
   if (candles.length < period) return new Float32Array();
   const points: number[] = [];
@@ -182,8 +199,97 @@ export function computeAtrLine(candles: CandleRecord[], period = 14): Float32Arr
   return pointsToLine(points);
 }
 
+export function computeSupportResistanceZones(
+  candles: CandleRecord[],
+  options: SupportResistanceZoneOptions = {},
+): SupportResistanceZone[] {
+  const lookback = clampIntegerOption(options.lookback, 20, 1000, 240);
+  const pivotStrength = clampIntegerOption(options.pivotStrength, 1, 20, 3);
+  const maxZones = clampIntegerOption(options.maxZones, 1, 12, 6);
+  const thicknessBps = clampNumberOption(options.thicknessBps, 1, 100, 10);
+  const source = candles.slice(-lookback);
+  if (source.length < pivotStrength * 2 + 1) return [];
+
+  const clusters: SupportResistanceZone[] = [];
+  for (let index = pivotStrength; index < source.length - pivotStrength; index += 1) {
+    const candle = source[index];
+    if (isPivotHigh(source, index, pivotStrength)) {
+      addZonePivot(clusters, "resistance", candle.h, candle.x, source.length - index, thicknessBps);
+    }
+    if (isPivotLow(source, index, pivotStrength)) {
+      addZonePivot(clusters, "support", candle.l, candle.x, source.length - index, thicknessBps);
+    }
+  }
+
+  return clusters
+    .filter((zone) => Number.isFinite(zone.center) && zone.high > zone.low)
+    .sort((a, b) => b.score - a.score || b.touches - a.touches || b.lastX - a.lastX)
+    .slice(0, maxZones);
+}
+
 export function lineToBytes(line: Float32Array): Uint8Array {
   return new Uint8Array(line.buffer);
+}
+
+function addZonePivot(
+  zones: SupportResistanceZone[],
+  kind: SupportResistanceZone["kind"],
+  value: number,
+  x: number,
+  age: number,
+  thicknessBps: number,
+) {
+  if (!Number.isFinite(value) || value <= 0) return;
+  const halfSpan = Math.max(value * (thicknessBps / 10000), Number.EPSILON);
+  const low = value - halfSpan;
+  const high = value + halfSpan;
+  const recencyScore = 1 / Math.max(1, age);
+  const existing = zones.find(
+    (zone) => zone.kind === kind && rangesOverlap(zone.low, zone.high, low, high),
+  );
+  if (!existing) {
+    zones.push({
+      kind,
+      low,
+      high,
+      center: value,
+      touches: 1,
+      score: 1 + recencyScore,
+      lastX: x,
+    });
+    return;
+  }
+
+  const totalTouches = existing.touches + 1;
+  existing.center = (existing.center * existing.touches + value) / totalTouches;
+  existing.touches = totalTouches;
+  existing.score += 1 + recencyScore;
+  existing.lastX = Math.max(existing.lastX, x);
+  const nextHalfSpan = Math.max(existing.center * (thicknessBps / 10000), Number.EPSILON);
+  existing.low = Math.min(existing.low, existing.center - nextHalfSpan, low);
+  existing.high = Math.max(existing.high, existing.center + nextHalfSpan, high);
+}
+
+function isPivotHigh(candles: CandleRecord[], index: number, strength: number) {
+  const value = candles[index].h;
+  if (!Number.isFinite(value)) return false;
+  for (let offset = 1; offset <= strength; offset += 1) {
+    if (candles[index - offset].h >= value || candles[index + offset].h > value) return false;
+  }
+  return true;
+}
+
+function isPivotLow(candles: CandleRecord[], index: number, strength: number) {
+  const value = candles[index].l;
+  if (!Number.isFinite(value)) return false;
+  for (let offset = 1; offset <= strength; offset += 1) {
+    if (candles[index - offset].l <= value || candles[index + offset].l < value) return false;
+  }
+  return true;
+}
+
+function rangesOverlap(aLow: number, aHigh: number, bLow: number, bHigh: number) {
+  return aLow <= bHigh && bLow <= aHigh;
 }
 
 function emaValues(candles: CandleRecord[], period: number) {
@@ -280,4 +386,14 @@ function rsiFromAverages(avgGain: number, avgLoss: number) {
 function normalizedPeriod(period: number) {
   const value = Math.floor(Number(period));
   return Number.isFinite(value) ? Math.max(1, value) : 1;
+}
+
+function clampIntegerOption(value: unknown, min: number, max: number, fallback: number) {
+  return Math.floor(clampNumberOption(value, min, max, fallback));
+}
+
+function clampNumberOption(value: unknown, min: number, max: number, fallback: number) {
+  const parsed = Number(value);
+  if (!Number.isFinite(parsed)) return fallback;
+  return Math.max(min, Math.min(max, parsed));
 }

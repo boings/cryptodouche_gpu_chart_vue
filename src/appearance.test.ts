@@ -55,6 +55,12 @@ describe("gpu chart appearance", () => {
       macdSignalColor: "orange",
       macdHistogramUpColor: "green",
       macdHistogramDownColor: "red",
+      srSupportZoneColor: "green",
+      srResistanceZoneColor: "red",
+      srZoneLookback: 5,
+      srZonePivotStrength: 99,
+      srZoneMaxZones: 99,
+      srZoneThicknessBps: 0,
       macdFastPeriod: 1,
       macdSlowPeriod: 999,
       macdSignalPeriod: -3,
@@ -110,6 +116,16 @@ describe("gpu chart appearance", () => {
     expect(appearance.macdHistogramDownColor).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.macdHistogramDownColor,
     );
+    expect(appearance.srSupportZoneColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.srSupportZoneColor,
+    );
+    expect(appearance.srResistanceZoneColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.srResistanceZoneColor,
+    );
+    expect(appearance.srZoneLookback).toBe(20);
+    expect(appearance.srZonePivotStrength).toBe(20);
+    expect(appearance.srZoneMaxZones).toBe(12);
+    expect(appearance.srZoneThicknessBps).toBe(1);
     expect(appearance.macdFastPeriod).toBe(2);
     expect(appearance.macdSlowPeriod).toBe(200);
     expect(appearance.macdSignalPeriod).toBe(1);
@@ -131,7 +147,13 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
     );
-    expect(appearance.indicators).toEqual(DEFAULT_GPU_CHART_APPEARANCE.indicators);
+    expect(appearance.indicators).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ type: "sma", enabled: true, period: 2 }),
+        expect.objectContaining({ type: "ema", enabled: true, period: 20 }),
+        expect.objectContaining({ type: "srZones", enabled: false }),
+      ]),
+    );
     expect(appearance.showSma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showSma);
     expect(appearance.showEma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showEma);
     expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
@@ -171,9 +193,16 @@ describe("gpu chart appearance", () => {
         rsiRangeLower: 30,
         rsiRangeUpper: 70,
         rsiSmooth: true,
-        showMacd: false,
-        showAtr: false,
-        macdLineColor: "#0284c7",
+      showMacd: false,
+      showAtr: false,
+      showSrZones: true,
+      srSupportZoneColor: "#059669",
+      srResistanceZoneColor: "#dc2626",
+      srZoneLookback: 320,
+      srZonePivotStrength: 4,
+      srZoneMaxZones: 5,
+      srZoneThicknessBps: 14,
+      macdLineColor: "#0284c7",
         macdSignalColor: "#f97316",
         macdHistogramUpColor: "#16a34a",
         macdHistogramDownColor: "#dc2626",
@@ -217,6 +246,14 @@ describe("gpu chart appearance", () => {
     expect(saved.rsiSmooth).toBe(true);
     expect(saved.showMacd).toBe(false);
     expect(saved.showAtr).toBe(false);
+    expect(saved.showSrZones).toBe(true);
+    expect(saved.indicators.find((item) => item.type === "srZones")?.enabled).toBe(true);
+    expect(saved.srSupportZoneColor).toBe("#059669");
+    expect(saved.srResistanceZoneColor).toBe("#dc2626");
+    expect(saved.srZoneLookback).toBe(320);
+    expect(saved.srZonePivotStrength).toBe(4);
+    expect(saved.srZoneMaxZones).toBe(5);
+    expect(saved.srZoneThicknessBps).toBe(14);
     expect(saved.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "ema")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "wma")?.enabled).toBe(true);
@@ -395,6 +432,7 @@ describe("gpu chart appearance", () => {
       showStochRsi: false,
       showMacd: false,
       showVolume: false,
+      showSrZones: true,
     });
 
     expect(appearance.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
@@ -402,6 +440,20 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicators.find((item) => item.type === "stochRsi")?.enabled).toBe(false);
     expect(appearance.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
     expect(appearance.indicators.find((item) => item.type === "volume")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "srZones")?.enabled).toBe(true);
+  });
+
+  it("uses legacy moving average style fields when no instances are persisted", () => {
+    const appearance = normalizeGpuChartAppearance({
+      emaPeriod: 34,
+      emaColor: "#14b8a6",
+      indicators: "bad" as unknown as [],
+    });
+
+    const ema = appearance.indicators.find((item) => item.type === "ema");
+
+    expect(ema?.period).toBe(34);
+    expect(ema?.color).toBe("#14b8a6");
   });
 
   it("keeps grid and single chart styles separate", () => {

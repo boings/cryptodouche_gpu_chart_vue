@@ -6,6 +6,7 @@ export type GpuChartIndicatorType =
   | "ema"
   | "wma"
   | "bollinger"
+  | "srZones"
   | "volume"
   | "stochRsi"
   | "rsi"
@@ -33,6 +34,8 @@ export interface GpuChartAppearance {
   bollingerBasisColor: string;
   bollingerUpperColor: string;
   bollingerLowerColor: string;
+  srSupportZoneColor: string;
+  srResistanceZoneColor: string;
   stochRsiKColor: string;
   stochRsiDColor: string;
   stochRsiRangeColor: string;
@@ -60,6 +63,10 @@ export interface GpuChartAppearance {
   wmaPeriod: number;
   bollingerPeriod: number;
   bollingerStdDev: number;
+  srZoneLookback: number;
+  srZonePivotStrength: number;
+  srZoneMaxZones: number;
+  srZoneThicknessBps: number;
   stochRsiRsiPeriod: number;
   stochRsiPeriod: number;
   stochRsiKPeriod: number;
@@ -95,6 +102,7 @@ export interface GpuChartAppearance {
   showEma: boolean;
   showWma: boolean;
   showBollinger: boolean;
+  showSrZones: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
   showMacd: boolean;
@@ -125,6 +133,7 @@ type IndicatorShowKey = Extract<
   | "showEma"
   | "showWma"
   | "showBollinger"
+  | "showSrZones"
   | "showVolume"
   | "showStochRsi"
   | "showRsi"
@@ -137,6 +146,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "ema",
   "wma",
   "bollinger",
+  "srZones",
   "volume",
   "stochRsi",
   "rsi",
@@ -176,6 +186,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   ema: "price",
   wma: "price",
   bollinger: "price",
+  srZones: "price",
   volume: "price",
   stochRsi: "lower",
   rsi: "lower",
@@ -191,6 +202,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   ema: "showEma",
   wma: "showWma",
   bollinger: "showBollinger",
+  srZones: "showSrZones",
   volume: "showVolume",
   stochRsi: "showStochRsi",
   rsi: "showRsi",
@@ -203,6 +215,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "ema", type: "ema", enabled: true, placement: "price", period: 20, color: "#1fc7f2" },
   { id: "wma", type: "wma", enabled: false, placement: "price", period: 20, color: "#c084fc" },
   { id: "bollinger", type: "bollinger", enabled: false, placement: "price" },
+  { id: "srZones", type: "srZones", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
   { id: "rsi", type: "rsi", enabled: true, placement: "lower" },
@@ -226,6 +239,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   bollingerBasisColor: "#94a3b8",
   bollingerUpperColor: "#38bdf8",
   bollingerLowerColor: "#38bdf8",
+  srSupportZoneColor: "#22c55e",
+  srResistanceZoneColor: "#ef4444",
   stochRsiKColor: "#f59e0b",
   stochRsiDColor: "#a78bfa",
   stochRsiRangeColor: "#64748b",
@@ -253,6 +268,10 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   wmaPeriod: 20,
   bollingerPeriod: 20,
   bollingerStdDev: 2,
+  srZoneLookback: 240,
+  srZonePivotStrength: 3,
+  srZoneMaxZones: 6,
+  srZoneThicknessBps: 10,
   stochRsiRsiPeriod: 14,
   stochRsiPeriod: 14,
   stochRsiKPeriod: 3,
@@ -288,6 +307,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showEma: true,
   showWma: false,
   showBollinger: false,
+  showSrZones: false,
   showStochRsi: true,
   showRsi: true,
   showMacd: true,
@@ -341,6 +361,11 @@ export function normalizeGpuChartAppearance(
       value.bollingerLowerColor,
       defaults.bollingerLowerColor,
     ),
+    srSupportZoneColor: colorValue(value.srSupportZoneColor, defaults.srSupportZoneColor),
+    srResistanceZoneColor: colorValue(
+      value.srResistanceZoneColor,
+      defaults.srResistanceZoneColor,
+    ),
     stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
     stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
     stochRsiRangeColor: colorValue(value.stochRsiRangeColor, defaults.stochRsiRangeColor),
@@ -383,6 +408,20 @@ export function normalizeGpuChartAppearance(
       0.5,
       5,
       defaults.bollingerStdDev,
+    ),
+    srZoneLookback: clampInteger(value.srZoneLookback, 20, 1000, defaults.srZoneLookback),
+    srZonePivotStrength: clampInteger(
+      value.srZonePivotStrength,
+      1,
+      20,
+      defaults.srZonePivotStrength,
+    ),
+    srZoneMaxZones: clampInteger(value.srZoneMaxZones, 1, 12, defaults.srZoneMaxZones),
+    srZoneThicknessBps: clampNumber(
+      value.srZoneThicknessBps,
+      1,
+      100,
+      defaults.srZoneThicknessBps,
     ),
     stochRsiRsiPeriod: clampInteger(
       value.stochRsiRsiPeriod,
@@ -470,6 +509,7 @@ export function normalizeGpuChartAppearance(
     showEma: boolValue(value.showEma, defaults.showEma),
     showWma: boolValue(value.showWma, defaults.showWma),
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
+    showSrZones: boolValue(value.showSrZones, defaults.showSrZones),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),
     showMacd: boolValue(value.showMacd, defaults.showMacd),
@@ -661,7 +701,13 @@ function indicatorInstancesValue(
     const seenIds = new Set<string>();
     return defaultIndicators.map((indicator) =>
       normalizedIndicatorInstance(
-        { ...indicator, enabled: appearance[GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[indicator.type]] },
+        {
+          id: indicator.id,
+          type: indicator.type,
+          enabled: appearance[GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[indicator.type]],
+          placement: indicator.placement,
+          ...(indicator.label ? { label: indicator.label } : {}),
+        },
         indicator,
         appearance,
         seenIds,
@@ -689,7 +735,20 @@ function indicatorInstancesValue(
 
   for (const defaultIndicator of defaultIndicators) {
     if (presentTypes.has(defaultIndicator.type)) continue;
-    normalized.push(normalizedIndicatorInstance(defaultIndicator, defaultIndicator, appearance, seenIds));
+    normalized.push(
+      normalizedIndicatorInstance(
+        {
+          id: defaultIndicator.id,
+          type: defaultIndicator.type,
+          enabled: defaultIndicator.enabled,
+          placement: defaultIndicator.placement,
+          ...(defaultIndicator.label ? { label: defaultIndicator.label } : {}),
+        },
+        defaultIndicator,
+        appearance,
+        seenIds,
+      ),
+    );
   }
 
   return normalized;
