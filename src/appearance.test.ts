@@ -4,6 +4,9 @@ import {
   DEFAULT_GPU_CHART_APPEARANCE,
   DEFAULT_GRID_GPU_CHART_APPEARANCE,
   GPU_CHART_APPEARANCE_KEY,
+  gpuChartIndicatorEnabled,
+  gpuChartMovingAverageColor,
+  gpuChartMovingAveragePeriod,
   hexToRgb01,
   loadGpuChartAppearance,
   normalizeGpuChartAppearance,
@@ -310,6 +313,50 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicators.find((item) => item.type === "sma")?.enabled).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.showSma,
     );
+  });
+
+  it("keeps multiple moving average instances with per-instance settings", () => {
+    const appearance = normalizeGpuChartAppearance({
+      emaPeriod: 21,
+      emaColor: "#38bdf8",
+      indicators: [
+        { id: "ema", type: "ema", enabled: false, placement: "price", period: 9, color: "#f59e0b" },
+        { id: "ema", type: "ema", enabled: true, placement: "price", period: 50, color: "#a78bfa" },
+        { id: "macd", type: "macd", enabled: true, placement: "lower" },
+        { id: "macd-copy", type: "macd", enabled: false, placement: "lower" },
+      ],
+    });
+
+    const emas = appearance.indicators.filter((item) => item.type === "ema");
+    const macds = appearance.indicators.filter((item) => item.type === "macd");
+
+    expect(emas).toHaveLength(2);
+    expect(emas.map((item) => item.id)).toEqual(["ema", "ema-2"]);
+    expect(emas.map((item) => item.period)).toEqual([9, 50]);
+    expect(emas.map((item) => item.color)).toEqual(["#f59e0b", "#a78bfa"]);
+    expect(macds).toHaveLength(1);
+    expect(appearance.showEma).toBe(true);
+    expect(gpuChartIndicatorEnabled(appearance, "ema")).toBe(true);
+    expect(gpuChartMovingAveragePeriod(appearance, emas[1])).toBe(50);
+    expect(gpuChartMovingAverageColor(appearance, emas[0])).toBe("#f59e0b");
+  });
+
+  it("clamps moving average instance settings and disables the type when all are off", () => {
+    const appearance = normalizeGpuChartAppearance({
+      emaPeriod: 21,
+      emaColor: "#38bdf8",
+      indicators: [
+        { id: "ema-fast", type: "ema", enabled: false, placement: "price", period: 1, color: "cyan" },
+        { id: "ema-slow", type: "ema", enabled: false, placement: "price", period: 999, color: "#f97316" },
+      ],
+    });
+
+    const emas = appearance.indicators.filter((item) => item.type === "ema");
+
+    expect(emas.map((item) => item.period)).toEqual([2, 250]);
+    expect(emas.map((item) => item.color)).toEqual(["#38bdf8", "#f97316"]);
+    expect(appearance.showEma).toBe(false);
+    expect(gpuChartIndicatorEnabled(appearance, "ema")).toBe(false);
   });
 
   it("normalizes active lower pane selections", () => {

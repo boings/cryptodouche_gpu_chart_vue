@@ -232,7 +232,7 @@
             <div class="gpu-chart-indicator-list">
               <div
                 v-for="indicator in chartIndicatorRows"
-                :key="indicator.type"
+                :key="indicator.id"
                 class="gpu-chart-indicator-row"
                 :class="{ selected: indicator.selected }"
               >
@@ -241,22 +241,44 @@
                     type="checkbox"
                     class="gpu-chart-settings-check"
                     :checked="indicator.enabled"
-                    @change="setChartIndicatorEnabled(indicator.type, $event)"
+                    @change="setChartIndicatorInstanceEnabled(indicator.id, $event)"
                   />
                   <span class="gpu-chart-indicator-row-text">
                     <span class="gpu-chart-indicator-row-label">{{ indicator.label }}</span>
                     <span class="gpu-chart-indicator-row-meta">{{ indicator.meta }}</span>
                   </span>
                 </label>
-                <button
-                  type="button"
-                  class="gpu-chart-indicator-config-button"
-                  :aria-label="`${indicator.label} settings`"
-                  :title="`${indicator.label} settings`"
-                  @click="configureChartIndicator(indicator.type)"
-                >
-                  &#9881;
-                </button>
+                <div class="gpu-chart-indicator-row-actions">
+                  <button
+                    v-if="indicator.canAdd"
+                    type="button"
+                    class="gpu-chart-indicator-config-button"
+                    :aria-label="`Add ${indicator.type.toUpperCase()}`"
+                    :title="`Add ${indicator.type.toUpperCase()}`"
+                    @click="addChartIndicatorInstance(indicator.type)"
+                  >
+                    +
+                  </button>
+                  <button
+                    v-if="indicator.canRemove"
+                    type="button"
+                    class="gpu-chart-indicator-config-button"
+                    :aria-label="`Remove ${indicator.label}`"
+                    :title="`Remove ${indicator.label}`"
+                    @click="removeChartIndicatorInstance(indicator.id)"
+                  >
+                    -
+                  </button>
+                  <button
+                    type="button"
+                    class="gpu-chart-indicator-config-button"
+                    :aria-label="`${indicator.label} settings`"
+                    :title="`${indicator.label} settings`"
+                    @click="configureChartIndicator(indicator.id)"
+                  >
+                    &#9881;
+                  </button>
+                </div>
               </div>
             </div>
             <div
@@ -267,7 +289,33 @@
                 <span>{{ selectedChartIndicatorLabel }}</span>
                 <span>{{ selectedChartIndicatorPlacement }}</span>
               </div>
-              <div class="gpu-chart-settings-grid compact">
+              <div v-if="selectedMovingAverageIndicator" class="gpu-chart-settings-grid compact">
+                <label class="gpu-chart-settings-field">
+                  <span>Color</span>
+                  <input
+                    type="color"
+                    class="gpu-chart-settings-color"
+                    :value="selectedMovingAverageColor"
+                    @input="setSelectedMovingAverageColor"
+                  />
+                </label>
+                <label class="gpu-chart-settings-field">
+                  <span class="gpu-chart-settings-range-label">
+                    <span>Period</span>
+                    <span>{{ selectedMovingAveragePeriod }}</span>
+                  </span>
+                  <input
+                    type="range"
+                    min="2"
+                    max="250"
+                    step="1"
+                    class="gpu-chart-settings-range"
+                    :value="selectedMovingAveragePeriod"
+                    @input="setSelectedMovingAveragePeriod"
+                  />
+                </label>
+              </div>
+              <div v-else class="gpu-chart-settings-grid compact">
                 <label
                   v-for="field in selectedChartIndicatorOption.colorFields"
                   :key="field.key"
@@ -455,16 +503,23 @@ import {
 import {
   GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE,
   GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE,
+  GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE,
+  GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE,
   MAX_ACTIVE_GPU_CHART_INDICATOR_PANES,
   defaultGpuChartAppearance,
+  gpuChartIndicatorCanAddInstance,
   gpuChartIndicatorEnabled as appearanceIndicatorEnabled,
+  gpuChartMovingAverageColor,
+  gpuChartMovingAveragePeriod,
   hexToRgb01,
   hexToRgba,
   normalizeGpuChartAppearance,
   type GpuChartAppearance,
+  type GpuChartIndicatorInstance,
   type GpuChartIndicatorPane,
   type GpuChartIndicatorPlacement,
   type GpuChartIndicatorType,
+  type GpuChartMovingAverageIndicatorType,
 } from "./appearance";
 import { sliverGapBarWidth } from "./bars";
 import { cancelScheduledGpuRender, scheduleGpuRender } from "./scheduler";
@@ -508,6 +563,23 @@ const DEFAULT_CHART_SETTINGS_HEIGHT_PX = 500;
 const MIN_CHART_SETTINGS_WIDTH_PX = 360;
 const MIN_CHART_SETTINGS_HEIGHT_PX = 320;
 const CHART_SETTINGS_VIEWPORT_PADDING_PX = 12;
+const MOVING_AVERAGE_PERIOD_SUGGESTIONS: Record<
+  GpuChartMovingAverageIndicatorType,
+  number[]
+> = {
+  sma: [20, 50, 100, 200, 9, 21],
+  ema: [9, 21, 50, 100, 200, 20],
+  wma: [20, 50, 100, 200, 9, 21],
+};
+const MOVING_AVERAGE_COLOR_SUGGESTIONS = [
+  "#1fc7f2",
+  "#f59e0b",
+  "#a78bfa",
+  "#22c55e",
+  "#f97316",
+  "#e879f9",
+  "#38bdf8",
+];
 
 interface IndicatorPaneLayout {
   id: GpuChartIndicatorPane;
@@ -643,11 +715,14 @@ interface ChartIndicatorOption {
 }
 
 interface ChartIndicatorRow {
+  id: string;
   type: GpuChartIndicatorType;
   label: string;
   meta: string;
   enabled: boolean;
   selected: boolean;
+  canAdd: boolean;
+  canRemove: boolean;
 }
 
 interface IndicatorPaneOption {
@@ -1003,7 +1078,7 @@ const chartSettingsPosition = ref<{ left: number; top: number } | null>(null);
 const chartSettingsDimensions = ref<{ width: number; height: number } | null>(null);
 const chartSettingsResizing = ref(false);
 const chartSettingsTab = ref<ChartSettingsTab>("indicators");
-const selectedChartIndicatorType = ref<GpuChartIndicatorType>("sma");
+const selectedChartIndicatorId = ref("ema");
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
@@ -1026,29 +1101,65 @@ let stopChartSettingsResize: (() => void) | null = null;
 
 const resolvedAppearance = computed(() => localAppearance.value);
 const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
-const chartIndicatorRows = computed<ChartIndicatorRow[]>(() =>
-  CHART_INDICATOR_OPTIONS.map((indicator) => ({
+const chartIndicatorRows = computed<ChartIndicatorRow[]>(() => {
+  const appearance = resolvedAppearance.value;
+  const movingAverageCounts = movingAverageInstanceCounts(appearance.indicators);
+  return appearance.indicators.map((indicator) => ({
+    id: indicator.id,
     type: indicator.type,
-    label: chartIndicatorLabel(indicator.type),
-    meta: chartIndicatorPlacementLabel(indicator.placement),
-    enabled: chartIndicatorEnabled(indicator.type),
-    selected: selectedChartIndicatorType.value === indicator.type,
-  })),
+    label: chartIndicatorInstanceLabel(indicator, appearance),
+    meta: chartIndicatorInstanceMeta(indicator, appearance),
+    enabled: indicator.enabled,
+    selected: selectedChartIndicatorId.value === indicator.id,
+    canAdd: gpuChartIndicatorCanAddInstance(indicator.type),
+    canRemove:
+      gpuChartIndicatorCanAddInstance(indicator.type) &&
+      (movingAverageCounts.get(indicator.type) ?? 0) > 1,
+  }));
+});
+const selectedChartIndicatorInstance = computed(() => {
+  const indicators = resolvedAppearance.value.indicators;
+  return (
+    indicators.find((indicator) => indicator.id === selectedChartIndicatorId.value) ??
+    indicators.find((indicator) => indicator.type === "ema") ??
+    indicators[0] ??
+    null
+  );
+});
+const selectedChartIndicatorOption = computed(() =>
+  selectedChartIndicatorInstance.value
+    ? CHART_INDICATOR_OPTIONS.find(
+        (indicator) => indicator.type === selectedChartIndicatorInstance.value?.type,
+      ) ?? CHART_INDICATOR_OPTIONS[0]
+    : null,
 );
-const selectedChartIndicatorOption = computed(
-  () =>
-    CHART_INDICATOR_OPTIONS.find(
-      (indicator) => indicator.type === selectedChartIndicatorType.value,
-    ) ?? CHART_INDICATOR_OPTIONS[0],
+const selectedMovingAverageIndicator = computed(() => {
+  const indicator = selectedChartIndicatorInstance.value;
+  return indicator && gpuChartIndicatorCanAddInstance(indicator.type) ? indicator : null;
+});
+const selectedMovingAveragePeriod = computed(() =>
+  selectedMovingAverageIndicator.value
+    ? gpuChartMovingAveragePeriod(
+        resolvedAppearance.value,
+        selectedMovingAverageIndicator.value,
+      )
+    : 0,
+);
+const selectedMovingAverageColor = computed(() =>
+  selectedMovingAverageIndicator.value
+    ? gpuChartMovingAverageColor(resolvedAppearance.value, selectedMovingAverageIndicator.value)
+    : resolvedAppearance.value.textColor,
 );
 const selectedChartIndicatorLabel = computed(() =>
-  selectedChartIndicatorOption.value
-    ? chartIndicatorLabel(selectedChartIndicatorOption.value.type)
+  selectedChartIndicatorInstance.value
+    ? chartIndicatorInstanceLabel(selectedChartIndicatorInstance.value, resolvedAppearance.value)
     : "",
 );
 const selectedChartIndicatorPlacement = computed(() =>
-  selectedChartIndicatorOption.value
-    ? chartIndicatorPlacementLabel(selectedChartIndicatorOption.value.placement)
+  selectedChartIndicatorInstance.value
+    ? chartIndicatorPlacementLabel(
+        GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[selectedChartIndicatorInstance.value.type],
+      )
     : "",
 );
 const shellStyle = computed<Record<string, string>>(() => {
@@ -1608,28 +1719,35 @@ function indicatorSeries() {
   if (!state) return [];
   const appearance = resolvedAppearance.value;
   const series: Array<{ slot: number; line: Float32Array; color: string; alpha: number }> = [];
-  const add = (slot: number, line: Float32Array, color: string, alpha = 0.95) => {
-    if (line.length >= 4) series.push({ slot, line, color, alpha });
+  const add = (line: Float32Array, color: string, alpha = 0.95) => {
+    const slot = LINE_SLOTS[series.length];
+    if (slot == null || line.length < 4) return;
+    series.push({ slot, line, color, alpha });
   };
 
-  if (props.showSma && chartIndicatorEnabled("sma", appearance)) {
-    add(0, computeSmaLine(state.candles, appearance.smaPeriod), appearance.smaColor);
+  for (const indicator of appearance.indicators) {
+    if (!indicator.enabled || !gpuChartIndicatorCanAddInstance(indicator.type)) continue;
+    if (indicator.type === "sma" && !props.showSma) continue;
+    if (indicator.type === "ema" && !props.showEma) continue;
+    const period = gpuChartMovingAveragePeriod(appearance, indicator);
+    const color = gpuChartMovingAverageColor(appearance, indicator);
+    if (indicator.type === "sma") {
+      add(computeSmaLine(state.candles, period), color);
+    } else if (indicator.type === "ema") {
+      add(computeEmaLine(state.candles, period), color);
+    } else {
+      add(computeWmaLine(state.candles, period), color);
+    }
   }
-  if (props.showEma && chartIndicatorEnabled("ema", appearance)) {
-    add(1, computeEmaLine(state.candles, appearance.emaPeriod), appearance.emaColor);
-  }
-  if (chartIndicatorEnabled("wma", appearance)) {
-    add(2, computeWmaLine(state.candles, appearance.wmaPeriod), appearance.wmaColor);
-  }
-  if (chartIndicatorEnabled("bollinger", appearance)) {
+  if (chartIndicatorEnabled("bollinger", appearance) && series.length <= LINE_SLOTS.length - 3) {
     const bands = computeBollingerBands(
       state.candles,
       appearance.bollingerPeriod,
       appearance.bollingerStdDev,
     );
-    add(3, bands.basis, appearance.bollingerBasisColor, 0.72);
-    add(4, bands.upper, appearance.bollingerUpperColor, 0.88);
-    add(5, bands.lower, appearance.bollingerLowerColor, 0.88);
+    add(bands.basis, appearance.bollingerBasisColor, 0.72);
+    add(bands.upper, appearance.bollingerUpperColor, 0.88);
+    add(bands.lower, appearance.bollingerLowerColor, 0.88);
   }
 
   return series;
@@ -1817,6 +1935,38 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
   }
 }
 
+function chartIndicatorInstanceLabel(
+  indicator: GpuChartIndicatorInstance,
+  appearance: GpuChartAppearance,
+) {
+  if (gpuChartIndicatorCanAddInstance(indicator.type)) {
+    return `${indicator.type.toUpperCase()} ${gpuChartMovingAveragePeriod(appearance, indicator)}`;
+  }
+  return chartIndicatorLabel(indicator.type);
+}
+
+function chartIndicatorInstanceMeta(
+  indicator: GpuChartIndicatorInstance,
+  appearance: GpuChartAppearance,
+) {
+  if (gpuChartIndicatorCanAddInstance(indicator.type)) {
+    return `${chartIndicatorPlacementLabel(indicator.placement)} ${gpuChartMovingAverageColor(
+      appearance,
+      indicator,
+    )}`;
+  }
+  return chartIndicatorPlacementLabel(indicator.placement);
+}
+
+function movingAverageInstanceCounts(instances: GpuChartIndicatorInstance[]) {
+  const counts = new Map<GpuChartMovingAverageIndicatorType, number>();
+  for (const indicator of instances) {
+    if (!gpuChartIndicatorCanAddInstance(indicator.type)) continue;
+    counts.set(indicator.type, (counts.get(indicator.type) ?? 0) + 1);
+  }
+  return counts;
+}
+
 function chartIndicatorPlacementLabel(placement: GpuChartIndicatorPlacement) {
   return placement === "price" ? "Price" : "Pane";
 }
@@ -1825,13 +1975,31 @@ function indicatorPaneLabel(id: GpuChartIndicatorPane) {
   return INDICATOR_PANES.find((pane) => pane.id === id)?.label ?? "Indicator";
 }
 
-function configureChartIndicator(type: GpuChartIndicatorType) {
-  selectedChartIndicatorType.value = type;
+function configureChartIndicator(id: string) {
+  selectedChartIndicatorId.value = id;
   chartSettingsTab.value = "indicators";
 }
 
-function setChartIndicatorEnabled(type: GpuChartIndicatorType, event: Event) {
-  setChartIndicatorEnabledValue(type, (event.target as HTMLInputElement).checked);
+function setChartIndicatorInstanceEnabled(id: string, event: Event) {
+  const enabled = (event.target as HTMLInputElement).checked;
+  const targetType = resolvedAppearance.value.indicators.find(
+    (indicator) => indicator.id === id,
+  )?.type;
+  const nextIndicators = resolvedAppearance.value.indicators.map((indicator) =>
+    indicator.id === id
+      ? {
+          ...indicator,
+          enabled,
+          placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[indicator.type],
+        }
+      : { ...indicator },
+  );
+  patchAppearance({ indicators: nextIndicators });
+  if (targetType && !enabled && isIndicatorPaneType(targetType)) {
+    setLocalActiveIndicatorPanes(
+      localActiveIndicatorPanes.value.filter((pane) => pane !== targetType),
+    );
+  }
 }
 
 function setChartIndicatorEnabledValue(type: GpuChartIndicatorType, enabled: boolean) {
@@ -1861,6 +2029,118 @@ function setChartIndicatorEnabledValue(type: GpuChartIndicatorType, enabled: boo
       localActiveIndicatorPanes.value.filter((pane) => pane !== type),
     );
   }
+}
+
+function addChartIndicatorInstance(type: GpuChartIndicatorType) {
+  if (!gpuChartIndicatorCanAddInstance(type)) return;
+  const appearance = resolvedAppearance.value;
+  const nextIndicator: GpuChartIndicatorInstance = {
+    id: nextIndicatorInstanceId(type, appearance.indicators),
+    type,
+    enabled: true,
+    placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[type],
+    period: nextMovingAveragePeriod(type, appearance),
+    color: nextMovingAverageColor(type, appearance),
+  };
+  selectedChartIndicatorId.value = nextIndicator.id;
+  patchAppearance({ indicators: [...appearance.indicators.map((item) => ({ ...item })), nextIndicator] });
+}
+
+function removeChartIndicatorInstance(id: string) {
+  const appearance = resolvedAppearance.value;
+  const target = appearance.indicators.find((indicator) => indicator.id === id);
+  if (!target || !gpuChartIndicatorCanAddInstance(target.type)) return;
+  const instancesOfType = appearance.indicators.filter(
+    (indicator) => indicator.type === target.type,
+  );
+  if (instancesOfType.length <= 1) {
+    setChartIndicatorEnabledValue(target.type, false);
+    return;
+  }
+  const nextIndicators = appearance.indicators
+    .filter((indicator) => indicator.id !== id)
+    .map((indicator) => ({ ...indicator }));
+  selectedChartIndicatorId.value =
+    nextIndicators.find((indicator) => indicator.type === target.type)?.id ??
+    nextIndicators[0]?.id ??
+    "ema";
+  patchAppearance({ indicators: nextIndicators });
+}
+
+function setSelectedMovingAverageColor(event: Event) {
+  const indicator = selectedMovingAverageIndicator.value;
+  if (!indicator) return;
+  updateChartIndicatorInstance(indicator.id, { color: inputValue(event) });
+}
+
+function setSelectedMovingAveragePeriod(event: Event) {
+  const indicator = selectedMovingAverageIndicator.value;
+  if (!indicator) return;
+  updateChartIndicatorInstance(indicator.id, { period: Number(inputValue(event)) });
+}
+
+function updateChartIndicatorInstance(
+  id: string,
+  patch: Partial<GpuChartIndicatorInstance>,
+) {
+  const nextIndicators = resolvedAppearance.value.indicators.map((indicator) =>
+    indicator.id === id
+      ? {
+          ...indicator,
+          ...patch,
+          placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[indicator.type],
+        }
+      : { ...indicator },
+  );
+  patchAppearance({ indicators: nextIndicators });
+}
+
+function nextIndicatorInstanceId(
+  type: GpuChartMovingAverageIndicatorType,
+  indicators: GpuChartIndicatorInstance[],
+) {
+  let index = 2;
+  let id = `${type}-${index}`;
+  const usedIds = new Set(indicators.map((indicator) => indicator.id));
+  while (usedIds.has(id)) {
+    index += 1;
+    id = `${type}-${index}`;
+  }
+  return id;
+}
+
+function nextMovingAveragePeriod(
+  type: GpuChartMovingAverageIndicatorType,
+  appearance: GpuChartAppearance,
+) {
+  const usedPeriods = new Set(
+    appearance.indicators
+      .filter((indicator) => indicator.type === type)
+      .map((indicator) => gpuChartMovingAveragePeriod(appearance, indicator)),
+  );
+  const suggested = MOVING_AVERAGE_PERIOD_SUGGESTIONS[type].find(
+    (period) => !usedPeriods.has(period),
+  );
+  if (suggested) return suggested;
+  const key = GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE[type];
+  return Math.min(250, Math.max(2, appearance[key] + usedPeriods.size * 10));
+}
+
+function nextMovingAverageColor(
+  type: GpuChartMovingAverageIndicatorType,
+  appearance: GpuChartAppearance,
+) {
+  const usedColors = new Set(
+    appearance.indicators
+      .filter((indicator) => indicator.type === type)
+      .map((indicator) => gpuChartMovingAverageColor(appearance, indicator).toLowerCase()),
+  );
+  const suggested = MOVING_AVERAGE_COLOR_SUGGESTIONS.find(
+    (color) => !usedColors.has(color.toLowerCase()),
+  );
+  if (suggested) return suggested;
+  const key = GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE[type];
+  return appearance[key];
 }
 
 function setChartIndicatorColor(field: ChartIndicatorColorField, event: Event) {
@@ -2527,11 +2807,15 @@ function displayCandleLimit() {
 
 function indicatorWarmupCandles() {
   const appearance = resolvedAppearance.value;
+  const movingAverageWarmup = Math.max(
+    0,
+    ...appearance.indicators
+      .filter((indicator) => indicator.enabled && gpuChartIndicatorCanAddInstance(indicator.type))
+      .map((indicator) => gpuChartMovingAveragePeriod(appearance, indicator)),
+  );
   return Math.max(
     MIN_INDICATOR_WARMUP_CANDLES,
-    appearance.smaPeriod,
-    appearance.emaPeriod,
-    appearance.wmaPeriod,
+    movingAverageWarmup,
     appearance.bollingerPeriod,
     appearance.rsiPeriod,
     appearance.macdSlowPeriod + appearance.macdSignalPeriod,
@@ -4297,6 +4581,13 @@ function setError(message: string | null) {
   min-width: 0;
   flex: 1 1 auto;
   cursor: pointer;
+}
+
+.gpu-chart-indicator-row-actions {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  flex: 0 0 auto;
 }
 
 .gpu-chart-indicator-row-text {

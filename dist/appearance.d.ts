@@ -7,6 +7,8 @@ export interface GpuChartIndicatorInstance {
     enabled: boolean;
     placement: GpuChartIndicatorPlacement;
     label?: string;
+    period?: number;
+    color?: string;
 }
 export interface GpuChartAppearance {
     backgroundColor: string;
@@ -89,8 +91,14 @@ export interface GpuChartAppearance {
 export declare const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
 export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
 export declare const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
+export type GpuChartMovingAverageIndicatorType = Extract<GpuChartIndicatorType, "sma" | "ema" | "wma">;
+export type GpuChartMovingAveragePeriodKey = Extract<keyof GpuChartAppearance, "smaPeriod" | "emaPeriod" | "wmaPeriod">;
+export type GpuChartMovingAverageColorKey = Extract<keyof GpuChartAppearance, "smaColor" | "emaColor" | "wmaColor">;
 type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr">;
 export declare const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[];
+export declare const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[];
+export declare const GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE: Record<GpuChartMovingAverageIndicatorType, GpuChartMovingAveragePeriodKey>;
+export declare const GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE: Record<GpuChartMovingAverageIndicatorType, GpuChartMovingAverageColorKey>;
 export declare const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<GpuChartIndicatorType, GpuChartIndicatorPlacement>;
 export declare const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<GpuChartIndicatorType, IndicatorShowKey>;
 export declare const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[];
@@ -111,6 +119,8 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
         enabled: boolean;
         placement: GpuChartIndicatorPlacement;
         label?: string;
+        period?: number;
+        color?: string;
     }[];
     backgroundColor: string;
     upColor: string;
@@ -197,6 +207,8 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
         enabled: boolean;
         placement: GpuChartIndicatorPlacement;
         label?: string;
+        period?: number;
+        color?: string;
     }[];
     backgroundColor: string;
     upColor: string;
@@ -274,6 +286,9 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showVolume: boolean;
 };
 export declare function gpuChartIndicatorEnabled(appearance: GpuChartAppearance, type: GpuChartIndicatorType): boolean;
+export declare function gpuChartIndicatorCanAddInstance(type: GpuChartIndicatorType): type is GpuChartMovingAverageIndicatorType;
+export declare function gpuChartMovingAveragePeriod(appearance: GpuChartAppearance, indicator: GpuChartIndicatorInstance): number;
+export declare function gpuChartMovingAverageColor(appearance: GpuChartAppearance, indicator: GpuChartIndicatorInstance): string;
 export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, storage?: StorageLike | null): {
     appearance: import("vue").Ref<{
         backgroundColor: string;
@@ -341,6 +356,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
             enabled: boolean;
             placement: GpuChartIndicatorPlacement;
             label?: string | undefined;
+            period?: number | undefined;
+            color?: string | undefined;
         }[];
         showGrid: boolean;
         showTimeAxis: boolean;
@@ -424,6 +441,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
             enabled: boolean;
             placement: GpuChartIndicatorPlacement;
             label?: string | undefined;
+            period?: number | undefined;
+            color?: string | undefined;
         }[];
         showGrid: boolean;
         showTimeAxis: boolean;

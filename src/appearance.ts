@@ -19,6 +19,8 @@ export interface GpuChartIndicatorInstance {
   enabled: boolean;
   placement: GpuChartIndicatorPlacement;
   label?: string;
+  period?: number;
+  color?: string;
 }
 
 export interface GpuChartAppearance {
@@ -104,6 +106,19 @@ export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
 export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
 export const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
 
+export type GpuChartMovingAverageIndicatorType = Extract<
+  GpuChartIndicatorType,
+  "sma" | "ema" | "wma"
+>;
+export type GpuChartMovingAveragePeriodKey = Extract<
+  keyof GpuChartAppearance,
+  "smaPeriod" | "emaPeriod" | "wmaPeriod"
+>;
+export type GpuChartMovingAverageColorKey = Extract<
+  keyof GpuChartAppearance,
+  "smaColor" | "emaColor" | "wmaColor"
+>;
+
 type IndicatorShowKey = Extract<
   keyof GpuChartAppearance,
   | "showSma"
@@ -128,6 +143,30 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "macd",
   "atr",
 ];
+
+export const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[] = [
+  "sma",
+  "ema",
+  "wma",
+];
+
+export const GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE: Record<
+  GpuChartMovingAverageIndicatorType,
+  GpuChartMovingAveragePeriodKey
+> = {
+  sma: "smaPeriod",
+  ema: "emaPeriod",
+  wma: "wmaPeriod",
+};
+
+export const GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE: Record<
+  GpuChartMovingAverageIndicatorType,
+  GpuChartMovingAverageColorKey
+> = {
+  sma: "smaColor",
+  ema: "emaColor",
+  wma: "wmaColor",
+};
 
 export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   GpuChartIndicatorType,
@@ -160,9 +199,9 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
 };
 
 export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
-  { id: "sma", type: "sma", enabled: true, placement: "price" },
-  { id: "ema", type: "ema", enabled: true, placement: "price" },
-  { id: "wma", type: "wma", enabled: false, placement: "price" },
+  { id: "sma", type: "sma", enabled: true, placement: "price", period: 20, color: "#f2a12e" },
+  { id: "ema", type: "ema", enabled: true, placement: "price", period: 20, color: "#1fc7f2" },
+  { id: "wma", type: "wma", enabled: false, placement: "price", period: 20, color: "#c084fc" },
   { id: "bollinger", type: "bollinger", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
@@ -505,9 +544,36 @@ export function gpuChartIndicatorEnabled(
   appearance: GpuChartAppearance,
   type: GpuChartIndicatorType,
 ) {
-  const indicator = appearance.indicators.find((item) => item.type === type);
-  if (indicator) return indicator.enabled;
+  if (appearance.indicators.some((item) => item.type === type)) {
+    return appearance.indicators.some((item) => item.type === type && item.enabled);
+  }
   return appearance[GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[type]];
+}
+
+export function gpuChartIndicatorCanAddInstance(
+  type: GpuChartIndicatorType,
+): type is GpuChartMovingAverageIndicatorType {
+  return GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES.includes(
+    type as GpuChartMovingAverageIndicatorType,
+  );
+}
+
+export function gpuChartMovingAveragePeriod(
+  appearance: GpuChartAppearance,
+  indicator: GpuChartIndicatorInstance,
+) {
+  if (!gpuChartIndicatorCanAddInstance(indicator.type)) return 0;
+  const key = GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE[indicator.type];
+  return clampInteger(indicator.period, 2, 250, appearance[key]);
+}
+
+export function gpuChartMovingAverageColor(
+  appearance: GpuChartAppearance,
+  indicator: GpuChartIndicatorInstance,
+) {
+  if (!gpuChartIndicatorCanAddInstance(indicator.type)) return appearance.textColor;
+  const key = GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE[indicator.type];
+  return colorValue(indicator.color, appearance[key]);
 }
 
 export function useGpuChartAppearance(
@@ -592,42 +658,109 @@ function indicatorInstancesValue(
     ? defaults.indicators
     : DEFAULT_GPU_CHART_INDICATORS;
   if (!Array.isArray(value)) {
-    return defaultIndicators.map((indicator) => ({
-      ...indicator,
-      enabled: appearance[GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[indicator.type]],
-    }));
+    const seenIds = new Set<string>();
+    return defaultIndicators.map((indicator) =>
+      normalizedIndicatorInstance(
+        { ...indicator, enabled: appearance[GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[indicator.type]] },
+        indicator,
+        appearance,
+        seenIds,
+      ),
+    );
   }
 
-  const byType = new Map<GpuChartIndicatorType, unknown>();
+  const normalized: GpuChartIndicatorInstance[] = [];
+  const presentTypes = new Set<GpuChartIndicatorType>();
+  const seenIds = new Set<string>();
+  const seenSingleInstanceTypes = new Set<GpuChartIndicatorType>();
   for (const item of value) {
     if (!isObjectRecord(item)) continue;
     const type = indicatorTypeValue(item.type);
-    if (!type || byType.has(type)) continue;
-    byType.set(type, item);
+    if (!type) continue;
+    if (!gpuChartIndicatorCanAddInstance(type)) {
+      if (seenSingleInstanceTypes.has(type)) continue;
+      seenSingleInstanceTypes.add(type);
+    }
+    const defaultIndicator =
+      defaultIndicators.find((indicator) => indicator.type === type) ?? defaultIndicatorForType(type);
+    normalized.push(normalizedIndicatorInstance(item, defaultIndicator, appearance, seenIds));
+    presentTypes.add(type);
   }
 
-  return defaultIndicators.map((defaultIndicator) => {
-    const source = byType.get(defaultIndicator.type);
-    if (!isObjectRecord(source)) return { ...defaultIndicator };
-    const id = typeof source.id === "string" && source.id.trim() ? source.id : defaultIndicator.id;
-    const label =
-      typeof source.label === "string" && source.label.trim() ? source.label.trim() : undefined;
-    return {
-      id,
-      type: defaultIndicator.type,
-      enabled: boolValue(source.enabled, defaultIndicator.enabled),
-      placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[defaultIndicator.type],
-      ...(label ? { label } : {}),
-    };
-  });
+  for (const defaultIndicator of defaultIndicators) {
+    if (presentTypes.has(defaultIndicator.type)) continue;
+    normalized.push(normalizedIndicatorInstance(defaultIndicator, defaultIndicator, appearance, seenIds));
+  }
+
+  return normalized;
 }
 
 function syncIndicatorFlags(appearance: GpuChartAppearance) {
   for (const type of GPU_CHART_INDICATOR_TYPES) {
     const key = GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE[type];
-    const indicator = appearance.indicators.find((item) => item.type === type);
-    if (indicator) appearance[key] = indicator.enabled;
+    if (appearance.indicators.some((item) => item.type === type)) {
+      appearance[key] = appearance.indicators.some(
+        (item) => item.type === type && item.enabled,
+      );
+    }
   }
+}
+
+function normalizedIndicatorInstance(
+  source: Record<string, unknown> | GpuChartIndicatorInstance,
+  defaultIndicator: GpuChartIndicatorInstance,
+  appearance: GpuChartAppearance,
+  seenIds: Set<string>,
+): GpuChartIndicatorInstance {
+  const type = defaultIndicator.type;
+  const id = uniqueIndicatorId(
+    type,
+    typeof source.id === "string" && source.id.trim() ? source.id.trim() : defaultIndicator.id,
+    seenIds,
+  );
+  const label =
+    typeof source.label === "string" && source.label.trim() ? source.label.trim() : undefined;
+  const indicator: GpuChartIndicatorInstance = {
+    id,
+    type,
+    enabled: boolValue(source.enabled, defaultIndicator.enabled),
+    placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[type],
+    ...(label ? { label } : {}),
+  };
+
+  if (gpuChartIndicatorCanAddInstance(type)) {
+    const periodKey = GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE[type];
+    const colorKey = GPU_CHART_MOVING_AVERAGE_COLOR_KEY_BY_TYPE[type];
+    indicator.period = clampInteger(source.period, 2, 250, appearance[periodKey]);
+    indicator.color = colorValue(source.color, appearance[colorKey]);
+  }
+
+  return indicator;
+}
+
+function defaultIndicatorForType(type: GpuChartIndicatorType): GpuChartIndicatorInstance {
+  return {
+    id: type,
+    type,
+    enabled: true,
+    placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE[type],
+  };
+}
+
+function uniqueIndicatorId(
+  type: GpuChartIndicatorType,
+  preferredId: string,
+  seenIds: Set<string>,
+) {
+  const base = preferredId || type;
+  let next = base;
+  let suffix = 2;
+  while (seenIds.has(next)) {
+    next = `${base}-${suffix}`;
+    suffix += 1;
+  }
+  seenIds.add(next);
+  return next;
 }
 
 function indicatorTypeValue(value: unknown): GpuChartIndicatorType | null {
