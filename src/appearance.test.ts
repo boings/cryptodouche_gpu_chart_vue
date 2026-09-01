@@ -68,6 +68,7 @@ describe("gpu chart appearance", () => {
       showWindowHighLow: "yes" as unknown as boolean,
       activeIndicatorPane: "not-a-pane" as unknown as "rsi",
       indicatorPaneMinimized: "no" as unknown as boolean,
+      indicators: "bad" as unknown as [],
       showSma: "yes" as unknown as boolean,
       showEma: "yes" as unknown as boolean,
       showStochRsi: "yes" as unknown as boolean,
@@ -123,6 +124,7 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
     );
+    expect(appearance.indicators).toEqual(DEFAULT_GPU_CHART_APPEARANCE.indicators);
     expect(appearance.showSma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showSma);
     expect(appearance.showEma).toBe(DEFAULT_GPU_CHART_APPEARANCE.showEma);
     expect(appearance.showStochRsi).toBe(DEFAULT_GPU_CHART_APPEARANCE.showStochRsi);
@@ -208,6 +210,14 @@ describe("gpu chart appearance", () => {
     expect(saved.rsiSmooth).toBe(true);
     expect(saved.showMacd).toBe(false);
     expect(saved.showAtr).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "ema")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "wma")?.enabled).toBe(true);
+    expect(saved.indicators.find((item) => item.type === "volume")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "stochRsi")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "rsi")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
+    expect(saved.indicators.find((item) => item.type === "atr")?.enabled).toBe(false);
     expect(saved.macdLineColor).toBe("#0284c7");
     expect(saved.macdSignalColor).toBe("#f97316");
     expect(saved.macdHistogramUpColor).toBe("#16a34a");
@@ -249,6 +259,16 @@ describe("gpu chart appearance", () => {
       rsiSmooth: true,
       showMacd: false,
       showAtr: false,
+      indicators: expect.arrayContaining([
+        expect.objectContaining({ type: "sma", enabled: false }),
+        expect.objectContaining({ type: "ema", enabled: false }),
+        expect.objectContaining({ type: "wma", enabled: true }),
+        expect.objectContaining({ type: "volume", enabled: false }),
+        expect.objectContaining({ type: "stochRsi", enabled: false }),
+        expect.objectContaining({ type: "rsi", enabled: false }),
+        expect.objectContaining({ type: "macd", enabled: false }),
+        expect.objectContaining({ type: "atr", enabled: false }),
+      ]),
       macdLineColor: "#0284c7",
       macdSignalColor: "#f97316",
       macdHistogramUpColor: "#16a34a",
@@ -264,6 +284,44 @@ describe("gpu chart appearance", () => {
       indicatorPaneMinimized: true,
     });
     expect(loadGpuChartAppearance(storage)).toMatchObject(saved);
+  });
+
+  it("uses indicator instances as the enablement source of truth", () => {
+    const appearance = normalizeGpuChartAppearance({
+      showMacd: true,
+      showVolume: true,
+      indicators: [
+        { id: "macd", type: "macd", enabled: false, placement: "lower" },
+        { id: "volume", type: "volume", enabled: false, placement: "price" },
+        { id: "bollinger", type: "bollinger", enabled: true, placement: "price" },
+      ],
+    });
+
+    expect(appearance.showMacd).toBe(false);
+    expect(appearance.showVolume).toBe(false);
+    expect(appearance.showBollinger).toBe(true);
+    expect(appearance.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "volume")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "bollinger")?.enabled).toBe(true);
+    expect(appearance.indicators.find((item) => item.type === "sma")?.enabled).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showSma,
+    );
+  });
+
+  it("derives indicator instances from legacy show flags", () => {
+    const appearance = normalizeGpuChartAppearance({
+      showSma: false,
+      showBollinger: true,
+      showStochRsi: false,
+      showMacd: false,
+      showVolume: false,
+    });
+
+    expect(appearance.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "bollinger")?.enabled).toBe(true);
+    expect(appearance.indicators.find((item) => item.type === "stochRsi")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
+    expect(appearance.indicators.find((item) => item.type === "volume")?.enabled).toBe(false);
   });
 
   it("keeps grid and single chart styles separate", () => {

@@ -1,4 +1,13 @@
 export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr";
+export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "volume" | "stochRsi" | "rsi" | "macd" | "atr";
+export type GpuChartIndicatorPlacement = "price" | "lower";
+export interface GpuChartIndicatorInstance {
+    id: string;
+    type: GpuChartIndicatorType;
+    enabled: boolean;
+    placement: GpuChartIndicatorPlacement;
+    label?: string;
+}
 export interface GpuChartAppearance {
     backgroundColor: string;
     upColor: string;
@@ -58,6 +67,7 @@ export interface GpuChartAppearance {
     volumeOpacity: number;
     activeIndicatorPane: GpuChartIndicatorPane;
     indicatorPaneMinimized: boolean;
+    indicators: GpuChartIndicatorInstance[];
     showGrid: boolean;
     showTimeAxis: boolean;
     showLastPriceLine: boolean;
@@ -77,6 +87,12 @@ export interface GpuChartAppearance {
 }
 export declare const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
 export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
+type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr">;
+export declare const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[];
+export declare const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<GpuChartIndicatorType, GpuChartIndicatorPlacement>;
+export declare const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<GpuChartIndicatorType, IndicatorShowKey>;
+export declare const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[];
+export declare const DEFAULT_GRID_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[];
 export declare const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance;
 export declare const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance;
 interface StorageLike {
@@ -86,6 +102,13 @@ interface StorageLike {
 }
 export declare function normalizeGpuChartAppearance(input: Partial<GpuChartAppearance> | null | undefined, scope?: GpuChartAppearanceScope): GpuChartAppearance;
 export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScope): {
+    indicators: {
+        id: string;
+        type: GpuChartIndicatorType;
+        enabled: boolean;
+        placement: GpuChartIndicatorPlacement;
+        label?: string;
+    }[];
     backgroundColor: string;
     upColor: string;
     downColor: string;
@@ -164,6 +187,13 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
 export declare function loadGpuChartAppearance(storage?: StorageLike | null, scope?: GpuChartAppearanceScope): GpuChartAppearance;
 export declare function saveGpuChartAppearance(appearance: Partial<GpuChartAppearance>, storage?: StorageLike | null, scope?: GpuChartAppearanceScope): GpuChartAppearance;
 export declare function resetGpuChartAppearance(storage?: StorageLike | null, scope?: GpuChartAppearanceScope): {
+    indicators: {
+        id: string;
+        type: GpuChartIndicatorType;
+        enabled: boolean;
+        placement: GpuChartIndicatorPlacement;
+        label?: string;
+    }[];
     backgroundColor: string;
     upColor: string;
     downColor: string;
@@ -239,6 +269,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showAtr: boolean;
     showVolume: boolean;
 };
+export declare function gpuChartIndicatorEnabled(appearance: GpuChartAppearance, type: GpuChartIndicatorType): boolean;
 export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, storage?: StorageLike | null): {
     appearance: import("vue").Ref<{
         backgroundColor: string;
@@ -299,6 +330,13 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         volumeOpacity: number;
         activeIndicatorPane: GpuChartIndicatorPane;
         indicatorPaneMinimized: boolean;
+        indicators: {
+            id: string;
+            type: GpuChartIndicatorType;
+            enabled: boolean;
+            placement: GpuChartIndicatorPlacement;
+            label?: string | undefined;
+        }[];
         showGrid: boolean;
         showTimeAxis: boolean;
         showLastPriceLine: boolean;
@@ -374,6 +412,13 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         volumeOpacity: number;
         activeIndicatorPane: GpuChartIndicatorPane;
         indicatorPaneMinimized: boolean;
+        indicators: {
+            id: string;
+            type: GpuChartIndicatorType;
+            enabled: boolean;
+            placement: GpuChartIndicatorPlacement;
+            label?: string | undefined;
+        }[];
         showGrid: boolean;
         showTimeAxis: boolean;
         showLastPriceLine: boolean;
