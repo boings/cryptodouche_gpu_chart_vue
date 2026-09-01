@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.20'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.21'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.20'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.21'
 ```
 
 Import the component and CSS:
@@ -156,7 +156,7 @@ When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange
 
 Passing `timeframeOptions` turns the timeframe badge into a compact selector. The chart emits `update:timeframe` with the selected value; consuming apps should update the prop and reload data through their adapter.
 
-`showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI, RSI, MACD, and ATR, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
+`showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI, RSI, MACD, and ATR, selected from the solid bottom tab strip. Up to three lower panes can be active at once; active selections stack vertically, and clicking an active tab removes that pane while keeping the tabs available.
 
 Use `v-model:appearance` when enabling in-chart controls. Each pane exposes its own gear menu for indicator-specific settings, including period, upper/lower range, and range color. The range is shaded with dashed threshold lines. The divider between price and indicator panes can be dragged to update pane height. Persist those changes with the `saveAppearance` helper or your app's own storage.
 

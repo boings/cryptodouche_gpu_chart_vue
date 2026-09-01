@@ -67,6 +67,7 @@ describe("gpu chart appearance", () => {
       showTimeAxis: "yes" as unknown as boolean,
       showWindowHighLow: "yes" as unknown as boolean,
       activeIndicatorPane: "not-a-pane" as unknown as "rsi",
+      activeIndicatorPanes: "bad" as unknown as [],
       indicatorPaneMinimized: "no" as unknown as boolean,
       indicators: "bad" as unknown as [],
       showSma: "yes" as unknown as boolean,
@@ -121,6 +122,9 @@ describe("gpu chart appearance", () => {
     expect(appearance.showTimeAxis).toBe(DEFAULT_GPU_CHART_APPEARANCE.showTimeAxis);
     expect(appearance.showWindowHighLow).toBe(DEFAULT_GPU_CHART_APPEARANCE.showWindowHighLow);
     expect(appearance.activeIndicatorPane).toBe(DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPane);
+    expect(appearance.activeIndicatorPanes).toEqual(
+      DEFAULT_GPU_CHART_APPEARANCE.activeIndicatorPanes,
+    );
     expect(appearance.indicatorPaneMinimized).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.indicatorPaneMinimized,
     );
@@ -306,6 +310,35 @@ describe("gpu chart appearance", () => {
     expect(appearance.indicators.find((item) => item.type === "sma")?.enabled).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.showSma,
     );
+  });
+
+  it("normalizes active lower pane selections", () => {
+    const appearance = normalizeGpuChartAppearance({
+      activeIndicatorPane: "macd",
+      activeIndicatorPanes: ["macd", "rsi", "atr", "stochRsi"],
+    });
+
+    expect(appearance.activeIndicatorPane).toBe("macd");
+    expect(appearance.activeIndicatorPanes).toEqual(["macd", "rsi", "atr"]);
+  });
+
+  it("derives active lower pane selections from legacy state", () => {
+    const appearance = normalizeGpuChartAppearance({
+      activeIndicatorPane: "macd",
+    });
+
+    expect(appearance.activeIndicatorPane).toBe("macd");
+    expect(appearance.activeIndicatorPanes).toEqual(["macd"]);
+  });
+
+  it("clears active lower panes when minimized", () => {
+    const appearance = normalizeGpuChartAppearance({
+      activeIndicatorPane: "macd",
+      activeIndicatorPanes: ["macd", "rsi"],
+      indicatorPaneMinimized: true,
+    });
+
+    expect(appearance.activeIndicatorPanes).toEqual([]);
   });
 
   it("derives indicator instances from legacy show flags", () => {

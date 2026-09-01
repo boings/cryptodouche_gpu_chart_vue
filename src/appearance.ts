@@ -79,6 +79,7 @@ export interface GpuChartAppearance {
   volumeHeightRatio: number;
   volumeOpacity: number;
   activeIndicatorPane: GpuChartIndicatorPane;
+  activeIndicatorPanes: GpuChartIndicatorPane[];
   indicatorPaneMinimized: boolean;
   indicators: GpuChartIndicatorInstance[];
   showGrid: boolean;
@@ -101,6 +102,7 @@ export interface GpuChartAppearance {
 
 export const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
 export type GpuChartAppearanceScope = "single" | "grid" | (string & {});
+export const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
 
 type IndicatorShowKey = Extract<
   keyof GpuChartAppearance,
@@ -233,6 +235,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   volumeHeightRatio: 0.18,
   volumeOpacity: 0.34,
   activeIndicatorPane: "stochRsi",
+  activeIndicatorPanes: ["stochRsi"],
   indicatorPaneMinimized: false,
   indicators: cloneIndicatorInstances(DEFAULT_GPU_CHART_INDICATORS),
   showGrid: true,
@@ -265,6 +268,7 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showMacd: false,
   showAtr: false,
   showVolume: false,
+  activeIndicatorPanes: [],
 };
 
 interface StorageLike {
@@ -410,6 +414,7 @@ export function normalizeGpuChartAppearance(
       value.activeIndicatorPane,
       defaults.activeIndicatorPane,
     ),
+    activeIndicatorPanes: [...defaults.activeIndicatorPanes],
     indicatorPaneMinimized: boolValue(
       value.indicatorPaneMinimized,
       defaults.indicatorPaneMinimized,
@@ -434,6 +439,22 @@ export function normalizeGpuChartAppearance(
   };
   normalized.indicators = indicatorInstancesValue(value.indicators, normalized, defaults);
   syncIndicatorFlags(normalized);
+  normalized.activeIndicatorPanes = indicatorPaneListValue(
+    value.activeIndicatorPanes,
+    normalized,
+  );
+  if (normalized.indicatorPaneMinimized) {
+    normalized.activeIndicatorPanes = [];
+  }
+  if (
+    !normalized.activeIndicatorPanes.length &&
+    !normalized.indicatorPaneMinimized &&
+    gpuChartIndicatorEnabled(normalized, normalized.activeIndicatorPane)
+  ) {
+    normalized.activeIndicatorPanes = [normalized.activeIndicatorPane];
+  }
+  normalized.activeIndicatorPane =
+    normalized.activeIndicatorPanes[0] ?? normalized.activeIndicatorPane;
   return normalized;
 }
 
@@ -442,6 +463,7 @@ export function defaultGpuChartAppearance(scope: GpuChartAppearanceScope = "sing
     scope === "grid" ? DEFAULT_GRID_GPU_CHART_APPEARANCE : DEFAULT_GPU_CHART_APPEARANCE;
   return {
     ...defaults,
+    activeIndicatorPanes: [...defaults.activeIndicatorPanes],
     indicators: cloneIndicatorInstances(defaults.indicators),
   };
 }
@@ -536,6 +558,29 @@ function indicatorPaneValue(value: unknown, fallback: GpuChartIndicatorPane) {
   return value === "stochRsi" || value === "rsi" || value === "macd" || value === "atr"
     ? value
     : fallback;
+}
+
+function indicatorPaneListValue(
+  value: unknown,
+  appearance: GpuChartAppearance,
+) {
+  const fallback = appearance.indicatorPaneMinimized
+    ? []
+    : [appearance.activeIndicatorPane];
+  const source = Array.isArray(value) ? value : fallback;
+  const panes: GpuChartIndicatorPane[] = [];
+  for (const item of source) {
+    const pane = indicatorPaneValue(item, appearance.activeIndicatorPane);
+    if (
+      panes.includes(pane) ||
+      !gpuChartIndicatorEnabled(appearance, pane)
+    ) {
+      continue;
+    }
+    panes.push(pane);
+    if (panes.length >= MAX_ACTIVE_GPU_CHART_INDICATOR_PANES) break;
+  }
+  return panes;
 }
 
 function indicatorInstancesValue(
