@@ -226,51 +226,6 @@
             <span>{{ field.label }}</span>
           </label>
         </div>
-        <div v-else-if="chartSettingsTab === 'bollinger'" class="gpu-chart-settings-section">
-          <label class="gpu-chart-settings-toggle">
-            <input
-              type="checkbox"
-              class="gpu-chart-settings-check"
-              :checked="chartIndicatorEnabled('bollinger')"
-              @change="setChartIndicatorEnabled('bollinger', $event)"
-            />
-            <span>{{ chartIndicatorLabel('bollinger') }}</span>
-          </label>
-          <div class="gpu-chart-settings-grid compact">
-            <label
-              v-for="field in chartBollingerColorFields"
-              :key="field.key"
-              class="gpu-chart-settings-field"
-            >
-              <span>{{ field.label }}</span>
-              <input
-                type="color"
-                class="gpu-chart-settings-color"
-                :value="resolvedAppearance[field.key]"
-                @input="setChartIndicatorColor(field.key, $event)"
-              />
-            </label>
-            <label
-              v-for="field in chartBollingerNumberFields"
-              :key="field.key"
-              class="gpu-chart-settings-field"
-            >
-              <span class="gpu-chart-settings-range-label">
-                <span>{{ field.label }}</span>
-                <span>{{ formatChartSetting(field.key) }}</span>
-              </span>
-              <input
-                type="range"
-                :min="field.min"
-                :max="field.max"
-                :step="field.step"
-                class="gpu-chart-settings-range"
-                :value="resolvedAppearance[field.key]"
-                @input="setChartIndicatorNumber(field.key, $event)"
-              />
-            </label>
-          </div>
-        </div>
         <div v-else class="gpu-chart-indicator-manager">
           <div class="gpu-chart-indicator-list">
             <div
@@ -372,6 +327,12 @@
           Save
         </button>
       </div>
+      <div
+        class="gpu-chart-settings-resize"
+        :class="{ resizing: chartSettingsResizing }"
+        aria-hidden="true"
+        @mousedown.stop.prevent="startChartSettingsResize"
+      ></div>
     </div>
     <div
       v-if="indicatorTabsVisible"
@@ -516,6 +477,10 @@ const RIGHT_LABEL_MIN_RESERVE_PX = 88;
 const DEFAULT_INDICATOR_PANE_HEIGHT_RATIO = 0.24;
 const MIN_INDICATOR_PANE_HEIGHT_RATIO = 0.12;
 const MAX_INDICATOR_PANE_HEIGHT_RATIO = 0.4;
+const DEFAULT_CHART_SETTINGS_WIDTH_PX = 560;
+const DEFAULT_CHART_SETTINGS_HEIGHT_PX = 500;
+const MIN_CHART_SETTINGS_WIDTH_PX = 360;
+const MIN_CHART_SETTINGS_HEIGHT_PX = 320;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -559,7 +524,7 @@ type IndicatorToggleField = Extract<
   keyof GpuChartAppearance,
   "stochRsiSmooth" | "rsiSmooth" | "macdSmooth" | "atrSmooth"
 >;
-type ChartSettingsTab = "appearance" | "bollinger" | "indicators";
+type ChartSettingsTab = "indicators" | "appearance";
 type ChartSettingsColorField = Extract<
   keyof GpuChartAppearance,
   | "backgroundColor"
@@ -781,9 +746,8 @@ const INDICATOR_PANES: IndicatorPaneOption[] = [
   },
 ];
 const chartSettingsTabs: Array<{ id: ChartSettingsTab; label: string }> = [
-  { id: "appearance", label: "Appearance" },
-  { id: "bollinger", label: "Bollinger" },
   { id: "indicators", label: "Indicators" },
+  { id: "appearance", label: "Appearance" },
 ];
 const chartAppearanceColorFields: Array<{ key: ChartSettingsColorField; label: string }> = [
   { key: "backgroundColor", label: "Background" },
@@ -986,7 +950,9 @@ const indicatorPaneResizing = ref(false);
 const chartSettingsOpen = ref(false);
 const chartSettingsDragging = ref(false);
 const chartSettingsPosition = ref<{ left: number; top: number } | null>(null);
-const chartSettingsTab = ref<ChartSettingsTab>("appearance");
+const chartSettingsDimensions = ref<{ width: number; height: number } | null>(null);
+const chartSettingsResizing = ref(false);
+const chartSettingsTab = ref<ChartSettingsTab>("indicators");
 const selectedChartIndicatorType = ref<GpuChartIndicatorType>("sma");
 
 let chart: GpuChartHandle | null = null;
@@ -1006,6 +972,7 @@ let smoothXTarget: Pick<ViewBounds, "minX" | "maxX"> | null = null;
 let stopPaneResizeDrag: (() => void) | null = null;
 let stopSettingsDrag: (() => void) | null = null;
 let stopChartSettingsDrag: (() => void) | null = null;
+let stopChartSettingsResize: (() => void) | null = null;
 
 const resolvedAppearance = computed(() => localAppearance.value);
 const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
@@ -1104,10 +1071,16 @@ const indicatorSettingsModalStyle = computed<Record<string, string>>(() => {
 });
 const chartSettingsModalStyle = computed<Record<string, string>>(() => {
   const appearance = resolvedAppearance.value;
-  const position = chartSettingsPosition.value ?? defaultChartSettingsPosition();
+  const size = clampChartSettingsSize(chartSettingsDimensions.value ?? defaultChartSettingsSize());
+  const position = clampChartSettingsPosition(
+    chartSettingsPosition.value ?? defaultChartSettingsPosition(size),
+    size,
+  );
   return {
     left: `${position.left}px`,
     top: `${position.top}px`,
+    width: `${size.width}px`,
+    height: `${size.height}px`,
     "--gpu-chart-settings-font-size": `${Math.max(11, appearance.fontSize * 0.86)}px`,
     "--gpu-chart-settings-text": hexToRgba(appearance.textColor, 0.92),
     "--gpu-chart-settings-muted": hexToRgba(appearance.textColor, 0.68),
@@ -1179,6 +1152,8 @@ onBeforeUnmount(() => {
   stopSettingsDrag = null;
   stopChartSettingsDrag?.();
   stopChartSettingsDrag = null;
+  stopChartSettingsResize?.();
+  stopChartSettingsResize = null;
   cleanupFns.forEach((fn) => fn());
   cleanupFns = [];
   resizeObs?.disconnect();
@@ -1681,17 +1656,30 @@ function toggleChartSettings() {
 
 function closeChartSettings() {
   stopChartSettingsDrag?.();
+  stopChartSettingsResize?.();
   chartSettingsOpen.value = false;
 }
 
 function placeChartSettingsModal() {
+  chartSettingsDimensions.value = clampChartSettingsSize(
+    chartSettingsDimensions.value ?? defaultChartSettingsSize(),
+  );
   if (!chartSettingsPosition.value) {
-    chartSettingsPosition.value = defaultChartSettingsPosition();
+    chartSettingsPosition.value = defaultChartSettingsPosition(chartSettingsDimensions.value);
   }
-  chartSettingsPosition.value = clampChartSettingsPosition(chartSettingsPosition.value);
+  chartSettingsPosition.value = clampChartSettingsPosition(
+    chartSettingsPosition.value,
+    chartSettingsDimensions.value,
+  );
   void nextTick(() => {
     if (!chartSettingsOpen.value || !chartSettingsPosition.value) return;
-    chartSettingsPosition.value = clampChartSettingsPosition(chartSettingsPosition.value);
+    chartSettingsDimensions.value = clampChartSettingsSize(
+      chartSettingsDimensions.value ?? defaultChartSettingsSize(),
+    );
+    chartSettingsPosition.value = clampChartSettingsPosition(
+      chartSettingsPosition.value,
+      chartSettingsDimensions.value,
+    );
   });
 }
 
@@ -1744,7 +1732,7 @@ function chartIndicatorPlacementLabel(placement: GpuChartIndicatorPlacement) {
 
 function configureChartIndicator(type: GpuChartIndicatorType) {
   selectedChartIndicatorType.value = type;
-  chartSettingsTab.value = type === "bollinger" ? "bollinger" : "indicators";
+  chartSettingsTab.value = "indicators";
 }
 
 function setChartIndicatorEnabled(type: GpuChartIndicatorType, event: Event) {
@@ -1800,9 +1788,11 @@ function saveChartSettings() {
 
 function startChartSettingsDrag(event: MouseEvent) {
   if (event.button !== 0) return;
+  stopChartSettingsResize?.();
   stopChartSettingsDrag?.();
   chartSettingsDragging.value = true;
-  const startPosition = chartSettingsPosition.value ?? defaultChartSettingsPosition();
+  const size = chartSettingsSize();
+  const startPosition = chartSettingsPosition.value ?? defaultChartSettingsPosition(size);
   const startX = event.clientX;
   const startY = event.clientY;
   const previousCursor = document.body.style.cursor;
@@ -1813,7 +1803,7 @@ function startChartSettingsDrag(event: MouseEvent) {
     chartSettingsPosition.value = clampChartSettingsPosition({
       left: startPosition.left + moveEvent.clientX - startX,
       top: startPosition.top + moveEvent.clientY - startY,
-    });
+    }, size);
   };
   const onUp = () => {
     stopChartSettingsDrag?.();
@@ -1831,10 +1821,46 @@ function startChartSettingsDrag(event: MouseEvent) {
   window.addEventListener("mouseup", onUp);
 }
 
-function defaultChartSettingsPosition() {
+function startChartSettingsResize(event: MouseEvent) {
+  if (event.button !== 0) return;
+  stopChartSettingsDrag?.();
+  stopChartSettingsResize?.();
+  chartSettingsResizing.value = true;
+  const startSize = chartSettingsSize();
+  const startPosition = chartSettingsPosition.value ?? defaultChartSettingsPosition(startSize);
+  const startX = event.clientX;
+  const startY = event.clientY;
+  const previousCursor = document.body.style.cursor;
+  document.body.style.cursor = "nwse-resize";
+
+  const onMove = (moveEvent: MouseEvent) => {
+    moveEvent.preventDefault();
+    const nextSize = clampChartSettingsSize({
+      width: startSize.width + moveEvent.clientX - startX,
+      height: startSize.height + moveEvent.clientY - startY,
+    });
+    chartSettingsDimensions.value = nextSize;
+    chartSettingsPosition.value = clampChartSettingsPosition(startPosition, nextSize);
+  };
+  const onUp = () => {
+    stopChartSettingsResize?.();
+  };
+
+  stopChartSettingsResize = () => {
+    window.removeEventListener("mousemove", onMove);
+    window.removeEventListener("mouseup", onUp);
+    document.body.style.cursor = previousCursor;
+    chartSettingsResizing.value = false;
+    stopChartSettingsResize = null;
+  };
+
+  window.addEventListener("mousemove", onMove);
+  window.addEventListener("mouseup", onUp);
+}
+
+function defaultChartSettingsPosition(size = chartSettingsSize()) {
   const shell = shellRef.value;
   const shellWidth = shell?.clientWidth ?? 640;
-  const size = chartSettingsSize();
   return {
     left: Math.max(8, Math.min(shellWidth - size.width - 8, 8)),
     top: 34,
@@ -1842,18 +1868,38 @@ function defaultChartSettingsPosition() {
 }
 
 function chartSettingsSize() {
-  const rect = chartSettingsRef.value?.getBoundingClientRect();
-  return {
-    width: rect?.width && Number.isFinite(rect.width) ? rect.width : 448,
-    height: rect?.height && Number.isFinite(rect.height) ? rect.height : 420,
-  };
+  return clampChartSettingsSize(chartSettingsDimensions.value ?? defaultChartSettingsSize());
 }
 
-function clampChartSettingsPosition(position: { left: number; top: number }) {
+function defaultChartSettingsSize() {
+  return clampChartSettingsSize({
+    width: DEFAULT_CHART_SETTINGS_WIDTH_PX,
+    height: DEFAULT_CHART_SETTINGS_HEIGHT_PX,
+  });
+}
+
+function clampChartSettingsSize(size: { width: number; height: number }) {
   const shell = shellRef.value;
   const width = shell?.clientWidth ?? 640;
   const height = shell?.clientHeight ?? 360;
-  const size = chartSettingsSize();
+  const pad = 8;
+  const maxWidth = Math.max(240, width - pad * 2);
+  const maxHeight = Math.max(240, height - pad * 2);
+  const minWidth = Math.min(MIN_CHART_SETTINGS_WIDTH_PX, maxWidth);
+  const minHeight = Math.min(MIN_CHART_SETTINGS_HEIGHT_PX, maxHeight);
+  return {
+    width: Math.max(minWidth, Math.min(maxWidth, size.width)),
+    height: Math.max(minHeight, Math.min(maxHeight, size.height)),
+  };
+}
+
+function clampChartSettingsPosition(
+  position: { left: number; top: number },
+  size = chartSettingsSize(),
+) {
+  const shell = shellRef.value;
+  const width = shell?.clientWidth ?? 640;
+  const height = shell?.clientHeight ?? 360;
   const pad = 8;
   const maxLeft = Math.max(pad, width - size.width - pad);
   const maxTop = Math.max(pad, height - size.height - pad);
@@ -3725,8 +3771,11 @@ function setError(message: string | null) {
   position: absolute;
   z-index: 10;
   display: flex;
-  width: min(448px, calc(100% - 16px));
-  height: min(420px, calc(100% - 16px));
+  box-sizing: border-box;
+  width: min(560px, calc(100% - 16px));
+  height: min(500px, calc(100% - 16px));
+  min-width: min(360px, calc(100% - 16px));
+  min-height: min(320px, calc(100% - 16px));
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
@@ -3858,12 +3907,6 @@ function setError(message: string | null) {
   padding: 0;
 }
 
-.gpu-chart-settings-section {
-  display: grid;
-  gap: 10px;
-  padding: 10px;
-}
-
 .gpu-chart-settings-field {
   display: grid;
   gap: 4px;
@@ -3913,7 +3956,7 @@ function setError(message: string | null) {
   display: flex;
   justify-content: flex-end;
   gap: 8px;
-  padding: 8px 10px;
+  padding: 8px 24px 8px 10px;
   border-top: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
 }
 
@@ -3932,6 +3975,43 @@ function setError(message: string | null) {
 .gpu-chart-settings-action.primary {
   background: rgba(214, 162, 61, 0.16);
   border-color: rgba(214, 162, 61, 0.82);
+}
+
+.gpu-chart-settings-resize {
+  position: absolute;
+  right: 0;
+  bottom: 0;
+  z-index: 3;
+  width: 20px;
+  height: 20px;
+  cursor: nwse-resize;
+}
+
+.gpu-chart-settings-resize::before,
+.gpu-chart-settings-resize::after {
+  position: absolute;
+  right: 5px;
+  bottom: 5px;
+  width: 9px;
+  height: 1px;
+  content: "";
+  background: var(--gpu-chart-settings-muted, rgba(255, 255, 255, 0.66));
+  opacity: 0.72;
+  transform: rotate(135deg);
+  transform-origin: right center;
+}
+
+.gpu-chart-settings-resize::after {
+  right: 5px;
+  bottom: 9px;
+  width: 5px;
+}
+
+.gpu-chart-settings-resize:hover::before,
+.gpu-chart-settings-resize:hover::after,
+.gpu-chart-settings-resize.resizing::before,
+.gpu-chart-settings-resize.resizing::after {
+  opacity: 1;
 }
 
 .gpu-chart-indicator-manager {
