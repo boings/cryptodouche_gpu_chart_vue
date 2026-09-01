@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.14'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.20'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.14'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.20'
 ```
 
 Import the component and CSS:
@@ -38,18 +38,22 @@ The chart fills its parent. Give the parent a real height.
       symbol="BTCUSDT"
       exchange="bybit"
       market-type="perp"
-      timeframe="1m"
+      :timeframe="timeframe"
+      :timeframe-options="timeframeOptions"
       :limit="500"
       :data-adapter="adapter"
       show-indicator-panes
+      show-chart-settings
       v-model:appearance="appearance"
       open-on-chart-click
+      @update:timeframe="timeframe = $event"
       @open="openSymbol"
     />
   </div>
 </template>
 
 <script setup lang="ts">
+import { ref } from "vue";
 import {
   GpuOhlcvChart,
   useGpuChartAppearance,
@@ -59,6 +63,8 @@ import {
 import "@cryptodouche/gpu-chart-vue/style.css";
 
 const { appearance, saveAppearance } = useGpuChartAppearance("single");
+const timeframe = ref("1m");
+const timeframeOptions = ["1m", "3m", "5m", "15m", "30m", "1h", "4h", "1d"];
 
 const adapter: GpuChartDataAdapter = {
   async loadLatest(query) {
@@ -133,6 +139,7 @@ symbol: string;
 exchange?: string;
 marketType?: string;
 timeframe: string | number;
+timeframeOptions?: Array<string | number>;
 limit: number;
 candles?: unknown[];
 dataAdapter?: GpuChartDataAdapter;
@@ -141,10 +148,13 @@ showEma?: boolean;
 synthetic?: boolean;
 appearance?: Partial<GpuChartAppearance>;
 showIndicatorPanes?: boolean;
+showChartSettings?: boolean;
 openOnChartClick?: boolean;
 ```
 
 When `openOnChartClick` is true, the chart emits `open` with `{ symbol, exchange, marketType, timeframe }`. The package does not depend on Vue Router; consuming apps handle navigation.
+
+Passing `timeframeOptions` turns the timeframe badge into a compact selector. The chart emits `update:timeframe` with the selected value; consuming apps should update the prop and reload data through their adapter.
 
 `showIndicatorPanes` enables the lower indicator pane area. The current panes are Stoch RSI, RSI, MACD, and ATR, selected from the bottom tab strip. Clicking the active tab collapses the lower pane while keeping the tabs available.
 

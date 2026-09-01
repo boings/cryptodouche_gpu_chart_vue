@@ -5,6 +5,7 @@ type __VLS_Props = {
     exchange?: string;
     marketType?: string;
     timeframe: string | number;
+    timeframeOptions?: Array<string | number>;
     limit: number;
     candles?: unknown[];
     dataAdapter?: GpuChartDataAdapter;
@@ -21,6 +22,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     open: (payload: GpuChartOpenPayload) => any;
     error: (message: string | null) => any;
     streaming: (active: boolean) => any;
+    "update:timeframe": (value: string) => any;
     "update:appearance": (value: GpuChartAppearance) => any;
     "save-appearance": (value: GpuChartAppearance) => any;
     "reset-appearance": () => any;
@@ -28,6 +30,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     onOpen?: ((payload: GpuChartOpenPayload) => any) | undefined;
     onError?: ((message: string | null) => any) | undefined;
     onStreaming?: ((active: boolean) => any) | undefined;
+    "onUpdate:timeframe"?: ((value: string) => any) | undefined;
     "onUpdate:appearance"?: ((value: GpuChartAppearance) => any) | undefined;
     "onSave-appearance"?: ((value: GpuChartAppearance) => any) | undefined;
     "onReset-appearance"?: (() => any) | undefined;
@@ -37,6 +40,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     title: string;
     exchange: string;
     marketType: string;
+    timeframeOptions: Array<string | number>;
     candles: unknown[];
     dataAdapter: GpuChartDataAdapter;
     synthetic: boolean;

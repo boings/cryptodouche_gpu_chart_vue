@@ -139,201 +139,203 @@
         </label>
       </div>
     </div>
-    <div
-      v-if="chartSettingsOpen"
-      ref="chartSettingsRef"
-      class="gpu-chart-settings-modal"
-      :style="chartSettingsModalStyle"
-      @click.stop
-      @mousedown.stop
-      @dblclick.stop
-      @wheel.stop
-    >
+    <Teleport to="body">
       <div
-        class="gpu-chart-settings-header"
-        :class="{ dragging: chartSettingsDragging }"
-        title="Drag to move"
-        @mousedown.stop.prevent="startChartSettingsDrag"
+        v-if="chartSettingsOpen"
+        ref="chartSettingsRef"
+        class="gpu-chart-settings-modal"
+        :style="chartSettingsModalStyle"
+        @click.stop
+        @mousedown.stop
+        @dblclick.stop
+        @wheel.stop
       >
-        <span class="gpu-chart-settings-title">{{ displaySymbol }} Settings</span>
-        <button
-          type="button"
-          class="gpu-chart-settings-close"
-          aria-label="Close chart settings"
-          title="Close"
-          @click="closeChartSettings"
+        <div
+          class="gpu-chart-settings-header"
+          :class="{ dragging: chartSettingsDragging }"
+          title="Drag to move"
+          @mousedown.stop.prevent="startChartSettingsDrag"
         >
-          x
-        </button>
-      </div>
-      <div class="gpu-chart-settings-tabs">
-        <button
-          v-for="tab in chartSettingsTabs"
-          :key="tab.id"
-          type="button"
-          class="gpu-chart-settings-tab"
-          :class="{ active: chartSettingsTab === tab.id }"
-          @click="chartSettingsTab = tab.id"
-        >
-          {{ tab.label }}
-        </button>
-      </div>
-      <div class="gpu-chart-settings-body">
-        <div v-if="chartSettingsTab === 'appearance'" class="gpu-chart-settings-grid">
-          <label
-            v-for="field in chartAppearanceColorFields"
-            :key="field.key"
-            class="gpu-chart-settings-field"
+          <span class="gpu-chart-settings-title">{{ displaySymbol }} Settings</span>
+          <button
+            type="button"
+            class="gpu-chart-settings-close"
+            aria-label="Close chart settings"
+            title="Close"
+            @click="closeChartSettings"
           >
-            <span>{{ field.label }}</span>
-            <input
-              type="color"
-              class="gpu-chart-settings-color"
-              :value="resolvedAppearance[field.key]"
-              @input="setChartColor(field.key, $event)"
-            />
-          </label>
-          <label
-            v-for="field in chartAppearanceNumberFields"
-            :key="field.key"
-            class="gpu-chart-settings-field"
-          >
-            <span class="gpu-chart-settings-range-label">
-              <span>{{ field.label }}</span>
-              <span>{{ formatChartSetting(field.key) }}</span>
-            </span>
-            <input
-              type="range"
-              :min="field.min"
-              :max="field.max"
-              :step="field.step"
-              class="gpu-chart-settings-range"
-              :value="resolvedAppearance[field.key]"
-              @input="setChartNumber(field.key, $event)"
-            />
-          </label>
-          <label
-            v-for="field in chartDisplayToggleFields"
-            :key="field.key"
-            class="gpu-chart-settings-toggle"
-          >
-            <input
-              type="checkbox"
-              class="gpu-chart-settings-check"
-              :checked="resolvedAppearance[field.key]"
-              @change="setChartBool(field.key, $event)"
-            />
-            <span>{{ field.label }}</span>
-          </label>
+            x
+          </button>
         </div>
-        <div v-else class="gpu-chart-indicator-manager">
-          <div class="gpu-chart-indicator-list">
-            <div
-              v-for="indicator in chartIndicatorRows"
-              :key="indicator.type"
-              class="gpu-chart-indicator-row"
-              :class="{ selected: indicator.selected }"
+        <div class="gpu-chart-settings-tabs">
+          <button
+            v-for="tab in chartSettingsTabs"
+            :key="tab.id"
+            type="button"
+            class="gpu-chart-settings-tab"
+            :class="{ active: chartSettingsTab === tab.id }"
+            @click="chartSettingsTab = tab.id"
+          >
+            {{ tab.label }}
+          </button>
+        </div>
+        <div class="gpu-chart-settings-body">
+          <div v-if="chartSettingsTab === 'appearance'" class="gpu-chart-settings-grid">
+            <label
+              v-for="field in chartAppearanceColorFields"
+              :key="field.key"
+              class="gpu-chart-settings-field"
             >
-              <label class="gpu-chart-indicator-row-toggle">
-                <input
-                  type="checkbox"
-                  class="gpu-chart-settings-check"
-                  :checked="indicator.enabled"
-                  @change="setChartIndicatorEnabled(indicator.type, $event)"
-                />
-                <span class="gpu-chart-indicator-row-text">
-                  <span class="gpu-chart-indicator-row-label">{{ indicator.label }}</span>
-                  <span class="gpu-chart-indicator-row-meta">{{ indicator.meta }}</span>
-                </span>
-              </label>
-              <button
-                type="button"
-                class="gpu-chart-indicator-config-button"
-                :aria-label="`${indicator.label} settings`"
-                :title="`${indicator.label} settings`"
-                @click="configureChartIndicator(indicator.type)"
-              >
-                &#9881;
-              </button>
-            </div>
+              <span>{{ field.label }}</span>
+              <input
+                type="color"
+                class="gpu-chart-settings-color"
+                :value="resolvedAppearance[field.key]"
+                @input="setChartColor(field.key, $event)"
+              />
+            </label>
+            <label
+              v-for="field in chartAppearanceNumberFields"
+              :key="field.key"
+              class="gpu-chart-settings-field"
+            >
+              <span class="gpu-chart-settings-range-label">
+                <span>{{ field.label }}</span>
+                <span>{{ formatChartSetting(field.key) }}</span>
+              </span>
+              <input
+                type="range"
+                :min="field.min"
+                :max="field.max"
+                :step="field.step"
+                class="gpu-chart-settings-range"
+                :value="resolvedAppearance[field.key]"
+                @input="setChartNumber(field.key, $event)"
+              />
+            </label>
+            <label
+              v-for="field in chartDisplayToggleFields"
+              :key="field.key"
+              class="gpu-chart-settings-toggle"
+            >
+              <input
+                type="checkbox"
+                class="gpu-chart-settings-check"
+                :checked="resolvedAppearance[field.key]"
+                @change="setChartBool(field.key, $event)"
+              />
+              <span>{{ field.label }}</span>
+            </label>
           </div>
-          <div
-            v-if="selectedChartIndicatorOption"
-            class="gpu-chart-selected-indicator-settings"
-          >
-            <div class="gpu-chart-selected-indicator-header">
-              <span>{{ selectedChartIndicatorLabel }}</span>
-              <span>{{ selectedChartIndicatorPlacement }}</span>
+          <div v-else class="gpu-chart-indicator-manager">
+            <div class="gpu-chart-indicator-list">
+              <div
+                v-for="indicator in chartIndicatorRows"
+                :key="indicator.type"
+                class="gpu-chart-indicator-row"
+                :class="{ selected: indicator.selected }"
+              >
+                <label class="gpu-chart-indicator-row-toggle">
+                  <input
+                    type="checkbox"
+                    class="gpu-chart-settings-check"
+                    :checked="indicator.enabled"
+                    @change="setChartIndicatorEnabled(indicator.type, $event)"
+                  />
+                  <span class="gpu-chart-indicator-row-text">
+                    <span class="gpu-chart-indicator-row-label">{{ indicator.label }}</span>
+                    <span class="gpu-chart-indicator-row-meta">{{ indicator.meta }}</span>
+                  </span>
+                </label>
+                <button
+                  type="button"
+                  class="gpu-chart-indicator-config-button"
+                  :aria-label="`${indicator.label} settings`"
+                  :title="`${indicator.label} settings`"
+                  @click="configureChartIndicator(indicator.type)"
+                >
+                  &#9881;
+                </button>
+              </div>
             </div>
-            <div class="gpu-chart-settings-grid compact">
-              <label
-                v-for="field in selectedChartIndicatorOption.colorFields"
-                :key="field.key"
-                class="gpu-chart-settings-field"
-              >
-                <span>{{ field.label }}</span>
-                <input
-                  type="color"
-                  class="gpu-chart-settings-color"
-                  :value="resolvedAppearance[field.key]"
-                  @input="setChartIndicatorColor(field.key, $event)"
-                />
-              </label>
-              <label
-                v-for="field in selectedChartIndicatorOption.numberFields"
-                :key="field.key"
-                class="gpu-chart-settings-field"
-              >
-                <span class="gpu-chart-settings-range-label">
+            <div
+              v-if="selectedChartIndicatorOption"
+              class="gpu-chart-selected-indicator-settings"
+            >
+              <div class="gpu-chart-selected-indicator-header">
+                <span>{{ selectedChartIndicatorLabel }}</span>
+                <span>{{ selectedChartIndicatorPlacement }}</span>
+              </div>
+              <div class="gpu-chart-settings-grid compact">
+                <label
+                  v-for="field in selectedChartIndicatorOption.colorFields"
+                  :key="field.key"
+                  class="gpu-chart-settings-field"
+                >
                   <span>{{ field.label }}</span>
-                  <span>{{ formatChartSetting(field.key) }}</span>
-                </span>
-                <input
-                  type="range"
-                  :min="field.min"
-                  :max="field.max"
-                  :step="field.step"
-                  class="gpu-chart-settings-range"
-                  :value="resolvedAppearance[field.key]"
-                  @input="setChartIndicatorNumber(field.key, $event)"
-                />
-              </label>
-              <label
-                v-for="field in selectedChartIndicatorOption.toggleFields"
-                :key="field.key"
-                class="gpu-chart-settings-toggle"
-              >
-                <input
-                  type="checkbox"
-                  class="gpu-chart-settings-check"
-                  :checked="resolvedAppearance[field.key]"
-                  @change="setChartIndicatorBool(field.key, $event)"
-                />
-                <span>{{ field.label }}</span>
-              </label>
+                  <input
+                    type="color"
+                    class="gpu-chart-settings-color"
+                    :value="resolvedAppearance[field.key]"
+                    @input="setChartIndicatorColor(field.key, $event)"
+                  />
+                </label>
+                <label
+                  v-for="field in selectedChartIndicatorOption.numberFields"
+                  :key="field.key"
+                  class="gpu-chart-settings-field"
+                >
+                  <span class="gpu-chart-settings-range-label">
+                    <span>{{ field.label }}</span>
+                    <span>{{ formatChartSetting(field.key) }}</span>
+                  </span>
+                  <input
+                    type="range"
+                    :min="field.min"
+                    :max="field.max"
+                    :step="field.step"
+                    class="gpu-chart-settings-range"
+                    :value="resolvedAppearance[field.key]"
+                    @input="setChartIndicatorNumber(field.key, $event)"
+                  />
+                </label>
+                <label
+                  v-for="field in selectedChartIndicatorOption.toggleFields"
+                  :key="field.key"
+                  class="gpu-chart-settings-toggle"
+                >
+                  <input
+                    type="checkbox"
+                    class="gpu-chart-settings-check"
+                    :checked="resolvedAppearance[field.key]"
+                    @change="setChartIndicatorBool(field.key, $event)"
+                  />
+                  <span>{{ field.label }}</span>
+                </label>
+              </div>
             </div>
           </div>
         </div>
+        <div class="gpu-chart-settings-actions">
+          <button type="button" class="gpu-chart-settings-action" @click="resetChartSettings">
+            Reset
+          </button>
+          <button
+            type="button"
+            class="gpu-chart-settings-action primary"
+            @click="saveChartSettings"
+          >
+            Save
+          </button>
+        </div>
+        <div
+          class="gpu-chart-settings-resize"
+          :class="{ resizing: chartSettingsResizing }"
+          aria-hidden="true"
+          @mousedown.stop.prevent="startChartSettingsResize"
+        ></div>
       </div>
-      <div class="gpu-chart-settings-actions">
-        <button type="button" class="gpu-chart-settings-action" @click="resetChartSettings">
-          Reset
-        </button>
-        <button
-          type="button"
-          class="gpu-chart-settings-action primary"
-          @click="saveChartSettings"
-        >
-          Save
-        </button>
-      </div>
-      <div
-        class="gpu-chart-settings-resize"
-        :class="{ resizing: chartSettingsResizing }"
-        aria-hidden="true"
-        @mousedown.stop.prevent="startChartSettingsResize"
-      ></div>
-    </div>
+    </Teleport>
     <div
       v-if="indicatorTabsVisible"
       class="gpu-chart-indicator-tabs"
@@ -378,7 +380,22 @@
       <span v-if="changePctText" class="gpu-chart-change" :class="changeClass">
         {{ changePctText }}
       </span>
-      <span class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
+      <select
+        v-if="timeframeSelectable"
+        class="gpu-chart-timeframe-select"
+        :value="displayTimeframe"
+        :aria-label="`${displaySymbol} timeframe`"
+        title="Timeframe"
+        @click.stop
+        @mousedown.stop
+        @dblclick.stop
+        @change="setDisplayTimeframe"
+      >
+        <option v-for="option in selectableTimeframes" :key="option" :value="option">
+          {{ option }}
+        </option>
+      </select>
+      <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
     </component>
     <button
       v-else-if="chartSettingsEnabled"
@@ -481,6 +498,7 @@ const DEFAULT_CHART_SETTINGS_WIDTH_PX = 560;
 const DEFAULT_CHART_SETTINGS_HEIGHT_PX = 500;
 const MIN_CHART_SETTINGS_WIDTH_PX = 360;
 const MIN_CHART_SETTINGS_HEIGHT_PX = 320;
+const CHART_SETTINGS_VIEWPORT_PADDING_PX = 12;
 
 interface IndicatorPaneLayout {
   top: number;
@@ -883,6 +901,7 @@ const props = withDefaults(
     exchange?: string;
     marketType?: string;
     timeframe: string | number;
+    timeframeOptions?: Array<string | number>;
     limit: number;
     candles?: unknown[];
     dataAdapter?: GpuChartDataAdapter;
@@ -900,6 +919,7 @@ const props = withDefaults(
     dataAdapter: undefined,
     exchange: undefined,
     marketType: undefined,
+    timeframeOptions: () => [],
     showSma: true,
     showEma: true,
     synthetic: false,
@@ -914,6 +934,7 @@ const emit = defineEmits<{
   streaming: [active: boolean];
   error: [message: string | null];
   open: [payload: GpuChartOpenPayload];
+  "update:timeframe": [value: string];
   "update:appearance": [value: GpuChartAppearance];
   "save-appearance": [value: GpuChartAppearance];
   "reset-appearance": [];
@@ -1100,6 +1121,14 @@ const indicatorPaneTabsStyle = computed<Record<string, string>>(() => {
 });
 const displaySymbol = computed(() => props.symbol.toUpperCase());
 const displayTimeframe = computed(() => normalizeRestTimeframe(props.timeframe));
+const selectableTimeframes = computed(() => {
+  const options = [
+    displayTimeframe.value,
+    ...props.timeframeOptions.map((option) => normalizeRestTimeframe(option)),
+  ];
+  return Array.from(new Set(options.filter(Boolean)));
+});
+const timeframeSelectable = computed(() => selectableTimeframes.value.length > 1);
 const displayTitle = computed(() => props.title || `${displaySymbol.value} ${displayTimeframe.value}`);
 const lastCloseText = computed(() => (lastClose.value == null ? "" : formatPrice(lastClose.value)));
 const changePctText = computed(() => {
@@ -1253,6 +1282,11 @@ async function boot() {
       scheduleGpuRender(renderNow);
     });
     resizeObs.observe(canvas);
+    const onWindowResize = () => {
+      if (chartSettingsOpen.value) placeChartSettingsModal();
+    };
+    window.addEventListener("resize", onWindowResize);
+    cleanupFns.push(() => window.removeEventListener("resize", onWindowResize));
     await loadSeries();
   } catch (e) {
     setError(e instanceof Error ? e.message : "GPU chart failed to start");
@@ -1775,6 +1809,13 @@ function setChartIndicatorBool(field: ChartIndicatorToggleField, event: Event) {
   patchAppearance({ [field]: (event.target as HTMLInputElement).checked });
 }
 
+function setDisplayTimeframe(event: Event) {
+  const next = normalizeRestTimeframe(inputValue(event));
+  if (next && next !== displayTimeframe.value) {
+    emit("update:timeframe", next);
+  }
+}
+
 function resetChartSettings() {
   const next = defaultGpuChartAppearance();
   localAppearance.value = next;
@@ -1859,11 +1900,22 @@ function startChartSettingsResize(event: MouseEvent) {
 }
 
 function defaultChartSettingsPosition(size = chartSettingsSize()) {
-  const shell = shellRef.value;
-  const shellWidth = shell?.clientWidth ?? 640;
+  const shellRect = shellRef.value?.getBoundingClientRect();
+  const pad = CHART_SETTINGS_VIEWPORT_PADDING_PX;
+  const position = {
+    left: shellRect ? shellRect.left + 8 : pad,
+    top: shellRect ? shellRect.top + 34 : pad,
+  };
+  return clampChartSettingsPosition(position, size);
+}
+
+function viewportSize() {
+  if (typeof window === "undefined") {
+    return { width: 1024, height: 768 };
+  }
   return {
-    left: Math.max(8, Math.min(shellWidth - size.width - 8, 8)),
-    top: 34,
+    width: window.innerWidth || 1024,
+    height: window.innerHeight || 768,
   };
 }
 
@@ -1879,10 +1931,8 @@ function defaultChartSettingsSize() {
 }
 
 function clampChartSettingsSize(size: { width: number; height: number }) {
-  const shell = shellRef.value;
-  const width = shell?.clientWidth ?? 640;
-  const height = shell?.clientHeight ?? 360;
-  const pad = 8;
+  const { width, height } = viewportSize();
+  const pad = CHART_SETTINGS_VIEWPORT_PADDING_PX;
   const maxWidth = Math.max(240, width - pad * 2);
   const maxHeight = Math.max(240, height - pad * 2);
   const minWidth = Math.min(MIN_CHART_SETTINGS_WIDTH_PX, maxWidth);
@@ -1897,10 +1947,8 @@ function clampChartSettingsPosition(
   position: { left: number; top: number },
   size = chartSettingsSize(),
 ) {
-  const shell = shellRef.value;
-  const width = shell?.clientWidth ?? 640;
-  const height = shell?.clientHeight ?? 360;
-  const pad = 8;
+  const { width, height } = viewportSize();
+  const pad = CHART_SETTINGS_VIEWPORT_PADDING_PX;
   const maxLeft = Math.max(pad, width - size.width - pad);
   const maxTop = Math.max(pad, height - size.height - pad);
   return {
@@ -3768,14 +3816,16 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-settings-modal {
-  position: absolute;
-  z-index: 10;
+  position: fixed;
+  z-index: 10000;
   display: flex;
   box-sizing: border-box;
-  width: min(560px, calc(100% - 16px));
-  height: min(500px, calc(100% - 16px));
-  min-width: min(360px, calc(100% - 16px));
-  min-height: min(320px, calc(100% - 16px));
+  width: min(560px, calc(100vw - 24px));
+  height: min(500px, calc(100vh - 24px));
+  min-width: min(360px, calc(100vw - 24px));
+  min-height: min(320px, calc(100vh - 24px));
+  max-width: calc(100vw - 24px);
+  max-height: calc(100vh - 24px);
   flex-direction: column;
   overflow: hidden;
   border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
@@ -4221,6 +4271,7 @@ function setError(message: string | null) {
 
 .gpu-chart-symbol,
 .gpu-chart-timeframe,
+.gpu-chart-timeframe-select,
 .gpu-chart-price,
 .gpu-chart-change {
   overflow: hidden;
@@ -4238,6 +4289,33 @@ function setError(message: string | null) {
   color: var(--gpu-chart-text-color, rgba(255, 255, 255, 0.62));
   font-size: 0.86em;
   opacity: 0.72;
+}
+
+.gpu-chart-timeframe-select {
+  flex: 0 0 auto;
+  max-width: 5.4em;
+  padding: 0 15px 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.04);
+  color: var(--gpu-chart-text-color, rgba(255, 255, 255, 0.72));
+  cursor: pointer;
+  font: inherit;
+  font-size: 0.86em;
+  line-height: 1.25;
+  opacity: 0.82;
+}
+
+.gpu-chart-timeframe-select:hover,
+.gpu-chart-timeframe-select:focus {
+  border-color: rgba(255, 255, 255, 0.22);
+  outline: none;
+  opacity: 1;
+}
+
+.gpu-chart-timeframe-select option {
+  background: #0b1018;
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .gpu-chart-price {
