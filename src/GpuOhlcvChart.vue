@@ -219,6 +219,7 @@ import {
   type GpuChartAppearance,
   type GpuChartIndicatorPane,
 } from "./appearance";
+import { sliverGapBarWidth } from "./bars";
 import { cancelScheduledGpuRender, scheduleGpuRender } from "./scheduler";
 import {
   estimateTimeAxisLabelWidth,
@@ -1395,13 +1396,12 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
     const rect = canvas.getBoundingClientRect();
     if (rect.width <= 0) return;
 
-    if (event.shiftKey) {
+    if (event.shiftKey || isHorizontalWheelPan(event)) {
       wheelMode = "shift-pan";
       resetWheelModeSoon();
       const delta = normalizedWheelDeltaPx(event, rect.height);
       const xSpan = view.maxX - view.minX;
       const shift = (delta / rect.width) * xSpan;
-      autoFitVisibleY = true;
       smoothShiftPanBy(shift);
       return;
     }
@@ -1775,6 +1775,9 @@ function drawHud(pos: { px: number; py: number } | null) {
       ctx.moveTo(0, pos.py + 0.5);
       ctx.lineTo(w, pos.py + 0.5);
       ctx.stroke();
+      if (pos.py >= 0 && pos.py <= priceDecorationBottom) {
+        drawPointerPriceLabel(ctx, pos.py, priceDecorationBottom, fontPx, pad, scale);
+      }
     }
     const candle = nearestCandle(pxToX(pos.px, w));
     if (candle && appearance.showTooltip) {
@@ -1808,14 +1811,7 @@ function drawVolumeOverlay(
 
   const span = Math.max(1, view.maxX - view.minX);
   const slotWidth = ctx.canvas.width / span;
-  const barWidth = Math.max(
-    1 * scale,
-    Math.min(
-      slotWidth * 0.82,
-      Math.max(2 * scale, slotWidth * 0.54, appearance.candleWidth * scale * 1.6),
-      18 * scale,
-    ),
-  );
+  const barWidth = sliverGapBarWidth(slotWidth, scale);
   const height = Math.max(
     18 * scale,
     Math.min(180 * scale, priceBottom * appearance.volumeHeightRatio),
@@ -2391,14 +2387,7 @@ function drawIndicatorHistogram(
   const minX = Math.min(view.minX, view.maxX) - 1;
   const maxX = Math.max(view.minX, view.maxX) + 1;
   const slotWidth = ctx.canvas.width / Math.max(1, view.maxX - view.minX);
-  const barWidth = Math.max(
-    1 * scale,
-    Math.min(
-      slotWidth * 0.82,
-      Math.max(2 * scale, slotWidth * 0.54, appearance.candleWidth * scale * 1.6),
-      18 * scale,
-    ),
-  );
+  const barWidth = sliverGapBarWidth(slotWidth, scale);
   const zeroY = indicatorValueToPx(0, pane, valueScale);
   ctx.save();
   for (let i = 0; i < line.length; i += 2) {
@@ -2530,6 +2519,36 @@ function drawWindowPriceLine(
   ctx.restore();
 }
 
+function drawPointerPriceLabel(
+  ctx: CanvasRenderingContext2D,
+  y: number,
+  priceBottom: number,
+  fontPx: number,
+  pad: number,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const value = pxToY(y, ctx.canvas.height);
+  if (!Number.isFinite(value)) return;
+  const label = formatPrice(value);
+  const labelWidth = ctx.measureText(label).width;
+  const boxWidth = labelWidth + pad * 2;
+  const boxHeight = fontPx + pad * 1.2;
+  const boxX = Math.max(0, ctx.canvas.width - boxWidth - 4 * scale);
+  const boxY = Math.max(
+    2 * scale,
+    Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2),
+  );
+  ctx.save();
+  ctx.fillStyle = hexToRgba(appearance.tooltipBackgroundColor, 0.94);
+  ctx.strokeStyle = hexToRgba(appearance.crosshairColor, 0.72);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(appearance.textColor, 0.98);
+  ctx.fillText(label, boxX + pad, boxY + boxHeight / 2);
+  ctx.restore();
+}
+
 function drawTextBox(ctx: CanvasRenderingContext2D, x: number, y: number, text: string) {
   const appearance = resolvedAppearance.value;
   const scale = canvasScale(ctx.canvas);
@@ -2608,6 +2627,14 @@ function xToPx(x: number, width: number) {
 
 function pxToX(px: number, width: number) {
   return view.minX + (px / width) * (view.maxX - view.minX);
+}
+
+function pxToY(px: number, height: number) {
+  return view.maxY - (px / height) * (view.maxY - view.minY);
+}
+
+function isHorizontalWheelPan(event: WheelEvent) {
+  return Math.abs(event.deltaX) > Math.abs(event.deltaY);
 }
 
 function canvasScale(canvas: HTMLCanvasElement) {
