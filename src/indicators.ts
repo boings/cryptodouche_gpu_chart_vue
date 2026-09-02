@@ -70,6 +70,11 @@ export interface MarketStructureState {
   trend: StructureDirection | "neutral";
 }
 
+export interface AnchoredVwapOptions {
+  anchorBucket?: number | null;
+  anchorX?: number | null;
+}
+
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
   if (candles.length < period) return new Float32Array();
   const points: number[] = [];
@@ -237,6 +242,30 @@ export function computeAtrLine(candles: CandleRecord[], period = 14): Float32Arr
   return pointsToLine(points);
 }
 
+export function computeAnchoredVwapLine(
+  candles: CandleRecord[],
+  options: AnchoredVwapOptions = {},
+): Float32Array {
+  const startIndex = anchoredVwapStartIndex(candles, options);
+  if (startIndex == null) return new Float32Array();
+
+  const points: number[] = [];
+  let cumulativeVolume = 0;
+  let cumulativeNotional = 0;
+  for (let index = startIndex; index < candles.length; index += 1) {
+    const candle = candles[index];
+    const typical = (candle.h + candle.l + candle.c) / 3;
+    if (!validPositivePrice(typical)) continue;
+    const volume = anchoredVwapBaseVolume(candle, typical);
+    if (volume <= 0) continue;
+    cumulativeVolume += volume;
+    cumulativeNotional += typical * volume;
+    points.push(candle.x, cumulativeNotional / cumulativeVolume);
+  }
+
+  return new Float32Array(points);
+}
+
 export function computeSwingPoints(
   candles: CandleRecord[],
   options: MarketStructureOptions = {},
@@ -402,6 +431,34 @@ export function lineToBytes(line: Float32Array): Uint8Array {
 
 function validPositivePrice(value: number) {
   return Number.isFinite(value) && value > 0;
+}
+
+function anchoredVwapStartIndex(
+  candles: CandleRecord[],
+  options: AnchoredVwapOptions,
+) {
+  const anchorBucket =
+    options.anchorBucket == null ? null : Number(options.anchorBucket);
+  if (anchorBucket != null && Number.isFinite(anchorBucket)) {
+    const index = candles.findIndex((candle) => candle.bucket >= anchorBucket);
+    return index >= 0 ? index : null;
+  }
+
+  const anchorX = options.anchorX == null ? null : Number(options.anchorX);
+  if (anchorX != null && Number.isFinite(anchorX)) {
+    const index = candles.findIndex((candle) => candle.x >= anchorX);
+    return index >= 0 ? index : null;
+  }
+
+  return null;
+}
+
+function anchoredVwapBaseVolume(candle: CandleRecord, typicalPrice: number) {
+  if (Number.isFinite(candle.v_base) && candle.v_base > 0) return candle.v_base;
+  if (Number.isFinite(candle.v_quote) && candle.v_quote > 0 && typicalPrice > 0) {
+    return candle.v_quote / typicalPrice;
+  }
+  return 0;
 }
 
 function createSwingPoint(

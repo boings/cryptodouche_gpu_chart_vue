@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  computeAnchoredVwapLine,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeSupportResistanceZones,
@@ -39,6 +40,44 @@ function structureCandles() {
 }
 
 describe("gpu chart indicators", () => {
+  it("computes anchored VWAP from the selected bucket", () => {
+    const candles = [
+      candle(0, 9, 11, 10),
+      candle(1, 18, 24, 21),
+      candle(2, 30, 36, 33),
+    ];
+    candles[1].v_base = 2;
+    candles[2].v_base = 1;
+
+    const line = Array.from(computeAnchoredVwapLine(candles, { anchorBucket: 60 }));
+
+    expect(line[0]).toBe(1);
+    expect(line[1]).toBeCloseTo(21, 6);
+    expect(line[2]).toBe(2);
+    expect(line[3]).toBeCloseTo((21 * 2 + 33) / 3, 6);
+  });
+
+  it("falls back to quote volume for anchored VWAP", () => {
+    const candles = [
+      candle(0, 9, 11, 10),
+      candle(1, 18, 24, 21),
+      candle(2, 30, 36, 33),
+    ];
+    candles[1].v_base = 0;
+    candles[1].v_quote = 84;
+    candles[2].v_base = 0;
+    candles[2].v_quote = 33;
+
+    const line = Array.from(computeAnchoredVwapLine(candles, { anchorX: 1 }));
+
+    expect(line[1]).toBeCloseTo(21, 6);
+    expect(line[3]).toBeCloseTo((21 * 4 + 33) / 5, 6);
+  });
+
+  it("returns no anchored VWAP without an anchor", () => {
+    expect(computeAnchoredVwapLine([candle(0, 9, 11)]).length).toBe(0);
+  });
+
   it("computes relative cumulative return anchored at zero", () => {
     const current = [
       candle(0, 9, 11),
