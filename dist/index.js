@@ -1468,7 +1468,7 @@ function TN(g, Q, B) {
     R = (Number.isFinite(g.minX + g.maxX) ? (g.minX + g.maxX) * 0.5 : E + i * 0.5) - k * 0.5;
   let H = R + k;
   R < E && (R = E, H = R + k);
-  const S = Z + Y;
+  const S = Z + Math.max(Y, k);
   return H > S && (H = S, R = H - k), R < E && (R = E, H = R + k), R > Z && (R = Math.max(E, Z), H = R + k), { ...g, minX: R, maxX: H };
 }
 function HN(g, Q, B = sN) {

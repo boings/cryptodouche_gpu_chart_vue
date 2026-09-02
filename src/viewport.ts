@@ -80,7 +80,7 @@ export function clampXView(
     minX = minAllowed;
     maxX = minX + width;
   }
-  const maxAllowed = latestX + initialPadding;
+  const maxAllowed = latestX + Math.max(initialPadding, width);
   if (maxX > maxAllowed) {
     maxX = maxAllowed;
     minX = maxX - width;
