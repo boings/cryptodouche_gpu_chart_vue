@@ -542,12 +542,14 @@ import {
 } from "./timeAxis";
 import {
   clampXView,
+  candleShiftToSeconds,
   computeVisibleYBounds,
   isFollowingLatest,
   isYBoundsClose,
   RIGHT_EDGE_PADDING_CANDLES,
   reserveLowerPaneYBounds,
   scaleYView,
+  secondsToCandleShift,
   smoothVisibleYBounds,
   withRightPadding,
   wheelZoomScale,
@@ -2844,8 +2846,9 @@ function applyTimeSyncCommand(command: GpuChartTimeSyncCommand | null | undefine
   lastAppliedTimeSyncSeq = command.seq;
   if (String(command.sourceId ?? "") === String(props.syncId ?? "")) return;
   if (command.kind === "pan") {
-    const span = Math.max(1e-9, view.maxX - view.minX);
-    smoothShiftPanBy(span * command.deltaRatio, { emit: false });
+    smoothShiftPanBy(secondsToCandleShift(command.deltaSeconds, state.timeframeSec), {
+      emit: false,
+    });
   } else {
     smoothZoomBy(command.scale, command.anchorRatio, { emit: false });
   }
@@ -2858,7 +2861,6 @@ function emitTimeSync(value: GpuChartTimeSyncAction) {
 function smoothShiftPanBy(shift: number, options: { emit?: boolean } = {}) {
   if (!Number.isFinite(shift) || shift === 0 || !state?.candles.length) return;
   const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
-  const span = Math.max(1e-9, base.maxX - base.minX);
   const target = clampXBounds({
     ...view,
     minX: base.minX + shift,
@@ -2867,7 +2869,10 @@ function smoothShiftPanBy(shift: number, options: { emit?: boolean } = {}) {
   if (options.emit !== false) {
     const actualShift = target.minX - base.minX;
     if (Number.isFinite(actualShift) && actualShift !== 0) {
-      emitTimeSync({ kind: "pan", deltaRatio: actualShift / span });
+      emitTimeSync({
+        kind: "pan",
+        deltaSeconds: candleShiftToSeconds(actualShift, state.timeframeSec),
+      });
     }
   }
   setSmoothXTarget(target);
@@ -3038,7 +3043,6 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         view = scaleYView(startView, startAnchorRatio, scale);
       } else {
         const previousMinX = view.minX;
-        const previousSpan = Math.max(1e-9, view.maxX - view.minX);
         const dx = ((event.clientX - startX) / rect.width) * (startView.maxX - startView.minX);
         const dy =
           ((event.clientY - startY) / pricePaneHeightCss(rect)) *
@@ -3049,8 +3053,12 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         view.maxY = startView.maxY + dy;
         clampViewX();
         const actualShift = view.minX - previousMinX;
-        if (Number.isFinite(actualShift) && actualShift !== 0) {
-          emitTimeSync({ kind: "pan", deltaRatio: actualShift / previousSpan });
+        const deltaSeconds = candleShiftToSeconds(actualShift, state?.timeframeSec ?? 0);
+        if (Number.isFinite(deltaSeconds) && deltaSeconds !== 0) {
+          emitTimeSync({
+            kind: "pan",
+            deltaSeconds,
+          });
         }
         void maybeLoadOlderCandles();
       }

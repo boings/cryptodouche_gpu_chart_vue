@@ -213,6 +213,20 @@ export function scaleYView(
   };
 }
 
+export function candleShiftToSeconds(shiftCandles: number, timeframeSec: number) {
+  if (!Number.isFinite(shiftCandles) || !Number.isFinite(timeframeSec) || timeframeSec <= 0) {
+    return 0;
+  }
+  return shiftCandles * timeframeSec;
+}
+
+export function secondsToCandleShift(deltaSeconds: number, timeframeSec: number) {
+  if (!Number.isFinite(deltaSeconds) || !Number.isFinite(timeframeSec) || timeframeSec <= 0) {
+    return 0;
+  }
+  return deltaSeconds / timeframeSec;
+}
+
 function paddedYBounds(
   rawMinY: number,
   rawMaxY: number,

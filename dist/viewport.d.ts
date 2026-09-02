@@ -30,3 +30,5 @@ export declare function reserveLowerPaneYBounds(bounds: Pick<ViewBounds, "minY" 
 export declare function isYBoundsClose(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, epsilonRatio?: number): boolean;
 export declare function wheelZoomScale(deltaPx: number, sensitivity?: number, maxAbsDeltaPx?: number): number;
 export declare function scaleYView(view: ViewBounds, anchorRatio: number, scale: number): ViewBounds;
+export declare function candleShiftToSeconds(shiftCandles: number, timeframeSec: number): number;
+export declare function secondsToCandleShift(deltaSeconds: number, timeframeSec: number): number;

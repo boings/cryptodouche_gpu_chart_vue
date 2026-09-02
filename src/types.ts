@@ -35,7 +35,7 @@ export interface ViewBounds {
 }
 
 export type GpuChartTimeSyncAction =
-  | { kind: "pan"; deltaRatio: number }
+  | { kind: "pan"; deltaSeconds: number }
   | { kind: "zoom"; scale: number; anchorRatio: number };
 
 export type GpuChartTimeSyncCommand = GpuChartTimeSyncAction & {

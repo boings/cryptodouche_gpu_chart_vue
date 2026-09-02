@@ -19,11 +19,13 @@ import {
 } from "./indicators";
 import {
   clampXView,
+  candleShiftToSeconds,
   computeVisibleYBounds,
   isFollowingLatest,
   isYBoundsClose,
   reserveLowerPaneYBounds,
   scaleYView,
+  secondsToCandleShift,
   smoothVisibleYBounds,
   wheelZoomScale,
   withRightPadding,
@@ -43,6 +45,15 @@ describe("gpu chart data utilities", () => {
     expect(state.firstBucket).toBe(60);
     expect(state.candles.map((candle) => candle.x)).toEqual([0, 1]);
     expect(candlesToBytes(state.candles).byteLength).toBe(2 * 5 * 4);
+  });
+
+  it("converts time-locked pan distance across timeframes", () => {
+    const sourceShiftSeconds = candleShiftToSeconds(12, 60);
+
+    expect(sourceShiftSeconds).toBe(720);
+    expect(secondsToCandleShift(sourceShiftSeconds, 5 * 60)).toBeCloseTo(2.4, 6);
+    expect(secondsToCandleShift(sourceShiftSeconds, 15 * 60)).toBeCloseTo(0.8, 6);
+    expect(secondsToCandleShift(sourceShiftSeconds, 60 * 60)).toBeCloseTo(0.2, 6);
   });
 
   it("collapses duplicate historical buckets by latest candle version", () => {
