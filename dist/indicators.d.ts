@@ -31,7 +31,9 @@ export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
 export type StructureSummaryState = StructureDirection | "transitional" | "range" | "neutral";
 export type StructureActiveLevelRole = "continuation" | "shift" | "rangeHigh" | "rangeLow";
-export type RelativeStrengthDivergenceKind = "bearishHigh" | "bearishLow" | "bullishHigh" | "bullishLow";
+export type RelativeStrengthDivergenceKind = "bearishHigh" | "bearishLow" | "bearishBreak" | "bullishHigh" | "bullishLow" | "bullishBreak";
+export type RelativeStrengthSignalKind = "divergence" | "lead" | "break";
+export type RelativeStrengthDivergenceLabel = "RS DIV ↓" | "RS LEAD ↓" | "RS BREAK ↓" | "RS DIV ↑" | "RS LEAD ↑" | "RS BREAK ↑";
 export interface SwingPoint {
     kind: SwingPointKind;
     structure: SwingPointStructure;
@@ -90,21 +92,29 @@ export interface StructureActiveLevel {
 }
 export interface RelativeStrengthDivergence {
     kind: RelativeStrengthDivergenceKind;
+    signal: RelativeStrengthSignalKind;
     direction: StructureDirection;
-    label: "RS LH" | "RS LL" | "RS HH" | "RS HL";
+    label: RelativeStrengthDivergenceLabel;
     index: number;
     x: number;
     ts: number;
     bucket: number;
     price: number;
-    previousPrice: number;
+    previousPrice: number | null;
     rs: number;
-    previousRs: number;
-    priceLabel: SwingPointLabel;
+    previousRs: number | null;
+    priceLabel: SwingPointLabel | "Break";
+    sourceBreak: StructureBreak | null;
+    priceStructureState: StructureSummaryState;
+    rsStructureState: StructureSummaryState;
 }
 export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
     minDeltaPct?: number;
+    maxAgeBars?: number;
     maxDivergences?: number;
+    includeDivergences?: boolean;
+    includeLeads?: boolean;
+    includeBreaks?: boolean;
 }
 export interface AnchoredVwapOptions {
     anchorBucket?: number | null;

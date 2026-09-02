@@ -43,8 +43,18 @@ export type StructureActiveLevelRole = "continuation" | "shift" | "rangeHigh" | 
 export type RelativeStrengthDivergenceKind =
   | "bearishHigh"
   | "bearishLow"
+  | "bearishBreak"
   | "bullishHigh"
-  | "bullishLow";
+  | "bullishLow"
+  | "bullishBreak";
+export type RelativeStrengthSignalKind = "divergence" | "lead" | "break";
+export type RelativeStrengthDivergenceLabel =
+  | "RS DIV ↓"
+  | "RS LEAD ↓"
+  | "RS BREAK ↓"
+  | "RS DIV ↑"
+  | "RS LEAD ↑"
+  | "RS BREAK ↑";
 
 export interface SwingPoint {
   kind: SwingPointKind;
@@ -110,22 +120,30 @@ export interface StructureActiveLevel {
 
 export interface RelativeStrengthDivergence {
   kind: RelativeStrengthDivergenceKind;
+  signal: RelativeStrengthSignalKind;
   direction: StructureDirection;
-  label: "RS LH" | "RS LL" | "RS HH" | "RS HL";
+  label: RelativeStrengthDivergenceLabel;
   index: number;
   x: number;
   ts: number;
   bucket: number;
   price: number;
-  previousPrice: number;
+  previousPrice: number | null;
   rs: number;
-  previousRs: number;
-  priceLabel: SwingPointLabel;
+  previousRs: number | null;
+  priceLabel: SwingPointLabel | "Break";
+  sourceBreak: StructureBreak | null;
+  priceStructureState: StructureSummaryState;
+  rsStructureState: StructureSummaryState;
 }
 
 export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
   minDeltaPct?: number;
+  maxAgeBars?: number;
   maxDivergences?: number;
+  includeDivergences?: boolean;
+  includeLeads?: boolean;
+  includeBreaks?: boolean;
 }
 
 export interface AnchoredVwapOptions {
@@ -668,14 +686,34 @@ export function computeRelativeStrengthDivergences(
 ): RelativeStrengthDivergence[] {
   const maxDivergences = clampIntegerOption(options.maxDivergences, 1, 100, 16);
   const minDeltaPct = clampNumberOption(options.minDeltaPct, 0, 50, 0.5);
-  const rsByX = linePointMap(computeRelativeCumulativeReturnLine(candles, benchmarkCandles));
+  const maxAgeBars = clampIntegerOption(
+    options.maxAgeBars,
+    1,
+    2000,
+    options.lookback ?? 240,
+  );
+  const includeDivergences = options.includeDivergences ?? true;
+  const includeLeads = options.includeLeads ?? true;
+  const includeBreaks = options.includeBreaks ?? true;
+  const rsLine = computeRelativeCumulativeReturnLine(candles, benchmarkCandles);
+  const rsByX = linePointMap(rsLine);
   if (!candles.length || rsByX.size < 2) return [];
 
-  const structure = computeMarketStructure(candles, {
+  const latestX = candles[candles.length - 1]?.x ?? 0;
+  const minEventX = latestX - maxAgeBars;
+  const structureOptions: MarketStructureOptions = {
     ...options,
     maxSwings: Math.max(options.maxSwings ?? 120, maxDivergences * 4),
-    maxBreaks: options.maxBreaks ?? 24,
+    maxBreaks: Math.max(options.maxBreaks ?? 24, maxDivergences * 2),
+  };
+  const structure = computeMarketStructure(candles, {
+    ...structureOptions,
   });
+  const rsCandles = relativeStrengthCandlesFromLine(candles, rsLine);
+  const rsStructure = computeMarketStructure(rsCandles, {
+    ...structureOptions,
+  });
+  const priceSourceByX = new Map(candles.map((candle, index) => [candle.x, { candle, index }]));
   const divergences: RelativeStrengthDivergence[] = [];
   let previousHigh: SwingPoint | null = null;
   let previousLow: SwingPoint | null = null;
@@ -689,29 +727,39 @@ export function computeRelativeStrengthDivergences(
         const previousRs = rsByX.get(previousHigh.x);
         if (previousRs != null && Number.isFinite(previousRs)) {
           if (swing.price > previousHigh.price && rs <= previousRs - minDeltaPct) {
-            divergences.push(
-              createRelativeStrengthDivergence(
-                "bearishHigh",
-                "bearish",
-                "RS LH",
-                swing,
-                previousHigh,
-                rs,
-                previousRs,
-              ),
-            );
+            if (includeDivergences) {
+              divergences.push(
+                createRelativeStrengthDivergence(
+                  "bearishHigh",
+                  "divergence",
+                  "bearish",
+                  "RS DIV ↓",
+                  swing,
+                  previousHigh,
+                  rs,
+                  previousRs,
+                  structure.summary.state,
+                  rsStructure.summary.state,
+                ),
+              );
+            }
           } else if (swing.price < previousHigh.price && rs >= previousRs + minDeltaPct) {
-            divergences.push(
-              createRelativeStrengthDivergence(
-                "bullishHigh",
-                "bullish",
-                "RS HH",
-                swing,
-                previousHigh,
-                rs,
-                previousRs,
-              ),
-            );
+            if (includeLeads) {
+              divergences.push(
+                createRelativeStrengthDivergence(
+                  "bullishHigh",
+                  "lead",
+                  "bullish",
+                  "RS LEAD ↑",
+                  swing,
+                  previousHigh,
+                  rs,
+                  previousRs,
+                  structure.summary.state,
+                  rsStructure.summary.state,
+                ),
+              );
+            }
           }
         }
       }
@@ -723,36 +771,80 @@ export function computeRelativeStrengthDivergences(
       const previousRs = rsByX.get(previousLow.x);
       if (previousRs != null && Number.isFinite(previousRs)) {
         if (swing.price > previousLow.price && rs <= previousRs - minDeltaPct) {
-          divergences.push(
-            createRelativeStrengthDivergence(
-              "bearishLow",
-              "bearish",
-              "RS LL",
-              swing,
-              previousLow,
-              rs,
-              previousRs,
-            ),
-          );
+          if (includeLeads) {
+            divergences.push(
+              createRelativeStrengthDivergence(
+                "bearishLow",
+                "lead",
+                "bearish",
+                "RS LEAD ↓",
+                swing,
+                previousLow,
+                rs,
+                previousRs,
+                structure.summary.state,
+                rsStructure.summary.state,
+              ),
+            );
+          }
         } else if (swing.price < previousLow.price && rs >= previousRs + minDeltaPct) {
-          divergences.push(
-            createRelativeStrengthDivergence(
-              "bullishLow",
-              "bullish",
-              "RS HL",
-              swing,
-              previousLow,
-              rs,
-              previousRs,
-            ),
-          );
+          if (includeDivergences) {
+            divergences.push(
+              createRelativeStrengthDivergence(
+                "bullishLow",
+                "divergence",
+                "bullish",
+                "RS DIV ↑",
+                swing,
+                previousLow,
+                rs,
+                previousRs,
+                structure.summary.state,
+                rsStructure.summary.state,
+              ),
+            );
+          }
         }
       }
     }
     previousLow = swing;
   }
 
-  return divergences.slice(-maxDivergences);
+  if (includeBreaks) {
+    for (const rsBreak of rsStructure.breaks) {
+      if (rsBreak.x < minEventX) continue;
+      const source = priceSourceByX.get(rsBreak.x);
+      const rs = rsByX.get(rsBreak.x);
+      if (!source || rs == null || !Number.isFinite(rs)) continue;
+
+      const priceStructureAtBreak = computeMarketStructure(candles.slice(0, source.index + 1), {
+        ...structureOptions,
+        maxBreaks: Math.max(8, options.maxBreaks ?? 24),
+      });
+      if (!priceStructureAllowsRsBreak(rsBreak.direction, priceStructureAtBreak.summary.state)) {
+        continue;
+      }
+
+      divergences.push(
+        createRelativeStrengthBreakSignal(
+          rsBreak.direction === "bearish" ? "bearishBreak" : "bullishBreak",
+          rsBreak.direction,
+          rsBreak.direction === "bearish" ? "RS BREAK ↓" : "RS BREAK ↑",
+          source.index,
+          source.candle,
+          rs,
+          rsBreak,
+          priceStructureAtBreak.summary.state,
+          rsStructure.summary.state,
+        ),
+      );
+    }
+  }
+
+  return divergences
+    .filter((item) => item.x >= minEventX)
+    .sort((a, b) => a.x - b.x || signalPriority(a.signal) - signalPriority(b.signal))
+    .slice(-maxDivergences);
 }
 
 export function lineToBytes(line: Float32Array): Uint8Array {
@@ -895,15 +987,19 @@ function createStructureBreak(
 
 function createRelativeStrengthDivergence(
   kind: RelativeStrengthDivergenceKind,
+  signal: RelativeStrengthSignalKind,
   direction: StructureDirection,
   label: RelativeStrengthDivergence["label"],
   swing: SwingPoint,
   previousSwing: SwingPoint,
   rs: number,
   previousRs: number,
+  priceStructureState: StructureSummaryState,
+  rsStructureState: StructureSummaryState,
 ): RelativeStrengthDivergence {
   return {
     kind,
+    signal,
     direction,
     label,
     index: swing.index,
@@ -915,7 +1011,89 @@ function createRelativeStrengthDivergence(
     rs,
     previousRs,
     priceLabel: swing.label,
+    sourceBreak: null,
+    priceStructureState,
+    rsStructureState,
   };
+}
+
+function createRelativeStrengthBreakSignal(
+  kind: "bearishBreak" | "bullishBreak",
+  direction: StructureDirection,
+  label: RelativeStrengthDivergence["label"],
+  index: number,
+  candle: CandleRecord,
+  rs: number,
+  sourceBreak: StructureBreak,
+  priceStructureState: StructureSummaryState,
+  rsStructureState: StructureSummaryState,
+): RelativeStrengthDivergence {
+  return {
+    kind,
+    signal: "break",
+    direction,
+    label,
+    index,
+    x: candle.x,
+    ts: candle.ts,
+    bucket: candle.bucket,
+    price: direction === "bearish" ? candle.l : candle.h,
+    previousPrice: null,
+    rs,
+    previousRs: sourceBreak.sourceSwingPrice,
+    priceLabel: "Break",
+    sourceBreak,
+    priceStructureState,
+    rsStructureState,
+  };
+}
+
+function relativeStrengthCandlesFromLine(
+  candles: CandleRecord[],
+  line: Float32Array,
+): CandleRecord[] {
+  const candleByX = new Map(candles.map((candle) => [candle.x, candle]));
+  const result: CandleRecord[] = [];
+  let previousValue: number | null = null;
+
+  for (let index = 0; index < line.length; index += 2) {
+    const x = line[index];
+    const value = line[index + 1];
+    const source = candleByX.get(x);
+    if (!source || !Number.isFinite(value)) continue;
+    const open = previousValue ?? value;
+    result.push({
+      ...source,
+      o: open,
+      h: value,
+      l: value,
+      c: value,
+      v_base: 0,
+      v_quote: 0,
+    });
+    previousValue = value;
+  }
+
+  return result;
+}
+
+function priceStructureAllowsRsBreak(
+  rsDirection: StructureDirection,
+  priceState: StructureSummaryState,
+) {
+  if (rsDirection === "bearish") return priceState === "bullish" || priceState === "transitional";
+  return priceState === "bearish" || priceState === "transitional";
+}
+
+function signalPriority(signal: RelativeStrengthSignalKind) {
+  switch (signal) {
+    case "break":
+      return 2;
+    case "divergence":
+      return 1;
+    case "lead":
+      return 0;
+  }
 }
 
 function summarizeMarketStructure(

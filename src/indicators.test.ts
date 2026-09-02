@@ -253,12 +253,51 @@ describe("gpu chart indicators", () => {
       minMoveAtr: 0,
       minDeltaPct: 0.5,
       maxDivergences: 10,
+      includeBreaks: false,
     });
 
-    expect(divergences.map((item) => item.label)).toEqual(["RS LH", "RS LL"]);
+    expect(divergences.map((item) => item.label)).toEqual(["RS DIV ↓", "RS LEAD ↓"]);
+    expect(divergences.map((item) => item.signal)).toEqual(["divergence", "lead"]);
     expect(divergences.every((item) => item.direction === "bearish")).toBe(true);
     expect(divergences[0].priceLabel).toBe("HH");
     expect(divergences[1].priceLabel).toBe("HL");
+  });
+
+  it("marks RS structure breaks while price structure remains intact", () => {
+    const current = [
+      candle(0, 99, 101, 100),
+      candle(1, 108, 112, 111),
+      candle(2, 103, 106, 105),
+      candle(3, 119, 122, 121),
+      candle(4, 116, 120, 118),
+      candle(5, 114, 118, 116),
+      candle(6, 115, 119, 117),
+    ];
+    const benchmark = [
+      candle(0, 99, 101, 100),
+      candle(1, 99, 101, 100),
+      candle(2, 104, 106, 105),
+      candle(3, 99, 101, 100),
+      candle(4, 128, 132, 130),
+      candle(5, 148, 152, 150),
+      candle(6, 168, 172, 170),
+    ];
+
+    const divergences = computeRelativeStrengthDivergences(current, benchmark, {
+      pivotStrength: 1,
+      atrPeriod: 2,
+      minMoveAtr: 0,
+      minDeltaPct: 0.5,
+      maxDivergences: 10,
+      includeDivergences: false,
+      includeLeads: false,
+    });
+
+    expect(divergences.map((item) => item.label)).toContain("RS BREAK ↓");
+    const rsBreak = divergences.find((item) => item.signal === "break");
+    expect(rsBreak?.direction).toBe("bearish");
+    expect(rsBreak?.sourceBreak?.direction).toBe("bearish");
+    expect(rsBreak?.priceStructureState).toBe("bullish");
   });
 
   it("filters small swing reversals with an ATR threshold", () => {

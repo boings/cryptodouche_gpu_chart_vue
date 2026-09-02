@@ -819,6 +819,7 @@ type ChartIndicatorNumberField = Extract<
   | "mtfStructureLevelOpacity"
   | "rsDivergenceLookback"
   | "rsDivergenceMinDeltaPct"
+  | "rsDivergenceMaxAgeBars"
   | "rsDivergenceMaxLabels"
   | "rsDivergenceOpacity"
   | "anchoredVwapSignalOpacity"
@@ -856,6 +857,9 @@ type ChartIndicatorToggleField = Extract<
   | "showMtfStructure1h"
   | "showMtfStructure4h"
   | "showMtfStructure1d"
+  | "showRsDivergenceSignal"
+  | "showRsLeadSignal"
+  | "showRsBreakSignal"
 >;
 type ChartNumberField = ChartSettingsNumberField | ChartIndicatorNumberField;
 
@@ -1142,6 +1146,11 @@ const chartRsDivergenceColorFields: Array<{ key: ChartIndicatorColorField; label
   { key: "rsDivergenceBearishColor", label: "Bearish Color" },
   { key: "rsDivergenceBullishColor", label: "Bullish Color" },
 ];
+const chartRsDivergenceToggleFields: Array<{ key: ChartIndicatorToggleField; label: string }> = [
+  { key: "showRsDivergenceSignal", label: "RS Divergence" },
+  { key: "showRsLeadSignal", label: "RS Lead" },
+  { key: "showRsBreakSignal", label: "RS Break" },
+];
 const chartRsDivergenceNumberFields: Array<{
   key: ChartIndicatorNumberField;
   label: string;
@@ -1151,6 +1160,7 @@ const chartRsDivergenceNumberFields: Array<{
 }> = [
   { key: "rsDivergenceLookback", label: "Lookback", min: 20, max: 2000, step: 10 },
   { key: "rsDivergenceMinDeltaPct", label: "Min RS Delta", min: 0, max: 50, step: 0.1 },
+  { key: "rsDivergenceMaxAgeBars", label: "Max Age Bars", min: 1, max: 2000, step: 1 },
   { key: "rsDivergenceMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
   { key: "rsDivergenceOpacity", label: "Opacity", min: 0.05, max: 1, step: 0.05 },
 ];
@@ -1225,7 +1235,7 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     label: "RS Divergence",
     placement: "price",
     colorFields: chartRsDivergenceColorFields,
-    toggleFields: [],
+    toggleFields: chartRsDivergenceToggleFields,
     numberFields: chartRsDivergenceNumberFields,
   },
   {
@@ -4507,7 +4517,11 @@ function drawRelativeStrengthDivergences(
       atrPeriod: appearance.marketStructureAtrPeriod,
       minMoveAtr: appearance.marketStructureMinMoveAtr,
       minDeltaPct: appearance.rsDivergenceMinDeltaPct,
+      maxAgeBars: appearance.rsDivergenceMaxAgeBars,
       maxDivergences: appearance.rsDivergenceMaxLabels,
+      includeDivergences: appearance.showRsDivergenceSignal,
+      includeLeads: appearance.showRsLeadSignal,
+      includeBreaks: appearance.showRsBreakSignal,
       maxBreaks: 24,
     },
   ).filter((item) => item.x >= minX && item.x <= maxX);
@@ -4541,17 +4555,15 @@ function drawRelativeStrengthDivergence(
     return;
   }
 
-  const isHigh = divergence.kind === "bearishHigh" || divergence.kind === "bullishHigh";
+  const isBearish = divergence.direction === "bearish";
   const color =
-    divergence.direction === "bearish"
-      ? appearance.rsDivergenceBearishColor
-      : appearance.rsDivergenceBullishColor;
+    isBearish ? appearance.rsDivergenceBearishColor : appearance.rsDivergenceBullishColor;
   const opacity = appearance.rsDivergenceOpacity;
-  const text = `${divergence.priceLabel}/RS ${divergence.label.slice(3)}`;
+  const text = divergence.label;
   const padX = 5 * scale;
   const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.94);
   const boxWidth = ctx.measureText(text).width + padX * 2;
-  const offset = (isHigh ? -1 : 1) * (boxHeight * 1.45);
+  const offset = (isBearish ? -1 : 1) * (boxHeight * 1.45);
   const rect = placeHudLabelRect(
     ctx,
     labelRects,
@@ -4561,7 +4573,7 @@ function drawRelativeStrengthDivergence(
     boxHeight,
     priceBottom,
     scale,
-    isHigh ? [0, -1, 1, -2, 2, -3, 3, -4, 4] : [0, 1, -1, 2, -2, 3, -3, 4, -4],
+    isBearish ? [0, -1, 1, -2, 2, -3, 3, -4, 4] : [0, 1, -1, 2, -2, 3, -3, 4, -4],
     [0, 1, -1, 2, -2, 3, -3],
   );
   if (!rect) return;
@@ -4572,14 +4584,14 @@ function drawRelativeStrengthDivergence(
   ctx.lineWidth = Math.max(1, scale);
   ctx.beginPath();
   const markerSize = Math.max(3 * scale, 3);
-  if (isHigh) {
-    ctx.moveTo(x, y - markerSize * 1.8);
-    ctx.lineTo(x - markerSize, y - markerSize * 0.2);
-    ctx.lineTo(x + markerSize, y - markerSize * 0.2);
+  if (isBearish) {
+    ctx.moveTo(x, y - markerSize * 0.2);
+    ctx.lineTo(x - markerSize, y - markerSize * 1.8);
+    ctx.lineTo(x + markerSize, y - markerSize * 1.8);
   } else {
-    ctx.moveTo(x, y + markerSize * 1.8);
-    ctx.lineTo(x - markerSize, y + markerSize * 0.2);
-    ctx.lineTo(x + markerSize, y + markerSize * 0.2);
+    ctx.moveTo(x, y + markerSize * 0.2);
+    ctx.lineTo(x - markerSize, y + markerSize * 1.8);
+    ctx.lineTo(x + markerSize, y + markerSize * 1.8);
   }
   ctx.closePath();
   ctx.fill();

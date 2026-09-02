@@ -75,7 +75,11 @@ describe("gpu chart appearance", () => {
       showMtfStructure4h: "yes" as unknown as boolean,
       showMtfStructure1d: "yes" as unknown as boolean,
       mtfStructureLevelOpacity: -1,
+      rsDivergenceMaxAgeBars: -1,
       rsDivergenceOpacity: 9,
+      showRsDivergenceSignal: "yes" as unknown as boolean,
+      showRsLeadSignal: "yes" as unknown as boolean,
+      showRsBreakSignal: "yes" as unknown as boolean,
       macdFastPeriod: 1,
       macdSlowPeriod: 999,
       macdSignalPeriod: -3,
@@ -184,7 +188,13 @@ describe("gpu chart appearance", () => {
       DEFAULT_GPU_CHART_APPEARANCE.showMtfStructure1d,
     );
     expect(appearance.mtfStructureLevelOpacity).toBe(0.05);
+    expect(appearance.rsDivergenceMaxAgeBars).toBe(1);
     expect(appearance.rsDivergenceOpacity).toBe(1);
+    expect(appearance.showRsDivergenceSignal).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showRsDivergenceSignal,
+    );
+    expect(appearance.showRsLeadSignal).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsLeadSignal);
+    expect(appearance.showRsBreakSignal).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsBreakSignal);
     expect(appearance.macdFastPeriod).toBe(2);
     expect(appearance.macdSlowPeriod).toBe(200);
     expect(appearance.macdSignalPeriod).toBe(1);
@@ -314,7 +324,11 @@ describe("gpu chart appearance", () => {
         showMtfStructure4h: true,
         showMtfStructure1d: false,
         mtfStructureLevelOpacity: 0.35,
+        rsDivergenceMaxAgeBars: 96,
         rsDivergenceOpacity: 0.7,
+        showRsDivergenceSignal: false,
+        showRsLeadSignal: true,
+        showRsBreakSignal: false,
         macdLineColor: "#0284c7",
         macdSignalColor: "#f97316",
         macdHistogramUpColor: "#16a34a",
@@ -392,7 +406,11 @@ describe("gpu chart appearance", () => {
     expect(saved.showMtfStructure4h).toBe(true);
     expect(saved.showMtfStructure1d).toBe(false);
     expect(saved.mtfStructureLevelOpacity).toBe(0.35);
+    expect(saved.rsDivergenceMaxAgeBars).toBe(96);
     expect(saved.rsDivergenceOpacity).toBe(0.7);
+    expect(saved.showRsDivergenceSignal).toBe(false);
+    expect(saved.showRsLeadSignal).toBe(true);
+    expect(saved.showRsBreakSignal).toBe(false);
     expect(saved.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "ema")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "wma")?.enabled).toBe(true);
@@ -469,7 +487,11 @@ describe("gpu chart appearance", () => {
       showMtfStructure4h: true,
       showMtfStructure1d: false,
       mtfStructureLevelOpacity: 0.35,
+      rsDivergenceMaxAgeBars: 96,
       rsDivergenceOpacity: 0.7,
+      showRsDivergenceSignal: false,
+      showRsLeadSignal: true,
+      showRsBreakSignal: false,
       indicators: expect.arrayContaining([
         expect.objectContaining({ type: "sma", enabled: false }),
         expect.objectContaining({ type: "ema", enabled: false }),

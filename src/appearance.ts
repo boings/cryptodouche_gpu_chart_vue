@@ -101,8 +101,12 @@ export interface GpuChartAppearance {
   mtfStructureLevelOpacity: number;
   rsDivergenceLookback: number;
   rsDivergenceMinDeltaPct: number;
+  rsDivergenceMaxAgeBars: number;
   rsDivergenceMaxLabels: number;
   rsDivergenceOpacity: number;
+  showRsDivergenceSignal: boolean;
+  showRsLeadSignal: boolean;
+  showRsBreakSignal: boolean;
   anchoredVwapAnchorBucket: number | null;
   showAnchoredVwapSignals: boolean;
   anchoredVwapSignalOpacity: number;
@@ -367,8 +371,12 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   mtfStructureLevelOpacity: 0.72,
   rsDivergenceLookback: 500,
   rsDivergenceMinDeltaPct: 0.5,
+  rsDivergenceMaxAgeBars: 240,
   rsDivergenceMaxLabels: 12,
   rsDivergenceOpacity: 0.9,
+  showRsDivergenceSignal: true,
+  showRsLeadSignal: true,
+  showRsBreakSignal: true,
   anchoredVwapAnchorBucket: null,
   showAnchoredVwapSignals: true,
   anchoredVwapSignalOpacity: 0.88,
@@ -647,6 +655,12 @@ export function normalizeGpuChartAppearance(
       50,
       defaults.rsDivergenceMinDeltaPct,
     ),
+    rsDivergenceMaxAgeBars: clampInteger(
+      value.rsDivergenceMaxAgeBars,
+      1,
+      2000,
+      defaults.rsDivergenceMaxAgeBars,
+    ),
     rsDivergenceMaxLabels: clampInteger(
       value.rsDivergenceMaxLabels,
       1,
@@ -659,6 +673,12 @@ export function normalizeGpuChartAppearance(
       1,
       defaults.rsDivergenceOpacity,
     ),
+    showRsDivergenceSignal: boolValue(
+      value.showRsDivergenceSignal,
+      defaults.showRsDivergenceSignal,
+    ),
+    showRsLeadSignal: boolValue(value.showRsLeadSignal, defaults.showRsLeadSignal),
+    showRsBreakSignal: boolValue(value.showRsBreakSignal, defaults.showRsBreakSignal),
     anchoredVwapAnchorBucket: nullableFiniteNumber(
       value.anchoredVwapAnchorBucket,
       defaults.anchoredVwapAnchorBucket,
