@@ -9,6 +9,7 @@ export type GpuChartIndicatorType =
   | "srZones"
   | "marketStructure"
   | "rsDivergence"
+  | "extensionContext"
   | "anchoredVwap"
   | "volume"
   | "stochRsi"
@@ -107,6 +108,11 @@ export interface GpuChartAppearance {
   showRsDivergenceSignal: boolean;
   showRsLeadSignal: boolean;
   showRsBreakSignal: boolean;
+  extensionWindowHours: number;
+  extensionHistoryDays: number;
+  extensionMinSamples: number;
+  extensionEmaPeriod: number;
+  extensionAtrPeriod: number;
   anchoredVwapAnchorBucket: number | null;
   showAnchoredVwapSignals: boolean;
   anchoredVwapSignalOpacity: number;
@@ -150,6 +156,7 @@ export interface GpuChartAppearance {
   showSrZones: boolean;
   showMarketStructure: boolean;
   showRsDivergence: boolean;
+  showExtensionContext: boolean;
   showAnchoredVwap: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
@@ -185,6 +192,7 @@ type IndicatorShowKey = Extract<
   | "showSrZones"
   | "showMarketStructure"
   | "showRsDivergence"
+  | "showExtensionContext"
   | "showAnchoredVwap"
   | "showVolume"
   | "showStochRsi"
@@ -202,6 +210,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "srZones",
   "marketStructure",
   "rsDivergence",
+  "extensionContext",
   "anchoredVwap",
   "volume",
   "stochRsi",
@@ -246,6 +255,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   srZones: "price",
   marketStructure: "price",
   rsDivergence: "price",
+  extensionContext: "price",
   anchoredVwap: "price",
   volume: "price",
   stochRsi: "lower",
@@ -266,6 +276,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   srZones: "showSrZones",
   marketStructure: "showMarketStructure",
   rsDivergence: "showRsDivergence",
+  extensionContext: "showExtensionContext",
   anchoredVwap: "showAnchoredVwap",
   volume: "showVolume",
   stochRsi: "showStochRsi",
@@ -283,6 +294,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "srZones", type: "srZones", enabled: false, placement: "price" },
   { id: "marketStructure", type: "marketStructure", enabled: false, placement: "price" },
   { id: "rsDivergence", type: "rsDivergence", enabled: false, placement: "price" },
+  { id: "extensionContext", type: "extensionContext", enabled: true, placement: "price" },
   { id: "anchoredVwap", type: "anchoredVwap", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
@@ -377,6 +389,11 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showRsDivergenceSignal: true,
   showRsLeadSignal: true,
   showRsBreakSignal: true,
+  extensionWindowHours: 24,
+  extensionHistoryDays: 180,
+  extensionMinSamples: 20,
+  extensionEmaPeriod: 20,
+  extensionAtrPeriod: 14,
   anchoredVwapAnchorBucket: null,
   showAnchoredVwapSignals: true,
   anchoredVwapSignalOpacity: 0.88,
@@ -420,6 +437,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showSrZones: false,
   showMarketStructure: false,
   showRsDivergence: false,
+  showExtensionContext: true,
   showAnchoredVwap: false,
   showStochRsi: true,
   showRsi: true,
@@ -440,6 +458,7 @@ export const DEFAULT_GRID_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showRsi: false,
   showMacd: false,
   showAtr: false,
+  showExtensionContext: false,
   showVolume: false,
   activeIndicatorPanes: [],
 };
@@ -679,6 +698,36 @@ export function normalizeGpuChartAppearance(
     ),
     showRsLeadSignal: boolValue(value.showRsLeadSignal, defaults.showRsLeadSignal),
     showRsBreakSignal: boolValue(value.showRsBreakSignal, defaults.showRsBreakSignal),
+    extensionWindowHours: clampInteger(
+      value.extensionWindowHours,
+      1,
+      720,
+      defaults.extensionWindowHours,
+    ),
+    extensionHistoryDays: clampInteger(
+      value.extensionHistoryDays,
+      1,
+      365,
+      defaults.extensionHistoryDays,
+    ),
+    extensionMinSamples: clampInteger(
+      value.extensionMinSamples,
+      1,
+      5000,
+      defaults.extensionMinSamples,
+    ),
+    extensionEmaPeriod: clampInteger(
+      value.extensionEmaPeriod,
+      2,
+      500,
+      defaults.extensionEmaPeriod,
+    ),
+    extensionAtrPeriod: clampInteger(
+      value.extensionAtrPeriod,
+      2,
+      500,
+      defaults.extensionAtrPeriod,
+    ),
     anchoredVwapAnchorBucket: nullableFiniteNumber(
       value.anchoredVwapAnchorBucket,
       defaults.anchoredVwapAnchorBucket,
@@ -795,6 +844,7 @@ export function normalizeGpuChartAppearance(
       defaults.showMarketStructure,
     ),
     showRsDivergence: boolValue(value.showRsDivergence, defaults.showRsDivergence),
+    showExtensionContext: boolValue(value.showExtensionContext, defaults.showExtensionContext),
     showAnchoredVwap: boolValue(value.showAnchoredVwap, defaults.showAnchoredVwap),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),

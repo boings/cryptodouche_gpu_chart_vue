@@ -80,6 +80,11 @@ describe("gpu chart appearance", () => {
       showRsDivergenceSignal: "yes" as unknown as boolean,
       showRsLeadSignal: "yes" as unknown as boolean,
       showRsBreakSignal: "yes" as unknown as boolean,
+      extensionWindowHours: 0,
+      extensionHistoryDays: 999,
+      extensionMinSamples: -5,
+      extensionEmaPeriod: 1,
+      extensionAtrPeriod: 999,
       macdFastPeriod: 1,
       macdSlowPeriod: 999,
       macdSignalPeriod: -3,
@@ -114,6 +119,7 @@ describe("gpu chart appearance", () => {
       showMacd: "yes" as unknown as boolean,
       showAtr: "yes" as unknown as boolean,
       showRelativeReturn: "yes" as unknown as boolean,
+      showExtensionContext: "yes" as unknown as boolean,
       showAnchoredVwap: "yes" as unknown as boolean,
       showVolume: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
@@ -195,6 +201,11 @@ describe("gpu chart appearance", () => {
     );
     expect(appearance.showRsLeadSignal).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsLeadSignal);
     expect(appearance.showRsBreakSignal).toBe(DEFAULT_GPU_CHART_APPEARANCE.showRsBreakSignal);
+    expect(appearance.extensionWindowHours).toBe(1);
+    expect(appearance.extensionHistoryDays).toBe(365);
+    expect(appearance.extensionMinSamples).toBe(1);
+    expect(appearance.extensionEmaPeriod).toBe(2);
+    expect(appearance.extensionAtrPeriod).toBe(500);
     expect(appearance.macdFastPeriod).toBe(2);
     expect(appearance.macdSlowPeriod).toBe(200);
     expect(appearance.macdSignalPeriod).toBe(1);
@@ -244,6 +255,7 @@ describe("gpu chart appearance", () => {
         expect.objectContaining({ type: "sma", enabled: true, period: 2 }),
         expect.objectContaining({ type: "ema", enabled: true, period: 20 }),
         expect.objectContaining({ type: "srZones", enabled: false }),
+        expect.objectContaining({ type: "extensionContext", enabled: true }),
         expect.objectContaining({ type: "anchoredVwap", enabled: false }),
         expect.objectContaining({ type: "relativeReturn", enabled: false }),
       ]),
@@ -256,6 +268,9 @@ describe("gpu chart appearance", () => {
     expect(appearance.showAtr).toBe(DEFAULT_GPU_CHART_APPEARANCE.showAtr);
     expect(appearance.showRelativeReturn).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.showRelativeReturn,
+    );
+    expect(appearance.showExtensionContext).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showExtensionContext,
     );
     expect(appearance.showAnchoredVwap).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.showAnchoredVwap,
@@ -329,6 +344,12 @@ describe("gpu chart appearance", () => {
         showRsDivergenceSignal: false,
         showRsLeadSignal: true,
         showRsBreakSignal: false,
+        showExtensionContext: false,
+        extensionWindowHours: 48,
+        extensionHistoryDays: 120,
+        extensionMinSamples: 30,
+        extensionEmaPeriod: 34,
+        extensionAtrPeriod: 21,
         macdLineColor: "#0284c7",
         macdSignalColor: "#f97316",
         macdHistogramUpColor: "#16a34a",
@@ -411,6 +432,12 @@ describe("gpu chart appearance", () => {
     expect(saved.showRsDivergenceSignal).toBe(false);
     expect(saved.showRsLeadSignal).toBe(true);
     expect(saved.showRsBreakSignal).toBe(false);
+    expect(saved.showExtensionContext).toBe(false);
+    expect(saved.extensionWindowHours).toBe(48);
+    expect(saved.extensionHistoryDays).toBe(120);
+    expect(saved.extensionMinSamples).toBe(30);
+    expect(saved.extensionEmaPeriod).toBe(34);
+    expect(saved.extensionAtrPeriod).toBe(21);
     expect(saved.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "ema")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "wma")?.enabled).toBe(true);
@@ -420,6 +447,9 @@ describe("gpu chart appearance", () => {
     expect(saved.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "atr")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "relativeReturn")?.enabled).toBe(true);
+    expect(saved.indicators.find((item) => item.type === "extensionContext")?.enabled).toBe(
+      false,
+    );
     expect(saved.indicators.find((item) => item.type === "anchoredVwap")?.enabled).toBe(true);
     expect(saved.macdLineColor).toBe("#0284c7");
     expect(saved.macdSignalColor).toBe("#f97316");
@@ -492,6 +522,12 @@ describe("gpu chart appearance", () => {
       showRsDivergenceSignal: false,
       showRsLeadSignal: true,
       showRsBreakSignal: false,
+      showExtensionContext: false,
+      extensionWindowHours: 48,
+      extensionHistoryDays: 120,
+      extensionMinSamples: 30,
+      extensionEmaPeriod: 34,
+      extensionAtrPeriod: 21,
       indicators: expect.arrayContaining([
         expect.objectContaining({ type: "sma", enabled: false }),
         expect.objectContaining({ type: "ema", enabled: false }),
@@ -502,6 +538,7 @@ describe("gpu chart appearance", () => {
         expect.objectContaining({ type: "macd", enabled: false }),
         expect.objectContaining({ type: "atr", enabled: false }),
         expect.objectContaining({ type: "relativeReturn", enabled: true }),
+        expect.objectContaining({ type: "extensionContext", enabled: false }),
         expect.objectContaining({ type: "anchoredVwap", enabled: true }),
       ]),
       macdLineColor: "#0284c7",
@@ -706,6 +743,8 @@ describe("gpu chart appearance", () => {
     expect(loadGpuChartAppearance(storage, "single").showAtr).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showRelativeReturn).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showRelativeReturn).toBe(false);
+    expect(loadGpuChartAppearance(storage, "grid").showExtensionContext).toBe(false);
+    expect(loadGpuChartAppearance(storage, "single").showExtensionContext).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showVolume).toBe(false);
     expect(loadGpuChartAppearance(storage, "single").showVolume).toBe(true);
     expect(loadGpuChartAppearance(storage, "grid").showTimeAxis).toBe(false);

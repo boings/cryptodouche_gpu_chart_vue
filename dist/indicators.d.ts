@@ -116,6 +116,25 @@ export interface RelativeStrengthDivergenceOptions extends MarketStructureOption
     includeLeads?: boolean;
     includeBreaks?: boolean;
 }
+export interface ExtensionSnapshotOptions {
+    windowSeconds?: number;
+    historyDays?: number;
+    minSamples?: number;
+    emaPeriod?: number;
+    atrPeriod?: number;
+}
+export interface ExtensionSnapshot {
+    candle: CandleRecord | null;
+    referenceCandle: CandleRecord | null;
+    windowSeconds: number;
+    returnPct: number | null;
+    percentile: number | null;
+    zScore: number | null;
+    rollingReturnCount: number;
+    ema: number | null;
+    atr: number | null;
+    atrExtension: number | null;
+}
 export interface AnchoredVwapOptions {
     anchorBucket?: number | null;
     anchorX?: number | null;
@@ -157,6 +176,7 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
     histogram: Float32Array;
 };
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
+export declare function computeExtensionSnapshot(candles: CandleRecord[], options?: ExtensionSnapshotOptions): ExtensionSnapshot;
 export declare function computeAnchoredVwapLine(candles: CandleRecord[], options?: AnchoredVwapOptions): Float32Array;
 export declare function computeAnchoredVwapSnapshot(candles: CandleRecord[], options?: AnchoredVwapOptions): AnchoredVwapSnapshot;
 export declare function computeAnchoredVwapSignals(candles: CandleRecord[], options?: AnchoredVwapOptions, maxSignals?: number): AnchoredVwapSignal[];

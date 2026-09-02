@@ -1,5 +1,5 @@
 export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
-export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "marketStructure" | "rsDivergence" | "anchoredVwap" | "volume" | "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
+export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "marketStructure" | "rsDivergence" | "extensionContext" | "anchoredVwap" | "volume" | "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
 export type GpuChartIndicatorPlacement = "price" | "lower";
 export interface GpuChartIndicatorInstance {
     id: string;
@@ -89,6 +89,11 @@ export interface GpuChartAppearance {
     showRsDivergenceSignal: boolean;
     showRsLeadSignal: boolean;
     showRsBreakSignal: boolean;
+    extensionWindowHours: number;
+    extensionHistoryDays: number;
+    extensionMinSamples: number;
+    extensionEmaPeriod: number;
+    extensionAtrPeriod: number;
     anchoredVwapAnchorBucket: number | null;
     showAnchoredVwapSignals: boolean;
     anchoredVwapSignalOpacity: number;
@@ -132,6 +137,7 @@ export interface GpuChartAppearance {
     showSrZones: boolean;
     showMarketStructure: boolean;
     showRsDivergence: boolean;
+    showExtensionContext: boolean;
     showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
@@ -146,7 +152,7 @@ export declare const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
 export type GpuChartMovingAverageIndicatorType = Extract<GpuChartIndicatorType, "sma" | "ema" | "wma">;
 export type GpuChartMovingAveragePeriodKey = Extract<keyof GpuChartAppearance, "smaPeriod" | "emaPeriod" | "wmaPeriod">;
 export type GpuChartMovingAverageColorKey = Extract<keyof GpuChartAppearance, "smaColor" | "emaColor" | "wmaColor">;
-type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showMarketStructure" | "showRsDivergence" | "showAnchoredVwap" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr" | "showRelativeReturn">;
+type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showMarketStructure" | "showRsDivergence" | "showExtensionContext" | "showAnchoredVwap" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr" | "showRelativeReturn">;
 export declare const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE: Record<GpuChartMovingAverageIndicatorType, GpuChartMovingAveragePeriodKey>;
@@ -252,6 +258,11 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showRsDivergenceSignal: boolean;
     showRsLeadSignal: boolean;
     showRsBreakSignal: boolean;
+    extensionWindowHours: number;
+    extensionHistoryDays: number;
+    extensionMinSamples: number;
+    extensionEmaPeriod: number;
+    extensionAtrPeriod: number;
     anchoredVwapAnchorBucket: number | null;
     showAnchoredVwapSignals: boolean;
     anchoredVwapSignalOpacity: number;
@@ -293,6 +304,7 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showSrZones: boolean;
     showMarketStructure: boolean;
     showRsDivergence: boolean;
+    showExtensionContext: boolean;
     showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
@@ -392,6 +404,11 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showRsDivergenceSignal: boolean;
     showRsLeadSignal: boolean;
     showRsBreakSignal: boolean;
+    extensionWindowHours: number;
+    extensionHistoryDays: number;
+    extensionMinSamples: number;
+    extensionEmaPeriod: number;
+    extensionAtrPeriod: number;
     anchoredVwapAnchorBucket: number | null;
     showAnchoredVwapSignals: boolean;
     anchoredVwapSignalOpacity: number;
@@ -433,6 +450,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showSrZones: boolean;
     showMarketStructure: boolean;
     showRsDivergence: boolean;
+    showExtensionContext: boolean;
     showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
@@ -525,6 +543,11 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showRsDivergenceSignal: boolean;
         showRsLeadSignal: boolean;
         showRsBreakSignal: boolean;
+        extensionWindowHours: number;
+        extensionHistoryDays: number;
+        extensionMinSamples: number;
+        extensionEmaPeriod: number;
+        extensionAtrPeriod: number;
         anchoredVwapAnchorBucket: number | null;
         showAnchoredVwapSignals: boolean;
         anchoredVwapSignalOpacity: number;
@@ -576,6 +599,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showSrZones: boolean;
         showMarketStructure: boolean;
         showRsDivergence: boolean;
+        showExtensionContext: boolean;
         showAnchoredVwap: boolean;
         showStochRsi: boolean;
         showRsi: boolean;
@@ -662,6 +686,11 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showRsDivergenceSignal: boolean;
         showRsLeadSignal: boolean;
         showRsBreakSignal: boolean;
+        extensionWindowHours: number;
+        extensionHistoryDays: number;
+        extensionMinSamples: number;
+        extensionEmaPeriod: number;
+        extensionAtrPeriod: number;
         anchoredVwapAnchorBucket: number | null;
         showAnchoredVwapSignals: boolean;
         anchoredVwapSignalOpacity: number;
@@ -713,6 +742,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showSrZones: boolean;
         showMarketStructure: boolean;
         showRsDivergence: boolean;
+        showExtensionContext: boolean;
         showAnchoredVwap: boolean;
         showStochRsi: boolean;
         showRsi: boolean;

@@ -4,6 +4,7 @@ import {
   computeAnchoredVwapLine,
   computeAnchoredVwapSignals,
   computeAnchoredVwapSnapshot,
+  computeExtensionSnapshot,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeRelativeStrengthDivergences,
@@ -27,6 +28,19 @@ function candle(index: number, low: number, high: number, close = (low + high) /
     c: close,
     v_base: 1,
     v_quote: close,
+  };
+}
+
+function timeCandle(
+  index: number,
+  bucket: number,
+  close: number,
+  range = 2,
+): CandleRecord {
+  return {
+    ...candle(index, close - range / 2, close + range / 2, close),
+    ts: bucket,
+    bucket,
   };
 }
 
@@ -184,6 +198,35 @@ describe("gpu chart indicators", () => {
       "Failed AVWAP reclaim",
       "AVWAP reclaim",
     ]);
+  });
+
+  it("computes extension from elapsed-time returns and timeframe ATR displacement", () => {
+    const candles = [
+      timeCandle(0, 0, 100),
+      timeCandle(1, 21_600, 102),
+      timeCandle(2, 43_200, 104),
+      timeCandle(3, 64_800, 106),
+      timeCandle(4, 86_400, 110),
+      timeCandle(5, 108_000, 112),
+      timeCandle(6, 129_600, 114),
+      timeCandle(7, 151_200, 116),
+      timeCandle(8, 172_800, 125),
+    ];
+
+    const snapshot = computeExtensionSnapshot(candles, {
+      windowSeconds: 86_400,
+      historyDays: 5,
+      minSamples: 3,
+      emaPeriod: 3,
+      atrPeriod: 3,
+    });
+
+    expect(snapshot.referenceCandle?.bucket).toBe(86_400);
+    expect(snapshot.returnPct).toBeCloseTo((125 / 110 - 1) * 100, 6);
+    expect(snapshot.rollingReturnCount).toBe(4);
+    expect(snapshot.percentile).toBeGreaterThan(80);
+    expect(snapshot.zScore).toBeGreaterThan(1);
+    expect(snapshot.atrExtension).toBeGreaterThan(0);
   });
 
   it("computes relative cumulative return anchored at zero", () => {

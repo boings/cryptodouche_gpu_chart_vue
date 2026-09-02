@@ -505,6 +505,13 @@
       </select>
       <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
       <span
+        v-if="extensionContextText"
+        class="gpu-chart-extension-context"
+        :class="extensionContextClass"
+      >
+        {{ extensionContextText }}
+      </span>
+      <span
         v-if="anchoredVwapDistanceText"
         class="gpu-chart-avwap-distance"
         :class="anchoredVwapDistanceClass"
@@ -568,6 +575,7 @@ import {
   computeAtrLine,
   computeBollingerBands,
   computeEmaLine,
+  computeExtensionSnapshot,
   computeMacd,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
@@ -822,6 +830,11 @@ type ChartIndicatorNumberField = Extract<
   | "rsDivergenceMaxAgeBars"
   | "rsDivergenceMaxLabels"
   | "rsDivergenceOpacity"
+  | "extensionWindowHours"
+  | "extensionHistoryDays"
+  | "extensionMinSamples"
+  | "extensionEmaPeriod"
+  | "extensionAtrPeriod"
   | "anchoredVwapSignalOpacity"
   | "anchoredVwapMaxSignals"
   | "volumeHeightRatio"
@@ -860,6 +873,7 @@ type ChartIndicatorToggleField = Extract<
   | "showRsDivergenceSignal"
   | "showRsLeadSignal"
   | "showRsBreakSignal"
+  | "showExtensionContext"
 >;
 type ChartNumberField = ChartSettingsNumberField | ChartIndicatorNumberField;
 
@@ -1164,6 +1178,19 @@ const chartRsDivergenceNumberFields: Array<{
   { key: "rsDivergenceMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
   { key: "rsDivergenceOpacity", label: "Opacity", min: 0.05, max: 1, step: 0.05 },
 ];
+const chartExtensionContextNumberFields: Array<{
+  key: ChartIndicatorNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "extensionWindowHours", label: "Return Window Hours", min: 1, max: 720, step: 1 },
+  { key: "extensionHistoryDays", label: "History Days", min: 1, max: 365, step: 1 },
+  { key: "extensionMinSamples", label: "Min Samples", min: 1, max: 5000, step: 1 },
+  { key: "extensionEmaPeriod", label: "EMA Period", min: 2, max: 500, step: 1 },
+  { key: "extensionAtrPeriod", label: "ATR Period", min: 2, max: 500, step: 1 },
+];
 const chartAnchoredVwapColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "anchoredVwapColor", label: "VWAP Color" },
   { key: "anchoredVwapAnchorColor", label: "Anchor Color" },
@@ -1237,6 +1264,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     colorFields: chartRsDivergenceColorFields,
     toggleFields: chartRsDivergenceToggleFields,
     numberFields: chartRsDivergenceNumberFields,
+  },
+  {
+    type: "extensionContext",
+    label: "Extension Context",
+    placement: "price",
+    colorFields: [],
+    toggleFields: [],
+    numberFields: chartExtensionContextNumberFields,
   },
   {
     type: "anchoredVwap",
@@ -1629,6 +1664,45 @@ const changeClass = computed(() => ({
   up: (changePct.value ?? 0) > 0,
   down: (changePct.value ?? 0) < 0,
 }));
+const extensionSnapshot = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !chartIndicatorEnabled("extensionContext", appearance)) return null;
+  return computeExtensionSnapshot(state.candles, {
+    windowSeconds: appearance.extensionWindowHours * 60 * 60,
+    historyDays: appearance.extensionHistoryDays,
+    minSamples: appearance.extensionMinSamples,
+    emaPeriod: appearance.extensionEmaPeriod,
+    atrPeriod: appearance.extensionAtrPeriod,
+  });
+});
+const extensionContextText = computed(() => {
+  const snapshot = extensionSnapshot.value;
+  if (!snapshot) return "";
+  const parts: string[] = [];
+  if (snapshot.returnPct != null) {
+    parts.push(
+      `${formatExtensionWindow(snapshot.windowSeconds)} ${formatSignedPercent(snapshot.returnPct, 1)}`,
+    );
+  }
+  if (snapshot.atrExtension != null) {
+    parts.push(
+      `${displayTimeframe.value} Ext ${formatSignedCompact(snapshot.atrExtension, 1)} ATR`,
+    );
+  }
+  if (snapshot.zScore != null) {
+    parts.push(`Z ${formatSignedCompact(snapshot.zScore, 1)}`);
+  }
+  if (snapshot.percentile != null) {
+    parts.push(`Pctl ${Math.round(snapshot.percentile)}`);
+  }
+  return parts.join(" | ");
+});
+const extensionContextClass = computed(() => ({
+  positive: (extensionSnapshot.value?.returnPct ?? 0) > 0,
+  negative: (extensionSnapshot.value?.returnPct ?? 0) < 0,
+}));
 const anchoredVwapDistancePct = computed(() => {
   void candleCount.value;
   void liveUpdates.value;
@@ -1713,6 +1787,7 @@ const badgeTitle = computed(() =>
     displayTitle.value,
     lastCloseText.value,
     changePctText.value,
+    extensionContextText.value,
     anchoredVwapDistanceText.value,
     structureSummaryText.value,
   ]
@@ -2705,6 +2780,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `Structure ${appearance.marketStructureLookback}`;
     case "rsDivergence":
       return "RS Divergence";
+    case "extensionContext":
+      return `Ext ${appearance.extensionWindowHours}h`;
     case "anchoredVwap":
       return "AVWAP";
     case "volume":
@@ -3796,6 +3873,12 @@ function indicatorWarmupCandles() {
       : 0,
     chartIndicatorEnabled("rsDivergence", appearance)
       ? Math.max(appearance.rsDivergenceLookback, appearance.marketStructureAtrPeriod)
+      : 0,
+    chartIndicatorEnabled("extensionContext", appearance)
+      ? Math.ceil(
+          (appearance.extensionHistoryDays * 86_400 + appearance.extensionWindowHours * 3_600) /
+            Math.max(1, state?.timeframeSec ?? timeframeToSeconds(displayTimeframe.value)),
+        ) + Math.max(appearance.extensionEmaPeriod, appearance.extensionAtrPeriod)
       : 0,
     appearance.rsiPeriod,
     appearance.macdSlowPeriod + appearance.macdSignalPeriod,
@@ -5931,6 +6014,24 @@ function formatRelativeReturnValue(value: number) {
   return `${percent > 0 ? "+" : percent < 0 ? "-" : ""}${formatted}%`;
 }
 
+function formatSignedPercent(value: number, digits = 1) {
+  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}%`;
+}
+
+function formatSignedCompact(value: number, digits = 1) {
+  const formatted = Math.abs(value).toLocaleString("en-US", {
+    minimumFractionDigits: digits,
+    maximumFractionDigits: digits,
+  });
+  return `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatted}`;
+}
+
+function formatExtensionWindow(seconds: number) {
+  if (seconds % 3_600 === 0 && seconds <= 72 * 3_600) return `${seconds / 3_600}h`;
+  if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
+  return `${Math.round(seconds / 60)}m`;
+}
+
 function formatAnchorDate(ts: number) {
   if (!Number.isFinite(ts)) return "Unknown";
   return new Date(ts * 1000).toLocaleString("en-US", {
@@ -6755,6 +6856,7 @@ function setError(message: string | null) {
 .gpu-chart-timeframe-select,
 .gpu-chart-price,
 .gpu-chart-change,
+.gpu-chart-extension-context,
 .gpu-chart-avwap-distance,
 .gpu-chart-structure-summary {
   overflow: hidden;
@@ -6820,6 +6922,24 @@ function setError(message: string | null) {
 
 .gpu-chart-change.down {
   color: var(--gpu-chart-down-color, rgb(248, 113, 113));
+}
+
+.gpu-chart-extension-context {
+  min-width: 0;
+  flex: 0 3 auto;
+  max-width: min(42em, 48vw);
+  color: rgba(203, 213, 225, 0.88);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+  opacity: 0.92;
+}
+
+.gpu-chart-extension-context.positive {
+  color: rgb(125, 211, 252);
+}
+
+.gpu-chart-extension-context.negative {
+  color: rgb(251, 146, 60);
 }
 
 .gpu-chart-avwap-distance {

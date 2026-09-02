@@ -146,6 +146,27 @@ export interface RelativeStrengthDivergenceOptions extends MarketStructureOption
   includeBreaks?: boolean;
 }
 
+export interface ExtensionSnapshotOptions {
+  windowSeconds?: number;
+  historyDays?: number;
+  minSamples?: number;
+  emaPeriod?: number;
+  atrPeriod?: number;
+}
+
+export interface ExtensionSnapshot {
+  candle: CandleRecord | null;
+  referenceCandle: CandleRecord | null;
+  windowSeconds: number;
+  returnPct: number | null;
+  percentile: number | null;
+  zScore: number | null;
+  rollingReturnCount: number;
+  ema: number | null;
+  atr: number | null;
+  atrExtension: number | null;
+}
+
 export interface AnchoredVwapOptions {
   anchorBucket?: number | null;
   anchorX?: number | null;
@@ -337,6 +358,64 @@ export function computeAtrLine(candles: CandleRecord[], period = 14): Float32Arr
     if (value != null) points.push({ x: candles[index].x, value });
   });
   return pointsToLine(points);
+}
+
+export function computeExtensionSnapshot(
+  candles: CandleRecord[],
+  options: ExtensionSnapshotOptions = {},
+): ExtensionSnapshot {
+  const windowSeconds = clampIntegerOption(options.windowSeconds, 60, 30 * 24 * 60 * 60, 86_400);
+  const historyDays = clampIntegerOption(options.historyDays, 1, 365, 180);
+  const minSamples = clampIntegerOption(options.minSamples, 1, 5000, 20);
+  const emaPeriod = clampIntegerOption(options.emaPeriod, 2, 500, 20);
+  const atrPeriod = clampIntegerOption(options.atrPeriod, 2, 500, 14);
+  const candle = latestValidCloseCandle(candles);
+  if (!candle) {
+    return emptyExtensionSnapshot(windowSeconds);
+  }
+
+  const latestIndex = candles.indexOf(candle);
+  const referenceCandle = findReferenceCandle(candles, candle.bucket - windowSeconds, latestIndex);
+  const returnPct =
+    referenceCandle && validPositivePrice(referenceCandle.c)
+      ? ((candle.c / referenceCandle.c) - 1) * 100
+      : null;
+  const rollingReturns =
+    returnPct == null
+      ? []
+      : rollingWindowReturns(candles, {
+          windowSeconds,
+          earliestBucket: candle.bucket - historyDays * 86_400,
+          excludeBucket: candle.bucket,
+        });
+
+  const percentile =
+    returnPct != null && rollingReturns.length >= minSamples
+      ? percentileRank(rollingReturns, returnPct)
+      : null;
+  const zScore =
+    returnPct != null && rollingReturns.length >= minSamples
+      ? zScoreAgainst(rollingReturns, returnPct)
+      : null;
+  const ema = emaValues(candles, emaPeriod)[latestIndex] ?? null;
+  const atr = atrValues(candles, atrPeriod)[latestIndex] ?? null;
+  const atrExtension =
+    ema != null && atr != null && Number.isFinite(ema) && Number.isFinite(atr) && atr > 0
+      ? (candle.c - ema) / atr
+      : null;
+
+  return {
+    candle,
+    referenceCandle,
+    windowSeconds,
+    returnPct,
+    percentile,
+    zScore,
+    rollingReturnCount: rollingReturns.length,
+    ema,
+    atr,
+    atrExtension,
+  };
 }
 
 export function computeAnchoredVwapLine(
@@ -865,6 +944,77 @@ function latestValidCloseCandle(candles: CandleRecord[]) {
     if (validPositivePrice(candle.c)) return candle;
   }
   return null;
+}
+
+function emptyExtensionSnapshot(windowSeconds: number): ExtensionSnapshot {
+  return {
+    candle: null,
+    referenceCandle: null,
+    windowSeconds,
+    returnPct: null,
+    percentile: null,
+    zScore: null,
+    rollingReturnCount: 0,
+    ema: null,
+    atr: null,
+    atrExtension: null,
+  };
+}
+
+function findReferenceCandle(
+  candles: CandleRecord[],
+  targetBucket: number,
+  beforeIndex: number,
+) {
+  const endIndex = Math.min(candles.length - 1, Math.max(0, beforeIndex - 1));
+  let best: CandleRecord | null = null;
+  for (let index = endIndex; index >= 0; index -= 1) {
+    const candle = candles[index];
+    if (candle.bucket <= targetBucket && validPositivePrice(candle.c)) {
+      best = candle;
+      break;
+    }
+  }
+  return best;
+}
+
+function rollingWindowReturns(
+  candles: CandleRecord[],
+  options: {
+    windowSeconds: number;
+    earliestBucket: number;
+    excludeBucket: number;
+  },
+) {
+  const returns: number[] = [];
+  for (let index = 1; index < candles.length; index += 1) {
+    const candle = candles[index];
+    if (candle.bucket < options.earliestBucket || candle.bucket >= options.excludeBucket) continue;
+    if (!validPositivePrice(candle.c)) continue;
+    const reference = findReferenceCandle(candles, candle.bucket - options.windowSeconds, index);
+    if (!reference || !validPositivePrice(reference.c)) continue;
+    returns.push(((candle.c / reference.c) - 1) * 100);
+  }
+  return returns;
+}
+
+function percentileRank(values: number[], value: number) {
+  if (!values.length || !Number.isFinite(value)) return null;
+  const valid = values.filter(Number.isFinite);
+  if (!valid.length) return null;
+  const below = valid.filter((item) => item < value).length;
+  const equal = valid.filter((item) => item === value).length;
+  return ((below + equal * 0.5) / valid.length) * 100;
+}
+
+function zScoreAgainst(values: number[], value: number) {
+  const valid = values.filter(Number.isFinite);
+  if (valid.length < 2 || !Number.isFinite(value)) return null;
+  const mean = valid.reduce((sum, item) => sum + item, 0) / valid.length;
+  const variance =
+    valid.reduce((sum, item) => sum + (item - mean) ** 2, 0) / (valid.length - 1);
+  const stdDev = Math.sqrt(variance);
+  return stdDev > 0 ? (value - mean) / stdDev : null;
 }
 
 function createAnchoredVwapSignal(
