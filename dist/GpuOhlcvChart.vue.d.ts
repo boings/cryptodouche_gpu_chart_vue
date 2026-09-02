@@ -6,6 +6,7 @@ type __VLS_Props = {
     marketType?: string;
     timeframe: string | number;
     timeframeOptions?: Array<string | number>;
+    srProjectionTimeframes?: Array<string | number>;
     limit: number;
     candles?: unknown[];
     dataAdapter?: GpuChartDataAdapter;
@@ -45,6 +46,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     exchange: string;
     marketType: string;
     timeframeOptions: Array<string | number>;
+    srProjectionTimeframes: Array<string | number>;
     candles: unknown[];
     dataAdapter: GpuChartDataAdapter;
     synthetic: boolean;

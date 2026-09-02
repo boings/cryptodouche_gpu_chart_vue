@@ -559,6 +559,7 @@ import {
   normalizeRestTimeframe,
   packHistoricalCandles,
   prependHistoricalCandles,
+  timeframeToSeconds,
 } from "./data";
 import {
   computeAnchoredVwapLine,
@@ -682,6 +683,11 @@ interface HudLabelRect {
   top: number;
   width: number;
   height: number;
+}
+
+interface SupportResistanceProjectionState {
+  timeframe: string;
+  state: GpuSeriesState;
 }
 
 type IndicatorColorField = Extract<
@@ -1197,6 +1203,7 @@ const props = withDefaults(
     marketType?: string;
     timeframe: string | number;
     timeframeOptions?: Array<string | number>;
+    srProjectionTimeframes?: Array<string | number>;
     limit: number;
     candles?: unknown[];
     dataAdapter?: GpuChartDataAdapter;
@@ -1217,6 +1224,7 @@ const props = withDefaults(
     exchange: undefined,
     marketType: undefined,
     timeframeOptions: () => [],
+    srProjectionTimeframes: () => [],
     showSma: true,
     showEma: true,
     synthetic: false,
@@ -1306,6 +1314,9 @@ let stopChartSettingsDrag: (() => void) | null = null;
 let stopChartSettingsResize: (() => void) | null = null;
 let benchmarkLoadGeneration = 0;
 let benchmarkLoadKey = "";
+let srProjectionLoadGeneration = 0;
+let srProjectionLoadKey = "";
+let srProjectionStates: SupportResistanceProjectionState[] = [];
 let lastAppliedTimeSyncSeq = 0;
 
 const resolvedAppearance = computed(() => localAppearance.value);
@@ -1637,6 +1648,7 @@ watch(
     props.synthetic,
     props.candles,
     props.dataAdapter,
+    props.srProjectionTimeframes,
   ],
   () => {
     if (mounted && chart) {
@@ -1678,6 +1690,11 @@ watch(
       benchmarkState = null;
       benchmarkLoadKey = "";
       stopBenchmarkStream();
+    }
+    if (chartIndicatorEnabled("srZones")) {
+      void ensureSupportResistanceProjectionStates();
+    } else {
+      clearSupportResistanceProjectionStates();
     }
     updateOverlays();
     fitVisibleYIfEnabled();
@@ -1768,6 +1785,7 @@ async function loadSeries() {
   hasMoreHistory = true;
   benchmarkState = null;
   benchmarkLoadKey = "";
+  clearSupportResistanceProjectionStates();
   try {
     const loadLimit = historyLoadLimit();
     if (props.synthetic) {
@@ -1794,6 +1812,7 @@ async function loadSeries() {
     drawHud(null);
     scheduleGpuRender(renderNow);
     applyTimeSyncCommand(props.timeSyncCommand);
+    void ensureSupportResistanceProjectionStates();
 
     if (props.synthetic) startSynthetic();
     else await startStream();
@@ -1980,6 +1999,110 @@ function relativeBenchmarkKey(limit: number) {
     last?.bucket ?? 0,
     limit,
   ].join(":");
+}
+
+async function ensureSupportResistanceProjectionStates() {
+  const timeframes = supportResistanceProjectionTimeframes();
+  if (!state || !chartIndicatorEnabled("srZones") || !timeframes.length) {
+    clearSupportResistanceProjectionStates();
+    return;
+  }
+
+  const nextLoadKey = supportResistanceProjectionKey(timeframes);
+  if (srProjectionLoadKey === nextLoadKey && srProjectionStates.length === timeframes.length) {
+    return;
+  }
+
+  const generation = ++srProjectionLoadGeneration;
+  const settled = await Promise.allSettled(
+    timeframes.map(async (timeframe) => ({
+      timeframe,
+      state: await loadSupportResistanceProjectionLatest(
+        timeframe,
+        supportResistanceProjectionLimit(timeframe),
+      ),
+    })),
+  );
+  if (generation !== srProjectionLoadGeneration) return;
+
+  srProjectionStates = settled
+    .filter((result): result is PromiseFulfilledResult<SupportResistanceProjectionState> => {
+      if (result.status === "rejected") {
+        console.warn(
+          result.reason instanceof Error
+            ? result.reason.message
+            : "Failed to load projected S/R candles",
+        );
+        return false;
+      }
+      return result.value.state.candles.length > 0;
+    })
+    .map((result) => result.value);
+  srProjectionLoadKey = nextLoadKey;
+  drawHud(mousePos);
+}
+
+async function loadSupportResistanceProjectionLatest(timeframe: string, limit: number) {
+  if (props.synthetic) {
+    return makeSyntheticCandles(props.symbol, limit, timeframe);
+  }
+  if (!props.dataAdapter) {
+    throw new Error("No projected S/R data source provided");
+  }
+  const rows = await props.dataAdapter.loadLatest(dataQuery({ timeframe, limit }));
+  return packHistoricalCandles(rows, timeframe, limit);
+}
+
+function supportResistanceProjectionTimeframes() {
+  const current = normalizeRestTimeframe(props.timeframe);
+  const currentSec = timeframeToSeconds(current);
+  return Array.from(
+    new Set((props.srProjectionTimeframes ?? []).map((item) => normalizeRestTimeframe(item))),
+  )
+    .filter((timeframe) => {
+      const timeframeSec = timeframeToSeconds(timeframe);
+      return (
+        timeframe &&
+        timeframe !== current &&
+        Number.isFinite(timeframeSec) &&
+        Number.isFinite(currentSec) &&
+        timeframeSec > currentSec
+      );
+    })
+    .slice(0, 3);
+}
+
+function supportResistanceProjectionLimit(timeframe: string) {
+  const appearance = resolvedAppearance.value;
+  const currentSec = Math.max(1, state?.timeframeSec ?? timeframeToSeconds(props.timeframe));
+  const projectionSec = Math.max(1, timeframeToSeconds(timeframe));
+  const secondsToCover = displayCandleLimit() * currentSec * 8;
+  const coverageCandles = Math.ceil(secondsToCover / projectionSec);
+  return Math.min(
+    MAX_HISTORY_LOAD_CANDLES,
+    Math.max(80, appearance.srZoneLookback, coverageCandles),
+  );
+}
+
+function supportResistanceProjectionKey(timeframes: string[]) {
+  const last = state?.candles[state.candles.length - 1];
+  return [
+    props.symbol.toUpperCase(),
+    props.exchange ?? "",
+    props.marketType ?? "",
+    normalizeRestTimeframe(props.timeframe),
+    state?.firstBucket ?? 0,
+    last?.bucket ?? 0,
+    timeframes
+      .map((timeframe) => `${timeframe}:${supportResistanceProjectionLimit(timeframe)}`)
+      .join(","),
+  ].join(":");
+}
+
+function clearSupportResistanceProjectionStates() {
+  srProjectionLoadGeneration += 1;
+  srProjectionLoadKey = "";
+  srProjectionStates = [];
 }
 
 function startSynthetic() {
@@ -4123,21 +4246,39 @@ function drawSupportResistanceZones(
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
+  const referencePrice = state.candles[state.candles.length - 1]?.c ?? null;
   const zones = computeSupportResistanceZones(state.candles, {
     lookback: appearance.srZoneLookback,
     pivotStrength: appearance.srZonePivotStrength,
     maxZones: appearance.srZoneMaxZones,
     thicknessBps: appearance.srZoneThicknessBps,
-    referencePrice: state.candles[state.candles.length - 1]?.c ?? null,
+    referencePrice,
     zonesPerSide: Math.max(1, Math.ceil(appearance.srZoneMaxZones / 2)),
   });
-  if (!zones.length) return;
+  const projectedZones = srProjectionStates.flatMap((projection) =>
+    computeSupportResistanceZones(projection.state.candles, {
+      lookback: appearance.srZoneLookback,
+      pivotStrength: appearance.srZonePivotStrength,
+      maxZones: Math.min(4, appearance.srZoneMaxZones),
+      thicknessBps: appearance.srZoneThicknessBps,
+      referencePrice,
+      zonesPerSide: 2,
+    }).map((zone) => ({ zone, timeframe: projection.timeframe })),
+  );
+  if (!zones.length && !projectedZones.length) return;
 
   const minY = Math.min(view.minY, view.maxY);
   const maxY = Math.max(view.minY, view.maxY);
   ctx.save();
   ctx.lineWidth = Math.max(1, scale);
   ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.78)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  for (const item of projectedZones) {
+    if (item.zone.high < minY || item.zone.low > maxY) continue;
+    drawSupportResistanceZone(ctx, item.zone, priceBottom, scale, labelRects, {
+      labelPrefix: `${item.timeframe.toUpperCase()} `,
+      opacity: 0.82,
+    });
+  }
   for (const zone of zones) {
     if (zone.high < minY || zone.low > maxY) continue;
     drawSupportResistanceZone(ctx, zone, priceBottom, scale, labelRects);
@@ -4151,8 +4292,10 @@ function drawSupportResistanceZone(
   priceBottom: number,
   scale: number,
   labelRects: HudLabelRect[],
+  options: { labelPrefix?: string; opacity?: number } = {},
 ) {
   const appearance = resolvedAppearance.value;
+  const opacity = Math.max(0.1, Math.min(1, options.opacity ?? 1));
   const color =
     zone.kind === "support"
       ? appearance.srSupportZoneColor
@@ -4168,11 +4311,11 @@ function drawSupportResistanceZone(
     bottom = Math.min(priceBottom, Math.max(2 * scale, centerY + scale));
   }
 
-  const strengthAlpha = Math.min(0.16, 0.07 + zone.touches * 0.018);
+  const strengthAlpha = Math.min(0.16, 0.07 + zone.touches * 0.018) * opacity;
   ctx.fillStyle = hexToRgba(color, strengthAlpha);
   ctx.fillRect(0, top, ctx.canvas.width, Math.max(1, bottom - top));
   ctx.setLineDash([4 * scale, 5 * scale]);
-  ctx.strokeStyle = hexToRgba(color, 0.48);
+  ctx.strokeStyle = hexToRgba(color, 0.48 * opacity);
   ctx.beginPath();
   ctx.moveTo(0, top + 0.5);
   ctx.lineTo(ctx.canvas.width, top + 0.5);
@@ -4181,7 +4324,7 @@ function drawSupportResistanceZone(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const label = `${zone.kind === "support" ? "S" : "R"} ${formatPrice(zone.center)} x${zone.touches}`;
+  const label = `${options.labelPrefix ?? ""}${zone.kind === "support" ? "S" : "R"} ${formatPrice(zone.center)} x${zone.touches}`;
   const padX = 5 * scale;
   const boxHeight = Math.max(14 * scale, resolvedAppearance.value.fontSize * scale * 1.05);
   const labelWidth = ctx.measureText(label).width;
@@ -4201,7 +4344,7 @@ function drawSupportResistanceZone(
     [0, 1, 2, 3],
   );
   if (!rect) return;
-  ctx.fillStyle = hexToRgba(color, 0.72);
+  ctx.fillStyle = hexToRgba(color, 0.72 * opacity);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.fillStyle = "white";
   ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
