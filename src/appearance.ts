@@ -8,6 +8,7 @@ export type GpuChartIndicatorType =
   | "bollinger"
   | "srZones"
   | "marketStructure"
+  | "anchoredVwap"
   | "volume"
   | "stochRsi"
   | "rsi"
@@ -41,6 +42,8 @@ export interface GpuChartAppearance {
   marketStructureHighColor: string;
   marketStructureLowColor: string;
   marketStructureBreakColor: string;
+  anchoredVwapColor: string;
+  anchoredVwapAnchorColor: string;
   stochRsiKColor: string;
   stochRsiDColor: string;
   stochRsiRangeColor: string;
@@ -79,6 +82,7 @@ export interface GpuChartAppearance {
   marketStructureAtrPeriod: number;
   marketStructureMinMoveAtr: number;
   marketStructureMaxLabels: number;
+  anchoredVwapAnchorBucket: number | null;
   stochRsiRsiPeriod: number;
   stochRsiPeriod: number;
   stochRsiKPeriod: number;
@@ -117,6 +121,7 @@ export interface GpuChartAppearance {
   showBollinger: boolean;
   showSrZones: boolean;
   showMarketStructure: boolean;
+  showAnchoredVwap: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
   showMacd: boolean;
@@ -150,6 +155,7 @@ type IndicatorShowKey = Extract<
   | "showBollinger"
   | "showSrZones"
   | "showMarketStructure"
+  | "showAnchoredVwap"
   | "showVolume"
   | "showStochRsi"
   | "showRsi"
@@ -165,6 +171,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "bollinger",
   "srZones",
   "marketStructure",
+  "anchoredVwap",
   "volume",
   "stochRsi",
   "rsi",
@@ -207,6 +214,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   bollinger: "price",
   srZones: "price",
   marketStructure: "price",
+  anchoredVwap: "price",
   volume: "price",
   stochRsi: "lower",
   rsi: "lower",
@@ -225,6 +233,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   bollinger: "showBollinger",
   srZones: "showSrZones",
   marketStructure: "showMarketStructure",
+  anchoredVwap: "showAnchoredVwap",
   volume: "showVolume",
   stochRsi: "showStochRsi",
   rsi: "showRsi",
@@ -240,6 +249,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "bollinger", type: "bollinger", enabled: false, placement: "price" },
   { id: "srZones", type: "srZones", enabled: false, placement: "price" },
   { id: "marketStructure", type: "marketStructure", enabled: false, placement: "price" },
+  { id: "anchoredVwap", type: "anchoredVwap", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
   { id: "rsi", type: "rsi", enabled: true, placement: "lower" },
@@ -269,6 +279,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   marketStructureHighColor: "#38bdf8",
   marketStructureLowColor: "#f59e0b",
   marketStructureBreakColor: "#e879f9",
+  anchoredVwapColor: "#facc15",
+  anchoredVwapAnchorColor: "#fde047",
   stochRsiKColor: "#f59e0b",
   stochRsiDColor: "#a78bfa",
   stochRsiRangeColor: "#64748b",
@@ -307,6 +319,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   marketStructureAtrPeriod: 14,
   marketStructureMinMoveAtr: 0.75,
   marketStructureMaxLabels: 20,
+  anchoredVwapAnchorBucket: null,
   stochRsiRsiPeriod: 14,
   stochRsiPeriod: 14,
   stochRsiKPeriod: 3,
@@ -345,6 +358,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showBollinger: false,
   showSrZones: false,
   showMarketStructure: false,
+  showAnchoredVwap: false,
   showStochRsi: true,
   showRsi: true,
   showMacd: true,
@@ -415,6 +429,11 @@ export function normalizeGpuChartAppearance(
     marketStructureBreakColor: colorValue(
       value.marketStructureBreakColor,
       defaults.marketStructureBreakColor,
+    ),
+    anchoredVwapColor: colorValue(value.anchoredVwapColor, defaults.anchoredVwapColor),
+    anchoredVwapAnchorColor: colorValue(
+      value.anchoredVwapAnchorColor,
+      defaults.anchoredVwapAnchorColor,
     ),
     stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
     stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
@@ -511,6 +530,10 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.marketStructureMaxLabels,
     ),
+    anchoredVwapAnchorBucket: nullableFiniteNumber(
+      value.anchoredVwapAnchorBucket,
+      defaults.anchoredVwapAnchorBucket,
+    ),
     stochRsiRsiPeriod: clampInteger(
       value.stochRsiRsiPeriod,
       2,
@@ -606,6 +629,7 @@ export function normalizeGpuChartAppearance(
       value.showMarketStructure,
       defaults.showMarketStructure,
     ),
+    showAnchoredVwap: boolValue(value.showAnchoredVwap, defaults.showAnchoredVwap),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),
     showMacd: boolValue(value.showMacd, defaults.showMacd),
@@ -948,4 +972,10 @@ function clampNumber(value: unknown, min: number, max: number, fallback: number)
 
 function clampInteger(value: unknown, min: number, max: number, fallback: number) {
   return Math.floor(clampNumber(value, min, max, fallback));
+}
+
+function nullableFiniteNumber(value: unknown, fallback: number | null) {
+  if (value == null) return fallback;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : fallback;
 }

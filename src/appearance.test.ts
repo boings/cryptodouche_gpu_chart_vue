@@ -71,6 +71,9 @@ describe("gpu chart appearance", () => {
       relativeReturnColor: "lime",
       relativeReturnZeroColor: "gray",
       relativeReturnSmooth: "yes" as unknown as boolean,
+      anchoredVwapColor: "yellow",
+      anchoredVwapAnchorColor: "gold",
+      anchoredVwapAnchorBucket: "bad" as unknown as number,
       volumeUpColor: "green",
       volumeDownColor: "red",
       volumeHeightRatio: 9,
@@ -89,6 +92,7 @@ describe("gpu chart appearance", () => {
       showMacd: "yes" as unknown as boolean,
       showAtr: "yes" as unknown as boolean,
       showRelativeReturn: "yes" as unknown as boolean,
+      showAnchoredVwap: "yes" as unknown as boolean,
       showVolume: "yes" as unknown as boolean,
       showGrid: "yes" as unknown as boolean,
     });
@@ -146,6 +150,15 @@ describe("gpu chart appearance", () => {
     expect(appearance.relativeReturnSmooth).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.relativeReturnSmooth,
     );
+    expect(appearance.anchoredVwapColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.anchoredVwapColor,
+    );
+    expect(appearance.anchoredVwapAnchorColor).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.anchoredVwapAnchorColor,
+    );
+    expect(appearance.anchoredVwapAnchorBucket).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.anchoredVwapAnchorBucket,
+    );
     expect(appearance.volumeUpColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeUpColor);
     expect(appearance.volumeDownColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeDownColor);
     expect(appearance.volumeHeightRatio).toBe(0.35);
@@ -165,6 +178,7 @@ describe("gpu chart appearance", () => {
         expect.objectContaining({ type: "sma", enabled: true, period: 2 }),
         expect.objectContaining({ type: "ema", enabled: true, period: 20 }),
         expect.objectContaining({ type: "srZones", enabled: false }),
+        expect.objectContaining({ type: "anchoredVwap", enabled: false }),
         expect.objectContaining({ type: "relativeReturn", enabled: false }),
       ]),
     );
@@ -176,6 +190,9 @@ describe("gpu chart appearance", () => {
     expect(appearance.showAtr).toBe(DEFAULT_GPU_CHART_APPEARANCE.showAtr);
     expect(appearance.showRelativeReturn).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.showRelativeReturn,
+    );
+    expect(appearance.showAnchoredVwap).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showAnchoredVwap,
     );
     expect(appearance.showVolume).toBe(DEFAULT_GPU_CHART_APPEARANCE.showVolume);
     expect(appearance.showGrid).toBe(DEFAULT_GPU_CHART_APPEARANCE.showGrid);
@@ -213,6 +230,10 @@ describe("gpu chart appearance", () => {
         showMacd: false,
         showAtr: false,
         showRelativeReturn: true,
+        showAnchoredVwap: true,
+        anchoredVwapColor: "#facc15",
+        anchoredVwapAnchorColor: "#fde047",
+        anchoredVwapAnchorBucket: 123456,
         showSrZones: true,
         srSupportZoneColor: "#059669",
         srResistanceZoneColor: "#dc2626",
@@ -268,6 +289,10 @@ describe("gpu chart appearance", () => {
     expect(saved.showMacd).toBe(false);
     expect(saved.showAtr).toBe(false);
     expect(saved.showRelativeReturn).toBe(true);
+    expect(saved.showAnchoredVwap).toBe(true);
+    expect(saved.anchoredVwapColor).toBe("#facc15");
+    expect(saved.anchoredVwapAnchorColor).toBe("#fde047");
+    expect(saved.anchoredVwapAnchorBucket).toBe(123456);
     expect(saved.showSrZones).toBe(true);
     expect(saved.indicators.find((item) => item.type === "srZones")?.enabled).toBe(true);
     expect(saved.srSupportZoneColor).toBe("#059669");
@@ -285,6 +310,7 @@ describe("gpu chart appearance", () => {
     expect(saved.indicators.find((item) => item.type === "macd")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "atr")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "relativeReturn")?.enabled).toBe(true);
+    expect(saved.indicators.find((item) => item.type === "anchoredVwap")?.enabled).toBe(true);
     expect(saved.macdLineColor).toBe("#0284c7");
     expect(saved.macdSignalColor).toBe("#f97316");
     expect(saved.macdHistogramUpColor).toBe("#16a34a");
@@ -330,6 +356,10 @@ describe("gpu chart appearance", () => {
       showMacd: false,
       showAtr: false,
       showRelativeReturn: true,
+      showAnchoredVwap: true,
+      anchoredVwapColor: "#facc15",
+      anchoredVwapAnchorColor: "#fde047",
+      anchoredVwapAnchorBucket: 123456,
       indicators: expect.arrayContaining([
         expect.objectContaining({ type: "sma", enabled: false }),
         expect.objectContaining({ type: "ema", enabled: false }),
@@ -340,6 +370,7 @@ describe("gpu chart appearance", () => {
         expect.objectContaining({ type: "macd", enabled: false }),
         expect.objectContaining({ type: "atr", enabled: false }),
         expect.objectContaining({ type: "relativeReturn", enabled: true }),
+        expect.objectContaining({ type: "anchoredVwap", enabled: true }),
       ]),
       macdLineColor: "#0284c7",
       macdSignalColor: "#f97316",
