@@ -57,6 +57,10 @@ export interface MarketStructureState {
     breaks: StructureBreak[];
     trend: StructureDirection | "neutral";
 }
+export interface AnchoredVwapOptions {
+    anchorBucket?: number | null;
+    anchorX?: number | null;
+}
 export declare function computeSmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeEmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeWmaLine(candles: CandleRecord[], period?: number): Float32Array;
@@ -76,6 +80,7 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
     histogram: Float32Array;
 };
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
+export declare function computeAnchoredVwapLine(candles: CandleRecord[], options?: AnchoredVwapOptions): Float32Array;
 export declare function computeSwingPoints(candles: CandleRecord[], options?: MarketStructureOptions): SwingPoint[];
 export declare function computeMarketStructure(candles: CandleRecord[], options?: MarketStructureOptions): MarketStructureState;
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];

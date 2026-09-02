@@ -254,6 +254,7 @@ export function computeAnchoredVwapLine(
   let cumulativeNotional = 0;
   for (let index = startIndex; index < candles.length; index += 1) {
     const candle = candles[index];
+    if (!candle) continue;
     const typical = (candle.h + candle.l + candle.c) / 3;
     if (!validPositivePrice(typical)) continue;
     const volume = anchoredVwapBaseVolume(candle, typical);
@@ -454,9 +455,11 @@ function anchoredVwapStartIndex(
 }
 
 function anchoredVwapBaseVolume(candle: CandleRecord, typicalPrice: number) {
-  if (Number.isFinite(candle.v_base) && candle.v_base > 0) return candle.v_base;
-  if (Number.isFinite(candle.v_quote) && candle.v_quote > 0 && typicalPrice > 0) {
-    return candle.v_quote / typicalPrice;
+  const baseVolume = Number(candle.v_base);
+  if (Number.isFinite(baseVolume) && baseVolume > 0) return baseVolume;
+  const quoteVolume = Number(candle.v_quote);
+  if (Number.isFinite(quoteVolume) && quoteVolume > 0 && typicalPrice > 0) {
+    return quoteVolume / typicalPrice;
   }
   return 0;
 }

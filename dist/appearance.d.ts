@@ -1,5 +1,5 @@
 export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
-export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "marketStructure" | "volume" | "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
+export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "marketStructure" | "anchoredVwap" | "volume" | "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
 export type GpuChartIndicatorPlacement = "price" | "lower";
 export interface GpuChartIndicatorInstance {
     id: string;
@@ -25,6 +25,8 @@ export interface GpuChartAppearance {
     marketStructureHighColor: string;
     marketStructureLowColor: string;
     marketStructureBreakColor: string;
+    anchoredVwapColor: string;
+    anchoredVwapAnchorColor: string;
     stochRsiKColor: string;
     stochRsiDColor: string;
     stochRsiRangeColor: string;
@@ -63,6 +65,7 @@ export interface GpuChartAppearance {
     marketStructureAtrPeriod: number;
     marketStructureMinMoveAtr: number;
     marketStructureMaxLabels: number;
+    anchoredVwapAnchorBucket: number | null;
     stochRsiRsiPeriod: number;
     stochRsiPeriod: number;
     stochRsiKPeriod: number;
@@ -101,6 +104,7 @@ export interface GpuChartAppearance {
     showBollinger: boolean;
     showSrZones: boolean;
     showMarketStructure: boolean;
+    showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
     showMacd: boolean;
@@ -114,7 +118,7 @@ export declare const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
 export type GpuChartMovingAverageIndicatorType = Extract<GpuChartIndicatorType, "sma" | "ema" | "wma">;
 export type GpuChartMovingAveragePeriodKey = Extract<keyof GpuChartAppearance, "smaPeriod" | "emaPeriod" | "wmaPeriod">;
 export type GpuChartMovingAverageColorKey = Extract<keyof GpuChartAppearance, "smaColor" | "emaColor" | "wmaColor">;
-type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showMarketStructure" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr" | "showRelativeReturn">;
+type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showMarketStructure" | "showAnchoredVwap" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr" | "showRelativeReturn">;
 export declare const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE: Record<GpuChartMovingAverageIndicatorType, GpuChartMovingAveragePeriodKey>;
@@ -156,6 +160,8 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     marketStructureHighColor: string;
     marketStructureLowColor: string;
     marketStructureBreakColor: string;
+    anchoredVwapColor: string;
+    anchoredVwapAnchorColor: string;
     stochRsiKColor: string;
     stochRsiDColor: string;
     stochRsiRangeColor: string;
@@ -194,6 +200,7 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     marketStructureAtrPeriod: number;
     marketStructureMinMoveAtr: number;
     marketStructureMaxLabels: number;
+    anchoredVwapAnchorBucket: number | null;
     stochRsiRsiPeriod: number;
     stochRsiPeriod: number;
     stochRsiKPeriod: number;
@@ -230,6 +237,7 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showBollinger: boolean;
     showSrZones: boolean;
     showMarketStructure: boolean;
+    showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
     showMacd: boolean;
@@ -264,6 +272,8 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     marketStructureHighColor: string;
     marketStructureLowColor: string;
     marketStructureBreakColor: string;
+    anchoredVwapColor: string;
+    anchoredVwapAnchorColor: string;
     stochRsiKColor: string;
     stochRsiDColor: string;
     stochRsiRangeColor: string;
@@ -302,6 +312,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     marketStructureAtrPeriod: number;
     marketStructureMinMoveAtr: number;
     marketStructureMaxLabels: number;
+    anchoredVwapAnchorBucket: number | null;
     stochRsiRsiPeriod: number;
     stochRsiPeriod: number;
     stochRsiKPeriod: number;
@@ -338,6 +349,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showBollinger: boolean;
     showSrZones: boolean;
     showMarketStructure: boolean;
+    showAnchoredVwap: boolean;
     showStochRsi: boolean;
     showRsi: boolean;
     showMacd: boolean;
@@ -365,6 +377,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         marketStructureHighColor: string;
         marketStructureLowColor: string;
         marketStructureBreakColor: string;
+        anchoredVwapColor: string;
+        anchoredVwapAnchorColor: string;
         stochRsiKColor: string;
         stochRsiDColor: string;
         stochRsiRangeColor: string;
@@ -403,6 +417,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         marketStructureAtrPeriod: number;
         marketStructureMinMoveAtr: number;
         marketStructureMaxLabels: number;
+        anchoredVwapAnchorBucket: number | null;
         stochRsiRsiPeriod: number;
         stochRsiPeriod: number;
         stochRsiKPeriod: number;
@@ -449,6 +464,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showBollinger: boolean;
         showSrZones: boolean;
         showMarketStructure: boolean;
+        showAnchoredVwap: boolean;
         showStochRsi: boolean;
         showRsi: boolean;
         showMacd: boolean;
@@ -470,6 +486,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         marketStructureHighColor: string;
         marketStructureLowColor: string;
         marketStructureBreakColor: string;
+        anchoredVwapColor: string;
+        anchoredVwapAnchorColor: string;
         stochRsiKColor: string;
         stochRsiDColor: string;
         stochRsiRangeColor: string;
@@ -508,6 +526,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         marketStructureAtrPeriod: number;
         marketStructureMinMoveAtr: number;
         marketStructureMaxLabels: number;
+        anchoredVwapAnchorBucket: number | null;
         stochRsiRsiPeriod: number;
         stochRsiPeriod: number;
         stochRsiKPeriod: number;
@@ -554,6 +573,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showBollinger: boolean;
         showSrZones: boolean;
         showMarketStructure: boolean;
+        showAnchoredVwap: boolean;
         showStochRsi: boolean;
         showRsi: boolean;
         showMacd: boolean;

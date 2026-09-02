@@ -9,7 +9,10 @@
     :data-view-min-x="viewMinX"
     :data-view-max-x="viewMaxX"
     :style="shellStyle"
-    :class="{ 'gpu-chart-shell-link': openOnChartClickActive }"
+    :class="{
+      'gpu-chart-shell-link': openOnChartClickActive,
+      'gpu-chart-shell-picking': anchoredVwapPickMode,
+    }"
     @click="handleShellClick"
   >
     <canvas ref="canvasRef" class="gpu-chart-canvas"></canvas>
@@ -368,6 +371,50 @@
                   />
                   <span>{{ field.label }}</span>
                 </label>
+                <div
+                  v-if="selectedChartIndicatorIsAnchoredVwap"
+                  class="gpu-chart-avwap-actions"
+                >
+                  <button
+                    type="button"
+                    class="gpu-chart-avwap-action"
+                    :class="{ active: anchoredVwapPickMode }"
+                    @click="startAnchoredVwapPick"
+                  >
+                    {{ anchoredVwapPickMode ? "Picking" : "Pick Candle" }}
+                  </button>
+                  <button
+                    type="button"
+                    class="gpu-chart-avwap-action"
+                    @click="setAnchoredVwapAnchorFromRecentSwing('SwingLow')"
+                  >
+                    Swing Low
+                  </button>
+                  <button
+                    type="button"
+                    class="gpu-chart-avwap-action"
+                    @click="setAnchoredVwapAnchorFromRecentSwing('SwingHigh')"
+                  >
+                    Swing High
+                  </button>
+                  <button
+                    type="button"
+                    class="gpu-chart-avwap-action"
+                    @click="setAnchoredVwapAnchorFromLastBreak"
+                  >
+                    Last Break
+                  </button>
+                  <button
+                    type="button"
+                    class="gpu-chart-avwap-action"
+                    @click="clearAnchoredVwapAnchor"
+                  >
+                    Clear
+                  </button>
+                  <span class="gpu-chart-avwap-anchor">
+                    {{ anchoredVwapAnchorLabel }}
+                  </span>
+                </div>
               </div>
             </div>
           </div>
@@ -500,6 +547,7 @@ import {
   prependHistoricalCandles,
 } from "./data";
 import {
+  computeAnchoredVwapLine,
   computeAtrLine,
   computeBollingerBands,
   computeEmaLine,
@@ -515,6 +563,7 @@ import {
   type StructureBreak,
   type SupportResistanceZone,
   type SwingPoint,
+  type SwingPointKind,
 } from "./indicators";
 import {
   GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE,
@@ -685,6 +734,8 @@ type ChartIndicatorColorField = Extract<
   | "marketStructureHighColor"
   | "marketStructureLowColor"
   | "marketStructureBreakColor"
+  | "anchoredVwapColor"
+  | "anchoredVwapAnchorColor"
   | "volumeUpColor"
   | "volumeDownColor"
   | "stochRsiKColor"
@@ -996,6 +1047,10 @@ const chartMarketStructureNumberFields: Array<{
   { key: "marketStructureMinMoveAtr", label: "Min Move ATR", min: 0, max: 10, step: 0.05 },
   { key: "marketStructureMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
 ];
+const chartAnchoredVwapColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
+  { key: "anchoredVwapColor", label: "VWAP Color" },
+  { key: "anchoredVwapAnchorColor", label: "Anchor Color" },
+];
 const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
   {
     type: "sma",
@@ -1044,6 +1099,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     colorFields: chartMarketStructureColorFields,
     toggleFields: [],
     numberFields: chartMarketStructureNumberFields,
+  },
+  {
+    type: "anchoredVwap",
+    label: "Anchored VWAP",
+    placement: "price",
+    colorFields: chartAnchoredVwapColorFields,
+    toggleFields: [],
+    numberFields: [],
   },
   {
     type: "volume",
@@ -1193,6 +1256,7 @@ const chartSettingsDimensions = ref<{ width: number; height: number } | null>(nu
 const chartSettingsResizing = ref(false);
 const chartSettingsTab = ref<ChartSettingsTab>("indicators");
 const selectedChartIndicatorId = ref("ema");
+const anchoredVwapPickMode = ref(false);
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
@@ -1268,6 +1332,9 @@ const selectedMovingAverageColor = computed(() =>
   selectedMovingAverageIndicator.value
     ? gpuChartMovingAverageColor(resolvedAppearance.value, selectedMovingAverageIndicator.value)
     : resolvedAppearance.value.textColor,
+);
+const selectedChartIndicatorIsAnchoredVwap = computed(
+  () => selectedChartIndicatorInstance.value?.type === "anchoredVwap",
 );
 const selectedChartIndicatorLabel = computed(() =>
   selectedChartIndicatorInstance.value
@@ -1418,7 +1485,9 @@ const changeClass = computed(() => ({
   up: (changePct.value ?? 0) > 0,
   down: (changePct.value ?? 0) < 0,
 }));
-const openOnChartClickActive = computed(() => Boolean(props.openOnChartClick));
+const openOnChartClickActive = computed(
+  () => Boolean(props.openOnChartClick && !anchoredVwapPickMode.value),
+);
 const badgeComponent = computed(() => "div");
 const badgeTitle = computed(() =>
   [displayTitle.value, lastCloseText.value, changePctText.value].filter(Boolean).join(" "),
@@ -1435,11 +1504,23 @@ const renderNow = () => {
   chart?.render();
 };
 
-function handleShellClick() {
-  if (!props.openOnChartClick || draggedDuringPointer) {
+const anchoredVwapAnchorLabel = computed(() => {
+  const bucket = resolvedAppearance.value.anchoredVwapAnchorBucket;
+  if (bucket == null || !Number.isFinite(bucket)) return "No anchor";
+  const candle = anchoredVwapAnchorCandle();
+  return `Anchor ${formatAnchorDate(candle?.ts ?? bucket)}`;
+});
+
+function handleShellClick(event: MouseEvent) {
+  if (draggedDuringPointer) {
     draggedDuringPointer = false;
     return;
   }
+  if (anchoredVwapPickMode.value) {
+    setAnchoredVwapAnchorFromPointer(event);
+    return;
+  }
+  if (!props.openOnChartClick) return;
   emit("open", openPayload());
 }
 
@@ -2039,6 +2120,15 @@ function indicatorSeries() {
       add(computeWmaLine(state.candles, period), color);
     }
   }
+  if (chartIndicatorEnabled("anchoredVwap", appearance)) {
+    add(
+      computeAnchoredVwapLine(state.candles, {
+        anchorBucket: appearance.anchoredVwapAnchorBucket,
+      }),
+      appearance.anchoredVwapColor,
+      0.95,
+    );
+  }
   if (chartIndicatorEnabled("bollinger", appearance) && series.length <= LINE_SLOTS.length - 3) {
     const bands = computeBollingerBands(
       state.candles,
@@ -2226,6 +2316,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `S/R ${appearance.srZoneLookback}`;
     case "marketStructure":
       return `Structure ${appearance.marketStructureLookback}`;
+    case "anchoredVwap":
+      return "AVWAP";
     case "volume":
       return "Volume";
     case "stochRsi":
@@ -2350,6 +2442,80 @@ function setChartIndicatorEnabledValue(type: GpuChartIndicatorType, enabled: boo
       localActiveIndicatorPanes.value.filter((pane) => pane !== type),
     );
   }
+}
+
+function startAnchoredVwapPick() {
+  patchAnchoredVwap({ anchoredVwapAnchorBucket: resolvedAppearance.value.anchoredVwapAnchorBucket });
+  anchoredVwapPickMode.value = true;
+  canvasRef.value?.focus?.();
+  if (canvasRef.value) canvasRef.value.style.cursor = "crosshair";
+}
+
+function clearAnchoredVwapAnchor() {
+  anchoredVwapPickMode.value = false;
+  patchAppearance({ anchoredVwapAnchorBucket: null });
+}
+
+function setAnchoredVwapAnchorFromPointer(event: MouseEvent) {
+  const canvas = canvasRef.value;
+  if (!canvas || !state?.candles.length) {
+    anchoredVwapPickMode.value = false;
+    return;
+  }
+  const rect = canvas.getBoundingClientRect();
+  if (rect.width <= 0) return;
+  const scale = canvasScale(canvas);
+  const x = pxToX((event.clientX - rect.left) * scale, canvas.width);
+  const candle = nearestCandle(x);
+  setAnchoredVwapAnchorCandle(candle);
+}
+
+function setAnchoredVwapAnchorFromRecentSwing(kind: SwingPointKind) {
+  const swing = [...currentMarketStructure().swings]
+    .reverse()
+    .find((item) => item.kind === kind);
+  setAnchoredVwapAnchorBucket(swing?.bucket ?? null);
+}
+
+function setAnchoredVwapAnchorFromLastBreak() {
+  const breaks = currentMarketStructure().breaks;
+  const breakItem = breaks[breaks.length - 1];
+  setAnchoredVwapAnchorBucket(breakItem?.bucket ?? null);
+}
+
+function setAnchoredVwapAnchorCandle(candle: CandleRecord | null) {
+  setAnchoredVwapAnchorBucket(candle?.bucket ?? null);
+}
+
+function setAnchoredVwapAnchorBucket(bucket: number | null) {
+  if (bucket == null || !Number.isFinite(bucket)) return;
+  anchoredVwapPickMode.value = false;
+  patchAnchoredVwap({ anchoredVwapAnchorBucket: bucket });
+}
+
+function patchAnchoredVwap(partial: Partial<GpuChartAppearance>) {
+  const nextIndicators = resolvedAppearance.value.indicators.map((indicator) =>
+    indicator.type === "anchoredVwap"
+      ? {
+          ...indicator,
+          enabled: true,
+          placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE.anchoredVwap,
+        }
+      : { ...indicator },
+  );
+  if (!nextIndicators.some((indicator) => indicator.type === "anchoredVwap")) {
+    nextIndicators.push({
+      id: "anchoredVwap",
+      type: "anchoredVwap",
+      enabled: true,
+      placement: GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE.anchoredVwap,
+    });
+  }
+  patchAppearance({
+    ...partial,
+    indicators: nextIndicators,
+    showAnchoredVwap: true,
+  });
 }
 
 function addChartIndicatorInstance(type: GpuChartIndicatorType) {
@@ -3065,6 +3231,11 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
+    if (anchoredVwapPickMode.value) {
+      draggedDuringPointer = false;
+      canvas.style.cursor = "crosshair";
+      return;
+    }
     cancelSmoothX();
     const rect = canvas.getBoundingClientRect();
     dragging = true;
@@ -3079,7 +3250,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onMouseUp = () => {
     dragging = false;
-    canvas.style.cursor = "";
+    canvas.style.cursor = anchoredVwapPickMode.value ? "crosshair" : "";
   };
 
   const onMouseMove = (event: MouseEvent) => {
@@ -3118,7 +3289,11 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
       applyView();
       scheduleGpuRender(renderNow);
     } else {
-      canvas.style.cursor = isPriceScaleDragZone(event, rect) ? "ns-resize" : "";
+      canvas.style.cursor = anchoredVwapPickMode.value
+        ? "crosshair"
+        : isPriceScaleDragZone(event, rect)
+          ? "ns-resize"
+          : "";
     }
     drawHud(mousePos);
   };
@@ -3131,7 +3306,17 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onDoubleClick = (event: MouseEvent) => {
     event.preventDefault();
+    if (anchoredVwapPickMode.value) {
+      anchoredVwapPickMode.value = false;
+      return;
+    }
     resetVisibleYMode();
+  };
+
+  const onKeyDown = (event: KeyboardEvent) => {
+    if (event.key !== "Escape" || !anchoredVwapPickMode.value) return;
+    anchoredVwapPickMode.value = false;
+    canvas.style.cursor = "";
   };
 
   canvas.addEventListener("wheel", onWheel, { passive: false });
@@ -3140,6 +3325,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
   canvas.addEventListener("mouseleave", onMouseLeave);
   canvas.addEventListener("dblclick", onDoubleClick);
   window.addEventListener("mouseup", onMouseUp);
+  window.addEventListener("keydown", onKeyDown);
   cleanupFns.push(
     () => canvas.removeEventListener("wheel", onWheel),
     () => canvas.removeEventListener("mousedown", onMouseDown),
@@ -3147,6 +3333,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
     () => canvas.removeEventListener("mouseleave", onMouseLeave),
     () => canvas.removeEventListener("dblclick", onDoubleClick),
     () => window.removeEventListener("mouseup", onMouseUp),
+    () => window.removeEventListener("keydown", onKeyDown),
     clearWheelModeTimer,
   );
 }
@@ -3397,6 +3584,9 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (appearance.showGrid || appearance.showTimeAxis) {
     drawTimeAxis(ctx, priceAxisBottom, priceDecorationBottom, scale, fontPx, pad);
   }
+  if (chartIndicatorEnabled("anchoredVwap", appearance)) {
+    drawAnchoredVwapAnchor(ctx, priceDecorationBottom, scale);
+  }
 
   if (appearance.showWindowHighLow) {
     const extrema = visibleWindowExtrema();
@@ -3540,6 +3730,64 @@ function drawVolumeOverlay(
   ctx.restore();
 }
 
+function currentMarketStructure() {
+  const appearance = resolvedAppearance.value;
+  return state?.candles.length
+    ? computeMarketStructure(state.candles, {
+        lookback: appearance.marketStructureLookback,
+        pivotStrength: appearance.marketStructurePivotStrength,
+        atrPeriod: appearance.marketStructureAtrPeriod,
+        minMoveAtr: appearance.marketStructureMinMoveAtr,
+        maxSwings: appearance.marketStructureMaxLabels,
+        maxBreaks: Math.max(4, Math.ceil(appearance.marketStructureMaxLabels / 2)),
+      })
+    : { swings: [], breaks: [], trend: "neutral" as const };
+}
+
+function drawAnchoredVwapAnchor(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+) {
+  const candle = anchoredVwapAnchorCandle();
+  if (!candle || priceBottom <= 0) return;
+  const x = xToPx(candle.x, ctx.canvas.width);
+  if (x < -24 * scale || x > ctx.canvas.width + 24 * scale) return;
+
+  const appearance = resolvedAppearance.value;
+  const y = Math.max(
+    0,
+    Math.min(priceBottom, yToPx((candle.h + candle.l + candle.c) / 3, ctx.canvas.height)),
+  );
+  const label = "AVWAP";
+  const padX = 5 * scale;
+  const boxHeight = Math.max(14 * scale, appearance.fontSize * scale * 0.95);
+  const boxWidth = ctx.measureText(label).width + padX * 2;
+  const boxX = Math.max(
+    2 * scale,
+    Math.min(ctx.canvas.width - boxWidth - 2 * scale, x + 5 * scale),
+  );
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2));
+
+  ctx.save();
+  ctx.setLineDash([3 * scale, 5 * scale]);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.56);
+  ctx.beginPath();
+  ctx.moveTo(x + 0.5, 0);
+  ctx.lineTo(x + 0.5, priceBottom);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.2);
+  ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.72);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.98);
+  ctx.fillText(label, boxX + padX, boxY + boxHeight / 2);
+  ctx.restore();
+}
+
 function drawMarketStructureOverlay(
   ctx: CanvasRenderingContext2D,
   priceBottom: number,
@@ -3547,14 +3795,7 @@ function drawMarketStructureOverlay(
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
-  const structure = computeMarketStructure(state.candles, {
-    lookback: appearance.marketStructureLookback,
-    pivotStrength: appearance.marketStructurePivotStrength,
-    atrPeriod: appearance.marketStructureAtrPeriod,
-    minMoveAtr: appearance.marketStructureMinMoveAtr,
-    maxSwings: appearance.marketStructureMaxLabels,
-    maxBreaks: Math.max(4, Math.ceil(appearance.marketStructureMaxLabels / 2)),
-  });
+  const structure = currentMarketStructure();
   const minX = Math.min(view.minX, view.maxX) - 1;
   const maxX = Math.max(view.minX, view.maxX) + 1;
   const swings = structure.swings
@@ -4579,6 +4820,17 @@ function nearestCandle(x: number) {
   return best;
 }
 
+function anchoredVwapAnchorCandle() {
+  if (!state?.candles.length) return null;
+  const bucket = resolvedAppearance.value.anchoredVwapAnchorBucket;
+  if (bucket == null || !Number.isFinite(bucket)) return null;
+  return (
+    state.candles.find((candle) => candle.bucket === bucket) ??
+    state.candles.find((candle) => candle.bucket >= bucket) ??
+    null
+  );
+}
+
 function yToPx(y: number, height: number) {
   return (1 - (y - view.minY) / (view.maxY - view.minY)) * height;
 }
@@ -4672,6 +4924,16 @@ function formatRelativeReturnValue(value: number) {
   return `${percent > 0 ? "+" : percent < 0 ? "-" : ""}${formatted}%`;
 }
 
+function formatAnchorDate(ts: number) {
+  if (!Number.isFinite(ts)) return "Unknown";
+  return new Date(ts * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
+}
+
 function formatCompactNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
 }
@@ -4712,6 +4974,10 @@ function setError(message: string | null) {
 
 .gpu-chart-shell-link {
   cursor: pointer;
+}
+
+.gpu-chart-shell-picking {
+  cursor: crosshair;
 }
 
 .gpu-chart-canvas,
@@ -5145,6 +5411,44 @@ function setError(message: string | null) {
   border-radius: 5px;
   background: transparent;
   cursor: pointer;
+}
+
+.gpu-chart-avwap-actions {
+  display: flex;
+  grid-column: 1 / -1;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 6px;
+  padding-top: 2px;
+}
+
+.gpu-chart-avwap-action {
+  flex: 0 0 auto;
+  padding: 5px 7px;
+  border: 1px solid var(--gpu-chart-settings-border, rgba(148, 163, 184, 0.7));
+  border-radius: 4px;
+  background: transparent;
+  color: var(--gpu-chart-settings-text, rgba(255, 255, 255, 0.9));
+  cursor: pointer;
+  font: inherit;
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.gpu-chart-avwap-action:hover,
+.gpu-chart-avwap-action.active {
+  border-color: rgba(214, 162, 61, 0.82);
+  background: rgba(214, 162, 61, 0.16);
+}
+
+.gpu-chart-avwap-anchor {
+  flex: 1 1 150px;
+  min-width: 0;
+  overflow: hidden;
+  color: var(--gpu-chart-settings-muted, rgba(255, 255, 255, 0.68));
+  font-size: 11px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .gpu-chart-settings-actions {
