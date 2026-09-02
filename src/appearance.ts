@@ -545,12 +545,15 @@ export function normalizeGpuChartAppearance(
   };
   normalized.indicators = indicatorInstancesValue(value.indicators, normalized, defaults);
   syncIndicatorFlags(normalized);
+  const hasExplicitIndicatorPanes = Array.isArray(value.activeIndicatorPanes);
   normalized.activeIndicatorPanes = indicatorPaneListValue(
     value.activeIndicatorPanes,
     normalized,
   );
-  if (normalized.indicatorPaneMinimized) {
+  if (normalized.indicatorPaneMinimized && !normalized.activeIndicatorPanes.length) {
     normalized.activeIndicatorPanes = [];
+  } else if (hasExplicitIndicatorPanes && normalized.activeIndicatorPanes.length) {
+    normalized.indicatorPaneMinimized = false;
   }
   if (
     !normalized.activeIndicatorPanes.length &&

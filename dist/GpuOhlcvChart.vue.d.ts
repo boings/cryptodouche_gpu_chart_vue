@@ -1,4 +1,4 @@
-import type { GpuChartDataAdapter, GpuChartOpenPayload } from "./types";
+import type { GpuChartDataAdapter, GpuChartOpenPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
 import { type GpuChartAppearance } from "./appearance";
 type __VLS_Props = {
     symbol: string;
@@ -16,6 +16,8 @@ type __VLS_Props = {
     openOnChartClick?: boolean;
     showIndicatorPanes?: boolean;
     showChartSettings?: boolean;
+    syncId?: string | number;
+    timeSyncCommand?: GpuChartTimeSyncCommand | null;
     appearance?: Partial<GpuChartAppearance>;
 };
 declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -26,6 +28,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     "update:appearance": (value: GpuChartAppearance) => any;
     "save-appearance": (value: GpuChartAppearance) => any;
     "reset-appearance": () => any;
+    "time-sync": (value: GpuChartTimeSyncAction) => any;
 }, string, import("vue").PublicProps, Readonly<__VLS_Props> & Readonly<{
     onOpen?: ((payload: GpuChartOpenPayload) => any) | undefined;
     onError?: ((message: string | null) => any) | undefined;
@@ -34,6 +37,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     "onUpdate:appearance"?: ((value: GpuChartAppearance) => any) | undefined;
     "onSave-appearance"?: ((value: GpuChartAppearance) => any) | undefined;
     "onReset-appearance"?: (() => any) | undefined;
+    "onTime-sync"?: ((value: GpuChartTimeSyncAction) => any) | undefined;
 }>, {
     showSma: boolean;
     showEma: boolean;
@@ -47,5 +51,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     openOnChartClick: boolean;
     showIndicatorPanes: boolean;
     showChartSettings: boolean;
+    syncId: string | number;
+    timeSyncCommand: GpuChartTimeSyncCommand | null;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

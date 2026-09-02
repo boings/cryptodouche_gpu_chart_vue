@@ -481,6 +481,8 @@ import type {
   GpuChartDataAdapter,
   GpuChartDataQuery,
   GpuChartOpenPayload,
+  GpuChartTimeSyncAction,
+  GpuChartTimeSyncCommand,
   GpuSeriesState,
   ViewBounds,
 } from "./types";
@@ -1076,6 +1078,8 @@ const props = withDefaults(
     openOnChartClick?: boolean;
     showIndicatorPanes?: boolean;
     showChartSettings?: boolean;
+    syncId?: string | number;
+    timeSyncCommand?: GpuChartTimeSyncCommand | null;
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -1091,6 +1095,8 @@ const props = withDefaults(
     openOnChartClick: false,
     showIndicatorPanes: false,
     showChartSettings: false,
+    syncId: "",
+    timeSyncCommand: null,
   },
 );
 
@@ -1102,6 +1108,7 @@ const emit = defineEmits<{
   "update:appearance": [value: GpuChartAppearance];
   "save-appearance": [value: GpuChartAppearance];
   "reset-appearance": [];
+  "time-sync": [value: GpuChartTimeSyncAction];
 }>();
 
 const shellRef = ref<HTMLElement | null>(null);
@@ -1169,6 +1176,7 @@ let stopChartSettingsDrag: (() => void) | null = null;
 let stopChartSettingsResize: (() => void) | null = null;
 let benchmarkLoadGeneration = 0;
 let benchmarkLoadKey = "";
+let lastAppliedTimeSyncSeq = 0;
 
 const resolvedAppearance = computed(() => localAppearance.value);
 const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
@@ -1485,6 +1493,14 @@ watch(
 );
 
 watch(
+  () => props.timeSyncCommand,
+  (command) => {
+    applyTimeSyncCommand(command);
+  },
+  { deep: true },
+);
+
+watch(
   () => props.showIndicatorPanes,
   () => {
     if (!chart) return;
@@ -1581,6 +1597,7 @@ async function loadSeries() {
     applyView();
     drawHud(null);
     scheduleGpuRender(renderNow);
+    applyTimeSyncCommand(props.timeSyncCommand);
 
     if (props.synthetic) startSynthetic();
     else await startStream();
@@ -2763,6 +2780,8 @@ function setLocalActiveIndicatorPanes(value: GpuChartIndicatorPane[]) {
   if (indicatorSettingsOpen.value && !next.includes(localActiveIndicatorPane.value)) {
     closeIndicatorSettings();
   }
+  const nextAppearance = patchAppearance({});
+  emit("save-appearance", nextAppearance);
   fitVisibleYIfEnabled();
   applyView();
   drawHud(mousePos);
@@ -2816,20 +2835,49 @@ function patchAppearance(partial: Partial<GpuChartAppearance>) {
   });
   localAppearance.value = next;
   emit("update:appearance", next);
+  return next;
 }
 
-function smoothShiftPanBy(shift: number) {
+function applyTimeSyncCommand(command: GpuChartTimeSyncCommand | null | undefined) {
+  if (!command || command.seq === lastAppliedTimeSyncSeq) return;
+  if (!chart || !state?.candles.length) return;
+  lastAppliedTimeSyncSeq = command.seq;
+  if (String(command.sourceId ?? "") === String(props.syncId ?? "")) return;
+  if (command.kind === "pan") {
+    const span = Math.max(1e-9, view.maxX - view.minX);
+    smoothShiftPanBy(span * command.deltaRatio, { emit: false });
+  } else {
+    smoothZoomBy(command.scale, command.anchorRatio, { emit: false });
+  }
+}
+
+function emitTimeSync(value: GpuChartTimeSyncAction) {
+  emit("time-sync", value);
+}
+
+function smoothShiftPanBy(shift: number, options: { emit?: boolean } = {}) {
   if (!Number.isFinite(shift) || shift === 0 || !state?.candles.length) return;
   const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
+  const span = Math.max(1e-9, base.maxX - base.minX);
   const target = clampXBounds({
     ...view,
     minX: base.minX + shift,
     maxX: base.maxX + shift,
   });
+  if (options.emit !== false) {
+    const actualShift = target.minX - base.minX;
+    if (Number.isFinite(actualShift) && actualShift !== 0) {
+      emitTimeSync({ kind: "pan", deltaRatio: actualShift / span });
+    }
+  }
   setSmoothXTarget(target);
 }
 
-function smoothZoomBy(scale: number, anchorRatio: number) {
+function smoothZoomBy(
+  scale: number,
+  anchorRatio: number,
+  options: { emit?: boolean } = {},
+) {
   if (!Number.isFinite(scale) || scale <= 0 || !state?.candles.length) return;
   const ratio = Math.max(0, Math.min(1, anchorRatio));
   const base = smoothXTarget ?? { minX: view.minX, maxX: view.maxX };
@@ -2844,6 +2892,12 @@ function smoothZoomBy(scale: number, anchorRatio: number) {
     },
     { x: anchorX, ratio },
   );
+  if (options.emit !== false) {
+    const actualScale = Math.max(1e-9, target.maxX - target.minX) / width;
+    if (Number.isFinite(actualScale) && Math.abs(actualScale - 1) > 1e-6) {
+      emitTimeSync({ kind: "zoom", scale: actualScale, anchorRatio: ratio });
+    }
+  }
   setSmoothXTarget(target);
 }
 
@@ -2983,6 +3037,8 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         const scale = Math.exp((event.clientY - startY) / Y_AXIS_SCALE_SENSITIVITY_PX);
         view = scaleYView(startView, startAnchorRatio, scale);
       } else {
+        const previousMinX = view.minX;
+        const previousSpan = Math.max(1e-9, view.maxX - view.minX);
         const dx = ((event.clientX - startX) / rect.width) * (startView.maxX - startView.minX);
         const dy =
           ((event.clientY - startY) / pricePaneHeightCss(rect)) *
@@ -2992,6 +3048,10 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         view.minY = startView.minY + dy;
         view.maxY = startView.maxY + dy;
         clampViewX();
+        const actualShift = view.minX - previousMinX;
+        if (Number.isFinite(actualShift) && actualShift !== 0) {
+          emitTimeSync({ kind: "pan", deltaRatio: actualShift / previousSpan });
+        }
         void maybeLoadOlderCandles();
       }
       applyView();

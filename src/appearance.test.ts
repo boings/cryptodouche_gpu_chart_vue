@@ -449,11 +449,24 @@ describe("gpu chart appearance", () => {
   it("clears active lower panes when minimized", () => {
     const appearance = normalizeGpuChartAppearance({
       activeIndicatorPane: "macd",
-      activeIndicatorPanes: ["macd", "rsi"],
+      activeIndicatorPanes: [],
       indicatorPaneMinimized: true,
     });
 
     expect(appearance.activeIndicatorPanes).toEqual([]);
+  });
+
+  it("keeps explicit active lower panes over a stale minimized flag", () => {
+    const appearance = normalizeGpuChartAppearance({
+      activeIndicatorPane: "stochRsi",
+      activeIndicatorPanes: ["stochRsi", "relativeReturn"],
+      indicatorPaneMinimized: true,
+      showRelativeReturn: true,
+    });
+
+    expect(appearance.indicatorPaneMinimized).toBe(false);
+    expect(appearance.activeIndicatorPane).toBe("stochRsi");
+    expect(appearance.activeIndicatorPanes).toEqual(["stochRsi", "relativeReturn"]);
   });
 
   it("derives indicator instances from legacy show flags", () => {
