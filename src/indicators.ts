@@ -39,6 +39,11 @@ export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
 export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
+export type RelativeStrengthDivergenceKind =
+  | "bearishHigh"
+  | "bearishLow"
+  | "bullishHigh"
+  | "bullishLow";
 
 export interface SwingPoint {
   kind: SwingPointKind;
@@ -89,6 +94,26 @@ export interface MarketStructureState {
   breaks: StructureBreak[];
   trend: StructureDirection | "neutral";
   summary: MarketStructureSummary;
+}
+
+export interface RelativeStrengthDivergence {
+  kind: RelativeStrengthDivergenceKind;
+  direction: StructureDirection;
+  label: "RS LH" | "RS LL" | "RS HH" | "RS HL";
+  index: number;
+  x: number;
+  ts: number;
+  bucket: number;
+  price: number;
+  previousPrice: number;
+  rs: number;
+  previousRs: number;
+  priceLabel: SwingPointLabel;
+}
+
+export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
+  minDeltaPct?: number;
+  maxDivergences?: number;
 }
 
 export interface AnchoredVwapOptions {
@@ -565,6 +590,100 @@ export function computeRelativeCumulativeReturnLine(
   return new Float32Array(points);
 }
 
+export function computeRelativeStrengthDivergences(
+  candles: CandleRecord[],
+  benchmarkCandles: CandleRecord[],
+  options: RelativeStrengthDivergenceOptions = {},
+): RelativeStrengthDivergence[] {
+  const maxDivergences = clampIntegerOption(options.maxDivergences, 1, 100, 16);
+  const minDeltaPct = clampNumberOption(options.minDeltaPct, 0, 50, 0.5);
+  const rsByX = linePointMap(computeRelativeCumulativeReturnLine(candles, benchmarkCandles));
+  if (!candles.length || rsByX.size < 2) return [];
+
+  const structure = computeMarketStructure(candles, {
+    ...options,
+    maxSwings: Math.max(options.maxSwings ?? 120, maxDivergences * 4),
+    maxBreaks: options.maxBreaks ?? 24,
+  });
+  const divergences: RelativeStrengthDivergence[] = [];
+  let previousHigh: SwingPoint | null = null;
+  let previousLow: SwingPoint | null = null;
+
+  for (const swing of structure.swings) {
+    const rs = rsByX.get(swing.x);
+    if (rs == null || !Number.isFinite(rs)) continue;
+
+    if (swing.kind === "SwingHigh") {
+      if (previousHigh) {
+        const previousRs = rsByX.get(previousHigh.x);
+        if (previousRs != null && Number.isFinite(previousRs)) {
+          if (swing.price > previousHigh.price && rs <= previousRs - minDeltaPct) {
+            divergences.push(
+              createRelativeStrengthDivergence(
+                "bearishHigh",
+                "bearish",
+                "RS LH",
+                swing,
+                previousHigh,
+                rs,
+                previousRs,
+              ),
+            );
+          } else if (swing.price < previousHigh.price && rs >= previousRs + minDeltaPct) {
+            divergences.push(
+              createRelativeStrengthDivergence(
+                "bullishHigh",
+                "bullish",
+                "RS HH",
+                swing,
+                previousHigh,
+                rs,
+                previousRs,
+              ),
+            );
+          }
+        }
+      }
+      previousHigh = swing;
+      continue;
+    }
+
+    if (previousLow) {
+      const previousRs = rsByX.get(previousLow.x);
+      if (previousRs != null && Number.isFinite(previousRs)) {
+        if (swing.price > previousLow.price && rs <= previousRs - minDeltaPct) {
+          divergences.push(
+            createRelativeStrengthDivergence(
+              "bearishLow",
+              "bearish",
+              "RS LL",
+              swing,
+              previousLow,
+              rs,
+              previousRs,
+            ),
+          );
+        } else if (swing.price < previousLow.price && rs >= previousRs + minDeltaPct) {
+          divergences.push(
+            createRelativeStrengthDivergence(
+              "bullishLow",
+              "bullish",
+              "RS HL",
+              swing,
+              previousLow,
+              rs,
+              previousRs,
+            ),
+          );
+        }
+      }
+    }
+    previousLow = swing;
+  }
+
+  return divergences.slice(-maxDivergences);
+}
+
 export function lineToBytes(line: Float32Array): Uint8Array {
   return new Uint8Array(line.buffer);
 }
@@ -700,6 +819,31 @@ function createStructureBreak(
     level: sourceSwing.price,
     sourceSwingX: sourceSwing.x,
     sourceSwingPrice: sourceSwing.price,
+  };
+}
+
+function createRelativeStrengthDivergence(
+  kind: RelativeStrengthDivergenceKind,
+  direction: StructureDirection,
+  label: RelativeStrengthDivergence["label"],
+  swing: SwingPoint,
+  previousSwing: SwingPoint,
+  rs: number,
+  previousRs: number,
+): RelativeStrengthDivergence {
+  return {
+    kind,
+    direction,
+    label,
+    index: swing.index,
+    x: swing.x,
+    ts: swing.ts,
+    bucket: swing.bucket,
+    price: swing.price,
+    previousPrice: previousSwing.price,
+    rs,
+    previousRs,
+    priceLabel: swing.label,
   };
 }
 
@@ -873,6 +1017,16 @@ function isPivotLow(candles: CandleRecord[], index: number, strength: number) {
 
 function rangesOverlap(aLow: number, aHigh: number, bLow: number, bHigh: number) {
   return aLow <= bHigh && bLow <= aHigh;
+}
+
+function linePointMap(line: Float32Array) {
+  const points = new Map<number, number>();
+  for (let index = 0; index < line.length; index += 2) {
+    const x = line[index];
+    const value = line[index + 1];
+    if (Number.isFinite(x) && Number.isFinite(value)) points.set(x, value);
+  }
+  return points;
 }
 
 function emaValues(candles: CandleRecord[], period: number) {

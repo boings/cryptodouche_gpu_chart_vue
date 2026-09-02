@@ -571,6 +571,7 @@ import {
   computeMacd,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
+  computeRelativeStrengthDivergences,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -579,6 +580,7 @@ import {
   lineToBytes,
   type AnchoredVwapSignal,
   type MarketStructureState,
+  type RelativeStrengthDivergence,
   type StructureBreak,
   type StructureSummaryState,
   type SupportResistanceZone,
@@ -766,6 +768,8 @@ type ChartIndicatorColorField = Extract<
   | "marketStructureHighColor"
   | "marketStructureLowColor"
   | "marketStructureBreakColor"
+  | "rsDivergenceBearishColor"
+  | "rsDivergenceBullishColor"
   | "anchoredVwapColor"
   | "anchoredVwapAnchorColor"
   | "volumeUpColor"
@@ -799,6 +803,9 @@ type ChartIndicatorNumberField = Extract<
   | "marketStructureAtrPeriod"
   | "marketStructureMinMoveAtr"
   | "marketStructureMaxLabels"
+  | "rsDivergenceLookback"
+  | "rsDivergenceMinDeltaPct"
+  | "rsDivergenceMaxLabels"
   | "volumeHeightRatio"
   | "volumeOpacity"
   | "stochRsiRsiPeriod"
@@ -1079,6 +1086,21 @@ const chartMarketStructureNumberFields: Array<{
   { key: "marketStructureMinMoveAtr", label: "Min Move ATR", min: 0, max: 10, step: 0.05 },
   { key: "marketStructureMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
 ];
+const chartRsDivergenceColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
+  { key: "rsDivergenceBearishColor", label: "Bearish Color" },
+  { key: "rsDivergenceBullishColor", label: "Bullish Color" },
+];
+const chartRsDivergenceNumberFields: Array<{
+  key: ChartIndicatorNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "rsDivergenceLookback", label: "Lookback", min: 20, max: 2000, step: 10 },
+  { key: "rsDivergenceMinDeltaPct", label: "Min RS Delta", min: 0, max: 50, step: 0.1 },
+  { key: "rsDivergenceMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
+];
 const chartAnchoredVwapColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "anchoredVwapColor", label: "VWAP Color" },
   { key: "anchoredVwapAnchorColor", label: "Anchor Color" },
@@ -1131,6 +1153,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     colorFields: chartMarketStructureColorFields,
     toggleFields: [],
     numberFields: chartMarketStructureNumberFields,
+  },
+  {
+    type: "rsDivergence",
+    label: "RS Divergence",
+    placement: "price",
+    colorFields: chartRsDivergenceColorFields,
+    toggleFields: [],
+    numberFields: chartRsDivergenceNumberFields,
   },
   {
     type: "anchoredVwap",
@@ -1684,7 +1714,7 @@ watch(
   () => {
     if (!chart) return;
     applyChartAppearance();
-    if (relativeReturnEnabled()) {
+    if (relativeBenchmarkRequired()) {
       void ensureRelativeBenchmarkState(Math.max(historyLoadLimit(), state?.candles.length ?? 0));
     } else {
       benchmarkState = null;
@@ -1858,7 +1888,7 @@ async function startBenchmarkStream() {
   if (benchmarkUnsubscribe) return;
   if (
     !state ||
-    !relativeReturnEnabled() ||
+    !relativeBenchmarkRequired() ||
     props.synthetic ||
     !props.dataAdapter?.subscribe ||
     isBenchmarkSelf()
@@ -1896,6 +1926,13 @@ function relativeReturnEnabled(appearance = resolvedAppearance.value) {
   return chartIndicatorEnabled("relativeReturn", appearance);
 }
 
+function relativeBenchmarkRequired(appearance = resolvedAppearance.value) {
+  return (
+    relativeReturnEnabled(appearance) ||
+    chartIndicatorEnabled("rsDivergence", appearance)
+  );
+}
+
 function relativeReturnBenchmarkSymbol() {
   return benchmarkSymbolFor(props.symbol);
 }
@@ -1915,7 +1952,7 @@ function benchmarkSymbolFor(symbol: string) {
 
 async function ensureRelativeBenchmarkState(limit = historyLoadLimit()) {
   const generation = ++benchmarkLoadGeneration;
-  if (!relativeReturnEnabled() || !state) {
+  if (!relativeBenchmarkRequired() || !state) {
     benchmarkState = null;
     benchmarkLoadKey = "";
     stopBenchmarkStream();
@@ -1962,7 +1999,7 @@ async function loadRelativeBenchmarkLatest(limit: number) {
 }
 
 async function loadOlderRelativeBenchmarkCandles(start: number, end: number, limit: number) {
-  if (!state || !relativeReturnEnabled()) return;
+  if (!state || !relativeBenchmarkRequired()) return;
   if (isBenchmarkSelf()) {
     benchmarkState = state;
     return;
@@ -2109,7 +2146,7 @@ function startSynthetic() {
   setStreaming(true);
   syntheticTimer = setInterval(() => {
     if (!state) return;
-    if (relativeReturnEnabled() && benchmarkState && benchmarkState !== state) {
+    if (relativeBenchmarkRequired() && benchmarkState && benchmarkState !== state) {
       appendSyntheticCandle(benchmarkState, liveRetentionLimit());
     }
     const wasFollowingLatest = isViewFollowingLatest();
@@ -2514,6 +2551,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `S/R ${appearance.srZoneLookback}`;
     case "marketStructure":
       return `Structure ${appearance.marketStructureLookback}`;
+    case "rsDivergence":
+      return "RS Divergence";
     case "anchoredVwap":
       return "AVWAP";
     case "volume":
@@ -3603,6 +3642,9 @@ function indicatorWarmupCandles() {
     chartIndicatorEnabled("marketStructure", appearance)
       ? Math.max(appearance.marketStructureLookback, appearance.marketStructureAtrPeriod)
       : 0,
+    chartIndicatorEnabled("rsDivergence", appearance)
+      ? Math.max(appearance.rsDivergenceLookback, appearance.marketStructureAtrPeriod)
+      : 0,
     appearance.rsiPeriod,
     appearance.macdSlowPeriod + appearance.macdSignalPeriod,
     appearance.atrPeriod,
@@ -3786,6 +3828,9 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (chartIndicatorEnabled("anchoredVwap", appearance)) {
     drawAnchoredVwapSignals(ctx, priceDecorationBottom, scale, labelRects);
     drawAnchoredVwapAnchor(ctx, priceDecorationBottom, scale, labelRects);
+  }
+  if (chartIndicatorEnabled("rsDivergence", appearance)) {
+    drawRelativeStrengthDivergences(ctx, priceDecorationBottom, scale, labelRects);
   }
 
   if (appearance.showWindowHighLow) {
@@ -4109,6 +4154,111 @@ function drawAnchoredVwapSignal(
   ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
   ctx.fillStyle = hexToRgba(color, 0.96);
   ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
+}
+
+function drawRelativeStrengthDivergences(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+  labelRects: HudLabelRect[],
+) {
+  if (!state?.candles.length || !benchmarkState?.candles.length || priceBottom <= 0) return;
+  const appearance = resolvedAppearance.value;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  const divergences = computeRelativeStrengthDivergences(
+    state.candles,
+    benchmarkState.candles,
+    {
+      lookback: appearance.rsDivergenceLookback,
+      pivotStrength: appearance.marketStructurePivotStrength,
+      atrPeriod: appearance.marketStructureAtrPeriod,
+      minMoveAtr: appearance.marketStructureMinMoveAtr,
+      minDeltaPct: appearance.rsDivergenceMinDeltaPct,
+      maxDivergences: appearance.rsDivergenceMaxLabels,
+      maxBreaks: 24,
+    },
+  ).filter((item) => item.x >= minX && item.x <= maxX);
+  if (!divergences.length) return;
+
+  ctx.save();
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.72)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "middle";
+  for (const divergence of divergences) {
+    drawRelativeStrengthDivergence(ctx, divergence, priceBottom, scale, labelRects);
+  }
+  ctx.restore();
+}
+
+function drawRelativeStrengthDivergence(
+  ctx: CanvasRenderingContext2D,
+  divergence: RelativeStrengthDivergence,
+  priceBottom: number,
+  scale: number,
+  labelRects: HudLabelRect[],
+) {
+  const appearance = resolvedAppearance.value;
+  const x = xToPx(divergence.x, ctx.canvas.width);
+  const y = yToPx(divergence.price, ctx.canvas.height);
+  if (
+    x < -48 * scale ||
+    x > ctx.canvas.width + 48 * scale ||
+    y < -24 * scale ||
+    y > priceBottom + 24 * scale
+  ) {
+    return;
+  }
+
+  const isHigh = divergence.kind === "bearishHigh" || divergence.kind === "bullishHigh";
+  const color =
+    divergence.direction === "bearish"
+      ? appearance.rsDivergenceBearishColor
+      : appearance.rsDivergenceBullishColor;
+  const text = `${divergence.priceLabel}/RS ${divergence.label.slice(3)}`;
+  const padX = 5 * scale;
+  const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.94);
+  const boxWidth = ctx.measureText(text).width + padX * 2;
+  const offset = (isHigh ? -1 : 1) * (boxHeight * 1.45);
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    x - boxWidth / 2,
+    y + offset,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    isHigh ? [0, -1, 1, -2, 2, -3, 3, -4, 4] : [0, 1, -1, 2, -2, 3, -3, 4, -4],
+    [0, 1, -1, 2, -2, 3, -3],
+  );
+  if (!rect) return;
+
+  ctx.save();
+  ctx.fillStyle = hexToRgba(color, 0.9);
+  ctx.strokeStyle = hexToRgba(color, 0.95);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.beginPath();
+  const markerSize = Math.max(3 * scale, 3);
+  if (isHigh) {
+    ctx.moveTo(x, y - markerSize * 1.8);
+    ctx.lineTo(x - markerSize, y - markerSize * 0.2);
+    ctx.lineTo(x + markerSize, y - markerSize * 0.2);
+  } else {
+    ctx.moveTo(x, y + markerSize * 1.8);
+    ctx.lineTo(x - markerSize, y + markerSize * 0.2);
+    ctx.lineTo(x + markerSize, y + markerSize * 0.2);
+  }
+  ctx.closePath();
+  ctx.fill();
+
+  drawHudLeaderLine(ctx, x, y, rect, color, scale);
+  ctx.fillStyle = hexToRgba(color, 0.16);
+  ctx.strokeStyle = hexToRgba(color, 0.72);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(color, 0.98);
+  ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
+  ctx.restore();
 }
 
 function drawMarketStructureOverlay(

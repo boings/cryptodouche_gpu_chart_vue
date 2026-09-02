@@ -30,6 +30,7 @@ export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
 export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
+export type RelativeStrengthDivergenceKind = "bearishHigh" | "bearishLow" | "bullishHigh" | "bullishLow";
 export interface SwingPoint {
     kind: SwingPointKind;
     structure: SwingPointStructure;
@@ -75,6 +76,24 @@ export interface MarketStructureState {
     breaks: StructureBreak[];
     trend: StructureDirection | "neutral";
     summary: MarketStructureSummary;
+}
+export interface RelativeStrengthDivergence {
+    kind: RelativeStrengthDivergenceKind;
+    direction: StructureDirection;
+    label: "RS LH" | "RS LL" | "RS HH" | "RS HL";
+    index: number;
+    x: number;
+    ts: number;
+    bucket: number;
+    price: number;
+    previousPrice: number;
+    rs: number;
+    previousRs: number;
+    priceLabel: SwingPointLabel;
+}
+export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
+    minDeltaPct?: number;
+    maxDivergences?: number;
 }
 export interface AnchoredVwapOptions {
     anchorBucket?: number | null;
@@ -125,4 +144,5 @@ export declare function computeMarketStructure(candles: CandleRecord[], options?
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];
 export declare function computeSupportResistanceZonesFromSwings(swings: SwingPoint[], options?: SupportResistanceZoneFromSwingsOptions): SupportResistanceZone[];
 export declare function computeRelativeCumulativeReturnLine(candles: CandleRecord[], benchmarkCandles: CandleRecord[]): Float32Array;
+export declare function computeRelativeStrengthDivergences(candles: CandleRecord[], benchmarkCandles: CandleRecord[], options?: RelativeStrengthDivergenceOptions): RelativeStrengthDivergence[];
 export declare function lineToBytes(line: Float32Array): Uint8Array;

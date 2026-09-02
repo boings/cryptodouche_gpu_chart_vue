@@ -6,6 +6,7 @@ import {
   computeAnchoredVwapSnapshot,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
+  computeRelativeStrengthDivergences,
   computeSupportResistanceZones,
   computeSupportResistanceZonesFromSwings,
   computeSwingPoints,
@@ -192,6 +193,38 @@ describe("gpu chart indicators", () => {
     const line = Array.from(computeRelativeCumulativeReturnLine(current, benchmark));
 
     expect(line[3]).toBeCloseTo(-70, 6);
+  });
+
+  it("marks price strength that diverges from normalized RS versus benchmark", () => {
+    const current = [
+      candle(0, 98, 101, 100),
+      candle(1, 108, 112, 111),
+      candle(2, 102, 105, 104),
+      candle(3, 114, 118, 117),
+      candle(4, 107, 110, 109),
+      candle(5, 112, 116, 115),
+    ];
+    const benchmark = [
+      candle(0, 98, 101, 100),
+      candle(1, 99, 102, 101),
+      candle(2, 100, 103, 102),
+      candle(3, 129, 133, 131),
+      candle(4, 126, 130, 128),
+      candle(5, 127, 131, 129),
+    ];
+
+    const divergences = computeRelativeStrengthDivergences(current, benchmark, {
+      pivotStrength: 1,
+      atrPeriod: 2,
+      minMoveAtr: 0,
+      minDeltaPct: 0.5,
+      maxDivergences: 10,
+    });
+
+    expect(divergences.map((item) => item.label)).toEqual(["RS LH", "RS LL"]);
+    expect(divergences.every((item) => item.direction === "bearish")).toBe(true);
+    expect(divergences[0].priceLabel).toBe("HH");
+    expect(divergences[1].priceLabel).toBe("HL");
   });
 
   it("filters small swing reversals with an ATR threshold", () => {

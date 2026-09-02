@@ -8,6 +8,7 @@ export type GpuChartIndicatorType =
   | "bollinger"
   | "srZones"
   | "marketStructure"
+  | "rsDivergence"
   | "anchoredVwap"
   | "volume"
   | "stochRsi"
@@ -42,6 +43,8 @@ export interface GpuChartAppearance {
   marketStructureHighColor: string;
   marketStructureLowColor: string;
   marketStructureBreakColor: string;
+  rsDivergenceBearishColor: string;
+  rsDivergenceBullishColor: string;
   anchoredVwapColor: string;
   anchoredVwapAnchorColor: string;
   stochRsiKColor: string;
@@ -82,6 +85,9 @@ export interface GpuChartAppearance {
   marketStructureAtrPeriod: number;
   marketStructureMinMoveAtr: number;
   marketStructureMaxLabels: number;
+  rsDivergenceLookback: number;
+  rsDivergenceMinDeltaPct: number;
+  rsDivergenceMaxLabels: number;
   anchoredVwapAnchorBucket: number | null;
   stochRsiRsiPeriod: number;
   stochRsiPeriod: number;
@@ -121,6 +127,7 @@ export interface GpuChartAppearance {
   showBollinger: boolean;
   showSrZones: boolean;
   showMarketStructure: boolean;
+  showRsDivergence: boolean;
   showAnchoredVwap: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
@@ -155,6 +162,7 @@ type IndicatorShowKey = Extract<
   | "showBollinger"
   | "showSrZones"
   | "showMarketStructure"
+  | "showRsDivergence"
   | "showAnchoredVwap"
   | "showVolume"
   | "showStochRsi"
@@ -171,6 +179,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "bollinger",
   "srZones",
   "marketStructure",
+  "rsDivergence",
   "anchoredVwap",
   "volume",
   "stochRsi",
@@ -214,6 +223,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   bollinger: "price",
   srZones: "price",
   marketStructure: "price",
+  rsDivergence: "price",
   anchoredVwap: "price",
   volume: "price",
   stochRsi: "lower",
@@ -233,6 +243,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   bollinger: "showBollinger",
   srZones: "showSrZones",
   marketStructure: "showMarketStructure",
+  rsDivergence: "showRsDivergence",
   anchoredVwap: "showAnchoredVwap",
   volume: "showVolume",
   stochRsi: "showStochRsi",
@@ -249,6 +260,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "bollinger", type: "bollinger", enabled: false, placement: "price" },
   { id: "srZones", type: "srZones", enabled: false, placement: "price" },
   { id: "marketStructure", type: "marketStructure", enabled: false, placement: "price" },
+  { id: "rsDivergence", type: "rsDivergence", enabled: false, placement: "price" },
   { id: "anchoredVwap", type: "anchoredVwap", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
@@ -279,6 +291,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   marketStructureHighColor: "#38bdf8",
   marketStructureLowColor: "#f59e0b",
   marketStructureBreakColor: "#e879f9",
+  rsDivergenceBearishColor: "#fb7185",
+  rsDivergenceBullishColor: "#34d399",
   anchoredVwapColor: "#facc15",
   anchoredVwapAnchorColor: "#fde047",
   stochRsiKColor: "#f59e0b",
@@ -319,6 +333,9 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   marketStructureAtrPeriod: 14,
   marketStructureMinMoveAtr: 0.75,
   marketStructureMaxLabels: 20,
+  rsDivergenceLookback: 500,
+  rsDivergenceMinDeltaPct: 0.5,
+  rsDivergenceMaxLabels: 12,
   anchoredVwapAnchorBucket: null,
   stochRsiRsiPeriod: 14,
   stochRsiPeriod: 14,
@@ -358,6 +375,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showBollinger: false,
   showSrZones: false,
   showMarketStructure: false,
+  showRsDivergence: false,
   showAnchoredVwap: false,
   showStochRsi: true,
   showRsi: true,
@@ -429,6 +447,14 @@ export function normalizeGpuChartAppearance(
     marketStructureBreakColor: colorValue(
       value.marketStructureBreakColor,
       defaults.marketStructureBreakColor,
+    ),
+    rsDivergenceBearishColor: colorValue(
+      value.rsDivergenceBearishColor,
+      defaults.rsDivergenceBearishColor,
+    ),
+    rsDivergenceBullishColor: colorValue(
+      value.rsDivergenceBullishColor,
+      defaults.rsDivergenceBullishColor,
     ),
     anchoredVwapColor: colorValue(value.anchoredVwapColor, defaults.anchoredVwapColor),
     anchoredVwapAnchorColor: colorValue(
@@ -530,6 +556,24 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.marketStructureMaxLabels,
     ),
+    rsDivergenceLookback: clampInteger(
+      value.rsDivergenceLookback,
+      20,
+      2000,
+      defaults.rsDivergenceLookback,
+    ),
+    rsDivergenceMinDeltaPct: clampNumber(
+      value.rsDivergenceMinDeltaPct,
+      0,
+      50,
+      defaults.rsDivergenceMinDeltaPct,
+    ),
+    rsDivergenceMaxLabels: clampInteger(
+      value.rsDivergenceMaxLabels,
+      1,
+      100,
+      defaults.rsDivergenceMaxLabels,
+    ),
     anchoredVwapAnchorBucket: nullableFiniteNumber(
       value.anchoredVwapAnchorBucket,
       defaults.anchoredVwapAnchorBucket,
@@ -629,6 +673,7 @@ export function normalizeGpuChartAppearance(
       value.showMarketStructure,
       defaults.showMarketStructure,
     ),
+    showRsDivergence: boolValue(value.showRsDivergence, defaults.showRsDivergence),
     showAnchoredVwap: boolValue(value.showAnchoredVwap, defaults.showAnchoredVwap),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),
