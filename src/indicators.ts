@@ -7,14 +7,23 @@ export interface SupportResistanceZone {
   center: number;
   touches: number;
   score: number;
+  strength: number;
   lastX: number;
+  source: "swing";
+  structures: SwingPointStructure[];
 }
 
-export interface SupportResistanceZoneOptions {
-  lookback?: number;
-  pivotStrength?: number;
+export interface SupportResistanceZoneFromSwingsOptions {
   maxZones?: number;
   thicknessBps?: number;
+  latestX?: number;
+  referencePrice?: number | null;
+  zonesPerSide?: number;
+}
+
+export interface SupportResistanceZoneOptions extends SupportResistanceZoneFromSwingsOptions {
+  lookback?: number;
+  pivotStrength?: number;
   atrPeriod?: number;
   minMoveAtr?: number;
 }
@@ -477,30 +486,53 @@ export function computeSupportResistanceZones(
   const maxZones = clampIntegerOption(options.maxZones, 1, 12, 6);
   const thicknessBps = clampNumberOption(options.thicknessBps, 1, 100, 10);
   const latestX = candles[candles.length - 1]?.x ?? 0;
-
-  const clusters: SupportResistanceZone[] = [];
-  const swings = computeSwingPoints(candles, {
+  const structure = computeMarketStructure(candles, {
     lookback,
     pivotStrength,
     atrPeriod: options.atrPeriod,
     minMoveAtr: options.minMoveAtr ?? 0,
-    maxSwings: lookback,
+    maxSwings: Math.min(500, lookback),
+    maxBreaks: 24,
   });
+
+  return computeSupportResistanceZonesFromSwings(structure.swings, {
+    maxZones,
+    thicknessBps,
+    latestX,
+    referencePrice: options.referencePrice ?? candles[candles.length - 1]?.c ?? null,
+    zonesPerSide: options.zonesPerSide,
+  });
+}
+
+export function computeSupportResistanceZonesFromSwings(
+  swings: SwingPoint[],
+  options: SupportResistanceZoneFromSwingsOptions = {},
+): SupportResistanceZone[] {
+  const maxZones = clampIntegerOption(options.maxZones, 1, 12, 6);
+  const thicknessBps = clampNumberOption(options.thicknessBps, 1, 100, 10);
+  const latestX = options.latestX ?? swings[swings.length - 1]?.x ?? 0;
+  const referencePrice = normalizedNullableNumber(options.referencePrice);
+  const zonesPerSide =
+    options.zonesPerSide == null
+      ? null
+      : clampIntegerOption(options.zonesPerSide, 1, 12, 3);
+  const clusters: SupportResistanceZone[] = [];
+
   for (const swing of swings) {
     addZonePivot(
       clusters,
       swing.kind === "SwingHigh" ? "resistance" : "support",
-      swing.price,
-      swing.x,
+      swing,
       latestX - swing.x + 1,
       thicknessBps,
     );
   }
 
-  return clusters
+  const ranked = clusters
     .filter((zone) => Number.isFinite(zone.center) && zone.high > zone.low)
     .sort((a, b) => b.score - a.score || b.touches - a.touches || b.lastX - a.lastX)
-    .slice(0, maxZones);
+    .slice(0, Math.max(maxZones * 2, maxZones));
+  return selectSupportResistanceZones(ranked, maxZones, referencePrice, zonesPerSide);
 }
 
 export function computeRelativeCumulativeReturnLine(
@@ -749,11 +781,11 @@ function atrValues(candles: CandleRecord[], period: number) {
 function addZonePivot(
   zones: SupportResistanceZone[],
   kind: SupportResistanceZone["kind"],
-  value: number,
-  x: number,
+  swing: SwingPoint,
   age: number,
   thicknessBps: number,
 ) {
+  const value = swing.price;
   if (!Number.isFinite(value) || value <= 0) return;
   const halfSpan = Math.max(value * (thicknessBps / 10000), Number.EPSILON);
   const low = value - halfSpan;
@@ -770,7 +802,10 @@ function addZonePivot(
       center: value,
       touches: 1,
       score: 1 + recencyScore,
-      lastX: x,
+      strength: 1 + recencyScore,
+      lastX: swing.x,
+      source: "swing",
+      structures: [swing.structure],
     });
     return;
   }
@@ -779,10 +814,43 @@ function addZonePivot(
   existing.center = (existing.center * existing.touches + value) / totalTouches;
   existing.touches = totalTouches;
   existing.score += 1 + recencyScore;
-  existing.lastX = Math.max(existing.lastX, x);
+  existing.strength = existing.score;
+  existing.lastX = Math.max(existing.lastX, swing.x);
+  existing.structures.push(swing.structure);
   const nextHalfSpan = Math.max(existing.center * (thicknessBps / 10000), Number.EPSILON);
   existing.low = Math.min(existing.low, existing.center - nextHalfSpan, low);
   existing.high = Math.max(existing.high, existing.center + nextHalfSpan, high);
+}
+
+function selectSupportResistanceZones(
+  zones: SupportResistanceZone[],
+  maxZones: number,
+  referencePrice: number | null,
+  zonesPerSide: number | null,
+) {
+  if (!referencePrice || !zonesPerSide) return zones.slice(0, maxZones);
+
+  const selected = new Set<SupportResistanceZone>();
+  const nearestSupports = zones
+    .filter((zone) => zone.center <= referencePrice)
+    .sort((a, b) => referencePrice - a.center - (referencePrice - b.center) || b.score - a.score)
+    .slice(0, zonesPerSide);
+  const nearestResistances = zones
+    .filter((zone) => zone.center > referencePrice)
+    .sort((a, b) => a.center - referencePrice - (b.center - referencePrice) || b.score - a.score)
+    .slice(0, zonesPerSide);
+
+  for (const zone of [...nearestSupports, ...nearestResistances]) {
+    selected.add(zone);
+  }
+  for (const zone of zones) {
+    if (selected.size >= maxZones) break;
+    selected.add(zone);
+  }
+
+  return Array.from(selected)
+    .sort((a, b) => b.score - a.score || b.touches - a.touches || b.lastX - a.lastX)
+    .slice(0, maxZones);
 }
 
 function isPivotHigh(candles: CandleRecord[], index: number, strength: number) {

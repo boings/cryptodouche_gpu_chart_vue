@@ -7,7 +7,9 @@ import {
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeSupportResistanceZones,
+  computeSupportResistanceZonesFromSwings,
   computeSwingPoints,
+  type SwingPoint,
 } from "./indicators";
 import type { CandleRecord } from "./types";
 
@@ -39,6 +41,36 @@ function structureCandles() {
     candle(9, 91, 118, 117),
     candle(10, 104, 113, 110),
   ];
+}
+
+function swing(
+  index: number,
+  kind: SwingPoint["kind"],
+  price: number,
+  structure: SwingPoint["structure"] = kind,
+): SwingPoint {
+  return {
+    kind,
+    structure,
+    label:
+      structure === "HigherHigh"
+        ? "HH"
+        : structure === "HigherLow"
+          ? "HL"
+          : structure === "LowerHigh"
+            ? "LH"
+            : structure === "LowerLow"
+              ? "LL"
+              : kind === "SwingHigh"
+                ? "SH"
+                : "SL",
+    index,
+    x: index,
+    ts: index * 60,
+    bucket: index * 60,
+    price,
+    atr: null,
+  };
 }
 
 describe("gpu chart indicators", () => {
@@ -296,5 +328,36 @@ describe("gpu chart indicators", () => {
         maxZones: 2,
       }),
     ).toHaveLength(2);
+  });
+
+  it("builds support and resistance zones directly from swings", () => {
+    const zones = computeSupportResistanceZonesFromSwings(
+      [
+        swing(0, "SwingLow", 90, "SwingLow"),
+        swing(1, "SwingHigh", 110, "SwingHigh"),
+        swing(2, "SwingLow", 90.1, "HigherLow"),
+        swing(3, "SwingHigh", 110.2, "HigherHigh"),
+        swing(4, "SwingLow", 80, "LowerLow"),
+        swing(5, "SwingHigh", 130, "HigherHigh"),
+      ],
+      {
+        maxZones: 2,
+        thicknessBps: 25,
+        latestX: 5,
+        referencePrice: 100,
+        zonesPerSide: 1,
+      },
+    );
+
+    const support = zones.find((zone) => zone.kind === "support");
+    const resistance = zones.find((zone) => zone.kind === "resistance");
+
+    expect(zones).toHaveLength(2);
+    expect(support?.center).toBeCloseTo(90.05, 2);
+    expect(support?.touches).toBe(2);
+    expect(support?.source).toBe("swing");
+    expect(support?.structures).toContain("HigherLow");
+    expect(resistance?.center).toBeCloseTo(110.1, 2);
+    expect(resistance?.touches).toBe(2);
   });
 });

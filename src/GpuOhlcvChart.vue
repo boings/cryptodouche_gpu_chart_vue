@@ -4121,6 +4121,8 @@ function drawSupportResistanceZones(
     pivotStrength: appearance.srZonePivotStrength,
     maxZones: appearance.srZoneMaxZones,
     thicknessBps: appearance.srZoneThicknessBps,
+    referencePrice: state.candles[state.candles.length - 1]?.c ?? null,
+    zonesPerSide: Math.max(1, Math.ceil(appearance.srZoneMaxZones / 2)),
   });
   if (!zones.length) return;
 
@@ -4172,7 +4174,7 @@ function drawSupportResistanceZone(
   ctx.stroke();
   ctx.setLineDash([]);
 
-  const label = `${zone.kind === "support" ? "S" : "R"} ${formatPrice(zone.center)}`;
+  const label = `${zone.kind === "support" ? "S" : "R"} ${formatPrice(zone.center)} x${zone.touches}`;
   const padX = 5 * scale;
   const boxHeight = Math.max(14 * scale, resolvedAppearance.value.fontSize * scale * 1.05);
   const labelWidth = ctx.measureText(label).width;

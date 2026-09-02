@@ -6,13 +6,21 @@ export interface SupportResistanceZone {
     center: number;
     touches: number;
     score: number;
+    strength: number;
     lastX: number;
+    source: "swing";
+    structures: SwingPointStructure[];
 }
-export interface SupportResistanceZoneOptions {
-    lookback?: number;
-    pivotStrength?: number;
+export interface SupportResistanceZoneFromSwingsOptions {
     maxZones?: number;
     thicknessBps?: number;
+    latestX?: number;
+    referencePrice?: number | null;
+    zonesPerSide?: number;
+}
+export interface SupportResistanceZoneOptions extends SupportResistanceZoneFromSwingsOptions {
+    lookback?: number;
+    pivotStrength?: number;
     atrPeriod?: number;
     minMoveAtr?: number;
 }
@@ -115,5 +123,6 @@ export declare function computeAnchoredVwapSignals(candles: CandleRecord[], opti
 export declare function computeSwingPoints(candles: CandleRecord[], options?: MarketStructureOptions): SwingPoint[];
 export declare function computeMarketStructure(candles: CandleRecord[], options?: MarketStructureOptions): MarketStructureState;
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];
+export declare function computeSupportResistanceZonesFromSwings(swings: SwingPoint[], options?: SupportResistanceZoneFromSwingsOptions): SupportResistanceZone[];
 export declare function computeRelativeCumulativeReturnLine(candles: CandleRecord[], benchmarkCandles: CandleRecord[]): Float32Array;
 export declare function lineToBytes(line: Float32Array): Uint8Array;
