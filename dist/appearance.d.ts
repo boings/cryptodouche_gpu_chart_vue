@@ -1,5 +1,5 @@
-export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr";
-export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "volume" | "stochRsi" | "rsi" | "macd" | "atr";
+export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
+export type GpuChartIndicatorType = "sma" | "ema" | "wma" | "bollinger" | "srZones" | "volume" | "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
 export type GpuChartIndicatorPlacement = "price" | "lower";
 export interface GpuChartIndicatorInstance {
     id: string;
@@ -32,6 +32,8 @@ export interface GpuChartAppearance {
     macdHistogramUpColor: string;
     macdHistogramDownColor: string;
     atrColor: string;
+    relativeReturnColor: string;
+    relativeReturnZeroColor: string;
     volumeUpColor: string;
     volumeDownColor: string;
     gridColor: string;
@@ -71,6 +73,7 @@ export interface GpuChartAppearance {
     macdSmooth: boolean;
     atrPeriod: number;
     atrSmooth: boolean;
+    relativeReturnSmooth: boolean;
     volumeHeightRatio: number;
     volumeOpacity: number;
     activeIndicatorPane: GpuChartIndicatorPane;
@@ -93,6 +96,7 @@ export interface GpuChartAppearance {
     showRsi: boolean;
     showMacd: boolean;
     showAtr: boolean;
+    showRelativeReturn: boolean;
     showVolume: boolean;
 }
 export declare const GPU_CHART_APPEARANCE_KEY = "gpu_chart_appearance_v1";
@@ -101,7 +105,7 @@ export declare const MAX_ACTIVE_GPU_CHART_INDICATOR_PANES = 3;
 export type GpuChartMovingAverageIndicatorType = Extract<GpuChartIndicatorType, "sma" | "ema" | "wma">;
 export type GpuChartMovingAveragePeriodKey = Extract<keyof GpuChartAppearance, "smaPeriod" | "emaPeriod" | "wmaPeriod">;
 export type GpuChartMovingAverageColorKey = Extract<keyof GpuChartAppearance, "smaColor" | "emaColor" | "wmaColor">;
-type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr">;
+type IndicatorShowKey = Extract<keyof GpuChartAppearance, "showSma" | "showEma" | "showWma" | "showBollinger" | "showSrZones" | "showVolume" | "showStochRsi" | "showRsi" | "showMacd" | "showAtr" | "showRelativeReturn">;
 export declare const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[];
 export declare const GPU_CHART_MOVING_AVERAGE_PERIOD_KEY_BY_TYPE: Record<GpuChartMovingAverageIndicatorType, GpuChartMovingAveragePeriodKey>;
@@ -150,6 +154,8 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     macdHistogramUpColor: string;
     macdHistogramDownColor: string;
     atrColor: string;
+    relativeReturnColor: string;
+    relativeReturnZeroColor: string;
     volumeUpColor: string;
     volumeDownColor: string;
     gridColor: string;
@@ -189,6 +195,7 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     macdSmooth: boolean;
     atrPeriod: number;
     atrSmooth: boolean;
+    relativeReturnSmooth: boolean;
     volumeHeightRatio: number;
     volumeOpacity: number;
     activeIndicatorPane: GpuChartIndicatorPane;
@@ -209,6 +216,7 @@ export declare function defaultGpuChartAppearance(scope?: GpuChartAppearanceScop
     showRsi: boolean;
     showMacd: boolean;
     showAtr: boolean;
+    showRelativeReturn: boolean;
     showVolume: boolean;
 };
 export declare function loadGpuChartAppearance(storage?: StorageLike | null, scope?: GpuChartAppearanceScope): GpuChartAppearance;
@@ -245,6 +253,8 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     macdHistogramUpColor: string;
     macdHistogramDownColor: string;
     atrColor: string;
+    relativeReturnColor: string;
+    relativeReturnZeroColor: string;
     volumeUpColor: string;
     volumeDownColor: string;
     gridColor: string;
@@ -284,6 +294,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     macdSmooth: boolean;
     atrPeriod: number;
     atrSmooth: boolean;
+    relativeReturnSmooth: boolean;
     volumeHeightRatio: number;
     volumeOpacity: number;
     activeIndicatorPane: GpuChartIndicatorPane;
@@ -304,6 +315,7 @@ export declare function resetGpuChartAppearance(storage?: StorageLike | null, sc
     showRsi: boolean;
     showMacd: boolean;
     showAtr: boolean;
+    showRelativeReturn: boolean;
     showVolume: boolean;
 };
 export declare function gpuChartIndicatorEnabled(appearance: GpuChartAppearance, type: GpuChartIndicatorType): boolean;
@@ -333,6 +345,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         macdHistogramUpColor: string;
         macdHistogramDownColor: string;
         atrColor: string;
+        relativeReturnColor: string;
+        relativeReturnZeroColor: string;
         volumeUpColor: string;
         volumeDownColor: string;
         gridColor: string;
@@ -372,6 +386,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         macdSmooth: boolean;
         atrPeriod: number;
         atrSmooth: boolean;
+        relativeReturnSmooth: boolean;
         volumeHeightRatio: number;
         volumeOpacity: number;
         activeIndicatorPane: GpuChartIndicatorPane;
@@ -402,6 +417,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showRsi: boolean;
         showMacd: boolean;
         showAtr: boolean;
+        showRelativeReturn: boolean;
         showVolume: boolean;
     }, GpuChartAppearance | {
         backgroundColor: string;
@@ -425,6 +441,8 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         macdHistogramUpColor: string;
         macdHistogramDownColor: string;
         atrColor: string;
+        relativeReturnColor: string;
+        relativeReturnZeroColor: string;
         volumeUpColor: string;
         volumeDownColor: string;
         gridColor: string;
@@ -464,6 +482,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         macdSmooth: boolean;
         atrPeriod: number;
         atrSmooth: boolean;
+        relativeReturnSmooth: boolean;
         volumeHeightRatio: number;
         volumeOpacity: number;
         activeIndicatorPane: GpuChartIndicatorPane;
@@ -494,6 +513,7 @@ export declare function useGpuChartAppearance(scope?: GpuChartAppearanceScope, s
         showRsi: boolean;
         showMacd: boolean;
         showAtr: boolean;
+        showRelativeReturn: boolean;
         showVolume: boolean;
     }>;
     saveAppearance: () => void;

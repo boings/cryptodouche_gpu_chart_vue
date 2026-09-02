@@ -501,6 +501,7 @@ import {
   computeBollingerBands,
   computeEmaLine,
   computeMacd,
+  computeRelativeCumulativeReturnLine,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -612,6 +613,8 @@ type IndicatorColorField = Extract<
   | "macdHistogramUpColor"
   | "macdHistogramDownColor"
   | "atrColor"
+  | "relativeReturnColor"
+  | "relativeReturnZeroColor"
 >;
 type IndicatorNumberField = Extract<
   keyof GpuChartAppearance,
@@ -631,7 +634,7 @@ type IndicatorNumberField = Extract<
 >;
 type IndicatorToggleField = Extract<
   keyof GpuChartAppearance,
-  "stochRsiSmooth" | "rsiSmooth" | "macdSmooth" | "atrSmooth"
+  "stochRsiSmooth" | "rsiSmooth" | "macdSmooth" | "atrSmooth" | "relativeReturnSmooth"
 >;
 type ChartSettingsTab = "indicators" | "appearance";
 type ChartSettingsColorField = Extract<
@@ -683,6 +686,8 @@ type ChartIndicatorColorField = Extract<
   | "macdHistogramUpColor"
   | "macdHistogramDownColor"
   | "atrColor"
+  | "relativeReturnColor"
+  | "relativeReturnZeroColor"
 >;
 type ChartIndicatorNumberField = Extract<
   keyof GpuChartAppearance,
@@ -792,7 +797,8 @@ type IndicatorPaneSeries =
   | { id: "stochRsi"; k: Float32Array; d: Float32Array }
   | { id: "rsi"; rsi: Float32Array }
   | { id: "macd"; macd: Float32Array; signal: Float32Array; histogram: Float32Array }
-  | { id: "atr"; atr: Float32Array };
+  | { id: "atr"; atr: Float32Array }
+  | { id: "relativeReturn"; relativeReturn: Float32Array };
 
 const stochRsiColorFields: IndicatorPaneOption["colorFields"] = [
   { key: "stochRsiKColor", label: "K Color" },
@@ -845,6 +851,13 @@ const atrNumberFields: IndicatorPaneOption["numberFields"] = [
 const atrToggleFields: IndicatorPaneOption["toggleFields"] = [
   { key: "atrSmooth", label: "Smooth Line" },
 ];
+const relativeReturnColorFields: IndicatorPaneOption["colorFields"] = [
+  { key: "relativeReturnColor", label: "Line Color" },
+  { key: "relativeReturnZeroColor", label: "Zero Line" },
+];
+const relativeReturnToggleFields: IndicatorPaneOption["toggleFields"] = [
+  { key: "relativeReturnSmooth", label: "Smooth Line" },
+];
 const INDICATOR_PANES: IndicatorPaneOption[] = [
   {
     id: "stochRsi",
@@ -873,6 +886,13 @@ const INDICATOR_PANES: IndicatorPaneOption[] = [
     colorFields: atrColorFields,
     toggleFields: atrToggleFields,
     numberFields: atrNumberFields,
+  },
+  {
+    id: "relativeReturn",
+    label: "RS vs BTC",
+    colorFields: relativeReturnColorFields,
+    toggleFields: relativeReturnToggleFields,
+    numberFields: [],
   },
 ];
 const chartSettingsTabs: Array<{ id: ChartSettingsTab; label: string }> = [
@@ -1029,6 +1049,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     toggleFields: atrToggleFields,
     numberFields: atrNumberFields,
   },
+  {
+    type: "relativeReturn",
+    label: "RS vs BTC",
+    placement: "lower",
+    colorFields: relativeReturnColorFields,
+    toggleFields: relativeReturnToggleFields,
+    numberFields: [],
+  },
 ];
 
 const props = withDefaults(
@@ -1121,9 +1149,11 @@ const selectedChartIndicatorId = ref("ema");
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
+let benchmarkState: GpuSeriesState | null = null;
 let view: ViewBounds = { minX: 0, maxX: 1, minY: 0, maxY: 1 };
 let resizeObs: ResizeObserver | null = null;
 let unsubscribe: (() => void) | null = null;
+let benchmarkUnsubscribe: (() => void) | null = null;
 let syntheticTimer: ReturnType<typeof setInterval> | null = null;
 let cleanupFns: Array<() => void> = [];
 let mounted = false;
@@ -1137,6 +1167,8 @@ let stopPaneResizeDrag: (() => void) | null = null;
 let stopSettingsDrag: (() => void) | null = null;
 let stopChartSettingsDrag: (() => void) | null = null;
 let stopChartSettingsResize: (() => void) | null = null;
+let benchmarkLoadGeneration = 0;
+let benchmarkLoadKey = "";
 
 const resolvedAppearance = computed(() => localAppearance.value);
 const chartSettingsEnabled = computed(() => Boolean(props.showChartSettings));
@@ -1270,6 +1302,7 @@ function indicatorPaneToolbarStyle(header: IndicatorPaneHeader): Record<string, 
     "--gpu-chart-indicator-macd": appearance.macdLineColor,
     "--gpu-chart-indicator-signal": appearance.macdSignalColor,
     "--gpu-chart-indicator-atr": appearance.atrColor,
+    "--gpu-chart-indicator-relative-return": appearance.relativeReturnColor,
     "--gpu-chart-indicator-histogram-up": appearance.macdHistogramUpColor,
     "--gpu-chart-indicator-histogram-down": appearance.macdHistogramDownColor,
   };
@@ -1370,6 +1403,7 @@ onMounted(async () => {
 onBeforeUnmount(() => {
   mounted = false;
   stopStream();
+  stopBenchmarkStream();
   stopSynthetic();
   cancelSmoothX();
   stopPaneResizeDrag?.();
@@ -1434,6 +1468,13 @@ watch(
   () => {
     if (!chart) return;
     applyChartAppearance();
+    if (relativeReturnEnabled()) {
+      void ensureRelativeBenchmarkState(Math.max(historyLoadLimit(), state?.candles.length ?? 0));
+    } else {
+      benchmarkState = null;
+      benchmarkLoadKey = "";
+      stopBenchmarkStream();
+    }
     updateOverlays();
     fitVisibleYIfEnabled();
     applyView();
@@ -1507,11 +1548,14 @@ function applyChartAppearance() {
 
 async function loadSeries() {
   stopStream();
+  stopBenchmarkStream();
   stopSynthetic();
   cancelSmoothX();
   loading.value = true;
   setError(null);
   hasMoreHistory = true;
+  benchmarkState = null;
+  benchmarkLoadKey = "";
   try {
     const loadLimit = historyLoadLimit();
     if (props.synthetic) {
@@ -1524,6 +1568,7 @@ async function loadSeries() {
     } else {
       throw new Error("No OHLCV data source provided");
     }
+    await ensureRelativeBenchmarkState(loadLimit);
 
     liveUpdates.value = 0;
     updateSummaryMetrics();
@@ -1562,6 +1607,7 @@ async function startStream() {
     },
   });
   unsubscribe = stop;
+  await startBenchmarkStream();
 }
 
 function stopStream() {
@@ -1576,10 +1622,160 @@ function stopStream() {
   setStreaming(false);
 }
 
+async function startBenchmarkStream() {
+  if (benchmarkUnsubscribe) return;
+  if (
+    !state ||
+    !relativeReturnEnabled() ||
+    props.synthetic ||
+    !props.dataAdapter?.subscribe ||
+    isBenchmarkSelf()
+  ) {
+    return;
+  }
+  try {
+    const stop = await props.dataAdapter.subscribe(
+      dataQuery({ symbol: relativeReturnBenchmarkSymbol() }),
+      {
+        onCandle: applyBenchmarkLivePayload,
+        onError: (message) => {
+          console.warn(message);
+        },
+      },
+    );
+    benchmarkUnsubscribe = stop;
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : "Failed to subscribe BTC benchmark");
+  }
+}
+
+function stopBenchmarkStream() {
+  if (benchmarkUnsubscribe) {
+    try {
+      benchmarkUnsubscribe();
+    } catch {
+      // ignore unsubscribe races
+    }
+  }
+  benchmarkUnsubscribe = null;
+}
+
+function relativeReturnEnabled(appearance = resolvedAppearance.value) {
+  return chartIndicatorEnabled("relativeReturn", appearance);
+}
+
+function relativeReturnBenchmarkSymbol() {
+  return benchmarkSymbolFor(props.symbol);
+}
+
+function isBenchmarkSelf() {
+  return props.symbol.toUpperCase() === relativeReturnBenchmarkSymbol();
+}
+
+function benchmarkSymbolFor(symbol: string) {
+  const upper = symbol.toUpperCase();
+  if (upper.startsWith("BTC")) return upper;
+  for (const quote of ["USDT", "USDC", "USD"]) {
+    if (upper.endsWith(quote)) return `BTC${quote}`;
+  }
+  return "BTCUSDT";
+}
+
+async function ensureRelativeBenchmarkState(limit = historyLoadLimit()) {
+  const generation = ++benchmarkLoadGeneration;
+  if (!relativeReturnEnabled() || !state) {
+    benchmarkState = null;
+    benchmarkLoadKey = "";
+    stopBenchmarkStream();
+    return;
+  }
+  if (isBenchmarkSelf()) {
+    benchmarkState = state;
+    benchmarkLoadKey = relativeBenchmarkKey(limit);
+    drawHud(mousePos);
+    return;
+  }
+  const nextLoadKey = relativeBenchmarkKey(limit);
+  if (benchmarkState && benchmarkLoadKey === nextLoadKey) {
+    await startBenchmarkStream();
+    return;
+  }
+  try {
+    const nextBenchmarkState = await loadRelativeBenchmarkLatest(limit);
+    if (generation !== benchmarkLoadGeneration) return;
+    benchmarkState = nextBenchmarkState;
+    benchmarkLoadKey = nextLoadKey;
+    await startBenchmarkStream();
+    drawHud(mousePos);
+  } catch (error) {
+    if (generation !== benchmarkLoadGeneration) return;
+    benchmarkState = null;
+    benchmarkLoadKey = "";
+    stopBenchmarkStream();
+    console.warn(error instanceof Error ? error.message : "Failed to load BTC benchmark");
+  }
+}
+
+async function loadRelativeBenchmarkLatest(limit: number) {
+  if (props.synthetic) {
+    return makeSyntheticCandles(relativeReturnBenchmarkSymbol(), limit, props.timeframe);
+  }
+  if (!props.dataAdapter) {
+    throw new Error("No BTC benchmark data source provided");
+  }
+  const rows = await props.dataAdapter.loadLatest(
+    dataQuery({ symbol: relativeReturnBenchmarkSymbol(), limit }),
+  );
+  return packHistoricalCandles(rows, props.timeframe, limit);
+}
+
+async function loadOlderRelativeBenchmarkCandles(start: number, end: number, limit: number) {
+  if (!state || !relativeReturnEnabled()) return;
+  if (isBenchmarkSelf()) {
+    benchmarkState = state;
+    return;
+  }
+  if (!benchmarkState) {
+    await ensureRelativeBenchmarkState(Math.max(limit, state.candles.length));
+    return;
+  }
+  if (!props.dataAdapter?.loadRange) return;
+  try {
+    const rows = await props.dataAdapter.loadRange(
+      dataQuery({
+        symbol: relativeReturnBenchmarkSymbol(),
+        start,
+        end,
+        limit,
+      }),
+    );
+    prependHistoricalCandles(benchmarkState, rows, props.timeframe);
+    benchmarkLoadKey = relativeBenchmarkKey(Math.max(limit, state.candles.length));
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : "Failed to load older BTC benchmark");
+  }
+}
+
+function relativeBenchmarkKey(limit: number) {
+  const last = state?.candles[state.candles.length - 1];
+  return [
+    relativeReturnBenchmarkSymbol(),
+    props.exchange ?? "",
+    props.marketType ?? "",
+    normalizeRestTimeframe(props.timeframe),
+    state?.firstBucket ?? 0,
+    last?.bucket ?? 0,
+    limit,
+  ].join(":");
+}
+
 function startSynthetic() {
   setStreaming(true);
   syntheticTimer = setInterval(() => {
     if (!state) return;
+    if (relativeReturnEnabled() && benchmarkState && benchmarkState !== state) {
+      appendSyntheticCandle(benchmarkState, liveRetentionLimit());
+    }
     const wasFollowingLatest = isViewFollowingLatest();
     const previousFirstBucket = state.firstBucket;
     applyMergeResult(appendSyntheticCandle(state, liveRetentionLimit()), {
@@ -1624,6 +1820,7 @@ async function maybeLoadOlderCandles() {
       hasMoreHistory = false;
       return;
     }
+    await loadOlderRelativeBenchmarkCandles(start, end, pageLimit);
 
     const xShift = (previousFirstBucket - state.firstBucket) / state.timeframeSec;
     chart?.push_ohlc(candlesToBytes(state.candles));
@@ -1675,6 +1872,13 @@ function applyLivePayload(payload: unknown) {
   const previousFirstBucket = state.firstBucket;
   const result = mergeLiveCandle(state, payload, liveRetentionLimit());
   applyMergeResult(result, { previousFirstBucket, wasFollowingLatest });
+}
+
+function applyBenchmarkLivePayload(payload: unknown) {
+  if (!benchmarkState || benchmarkState === state) return;
+  const result = mergeLiveCandle(benchmarkState, payload, liveRetentionLimit());
+  if (result.kind === "ignore") return;
+  drawHud(mousePos);
 }
 
 function liveRetentionLimit() {
@@ -1973,6 +2177,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `MACD ${appearance.macdFastPeriod} ${appearance.macdSlowPeriod} ${appearance.macdSignalPeriod}`;
     case "atr":
       return `ATR ${appearance.atrPeriod}`;
+    case "relativeReturn":
+      return "RS vs BTC";
   }
 }
 
@@ -2585,7 +2791,13 @@ function localIndicatorPaneAppearance() {
 }
 
 function isIndicatorPaneType(type: GpuChartIndicatorType): type is GpuChartIndicatorPane {
-  return type === "stochRsi" || type === "rsi" || type === "macd" || type === "atr";
+  return (
+    type === "stochRsi" ||
+    type === "rsi" ||
+    type === "macd" ||
+    type === "atr" ||
+    type === "relativeReturn"
+  );
 }
 
 function indicatorTabBarHeight(scale: number) {
@@ -3376,6 +3588,8 @@ function drawIndicatorPane(
     series = drawMacdPane(ctx, pane, scale, appearance);
   } else if (pane.id === "atr") {
     series = drawAtrPane(ctx, pane, scale, appearance);
+  } else if (pane.id === "relativeReturn") {
+    series = drawRelativeReturnPane(ctx, pane, scale, appearance);
   } else {
     drawOscillatorPaneDecorations(ctx, pane, scale, indicatorRangeBand(pane.id, appearance));
     series = drawStochRsiPane(ctx, pane, scale, appearance);
@@ -3523,6 +3737,40 @@ function drawAtrPane(
   return { id: "atr", atr };
 }
 
+function drawRelativeReturnPane(
+  ctx: CanvasRenderingContext2D,
+  pane: IndicatorPaneLayout,
+  scale: number,
+  appearance: GpuChartAppearance,
+): IndicatorPaneSeries {
+  const relativeReturn =
+    state && benchmarkState
+      ? computeRelativeCumulativeReturnLine(state.candles, benchmarkState.candles)
+      : new Float32Array();
+  const valueScale = indicatorLineBounds([relativeReturn], { includeZero: true });
+  drawIndicatorScaleLabels(ctx, pane, scale, valueScale, formatRelativeReturnValue);
+  drawIndicatorLevels(
+    ctx,
+    pane,
+    scale,
+    [0],
+    valueScale,
+    formatRelativeReturnValue,
+    appearance.relativeReturnZeroColor,
+  );
+  drawIndicatorLine(
+    ctx,
+    relativeReturn,
+    pane,
+    appearance.relativeReturnColor,
+    0.95,
+    1.5 * scale,
+    appearance.relativeReturnSmooth,
+    valueScale,
+  );
+  return { id: "relativeReturn", relativeReturn };
+}
+
 function indicatorRangeBand(
   paneId: GpuChartIndicatorPane,
   appearance: GpuChartAppearance,
@@ -3585,17 +3833,22 @@ function drawIndicatorLevels(
   scale: number,
   levels: number[],
   valueScale: IndicatorValueScale,
+  formatLabel: (value: number) => string = String,
+  color?: string,
 ) {
   const appearance = resolvedAppearance.value;
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.7);
   for (const level of levels) {
     const y = indicatorValueToPx(level, pane, valueScale);
-    ctx.strokeStyle = hexToRgba(appearance.gridColor, level === 50 ? 0.46 : 0.3);
+    ctx.strokeStyle = hexToRgba(
+      color ?? appearance.gridColor,
+      color ? 0.72 : level === 50 ? 0.46 : 0.3,
+    );
     ctx.beginPath();
     ctx.moveTo(0, y + 0.5);
     ctx.lineTo(ctx.canvas.width, y + 0.5);
     ctx.stroke();
-    const label = String(level);
+    const label = formatLabel(level);
     ctx.fillText(
       label,
       Math.max(4 * scale, ctx.canvas.width - ctx.measureText(label).width - 6 * scale),
@@ -3609,6 +3862,7 @@ function drawIndicatorScaleLabels(
   pane: IndicatorPaneLayout,
   scale: number,
   valueScale: IndicatorValueScale,
+  formatLabel: (value: number) => string = formatDynamicIndicatorValue,
 ) {
   const appearance = resolvedAppearance.value;
   const levels = [valueScale.max, valueScale.min];
@@ -3616,7 +3870,7 @@ function drawIndicatorScaleLabels(
   ctx.fillStyle = hexToRgba(appearance.textColor, 0.66);
   for (const level of levels) {
     const y = indicatorValueToPx(level, pane, valueScale);
-    const label = formatDynamicIndicatorValue(level);
+    const label = formatLabel(level);
     ctx.fillText(
       label,
       Math.max(4 * scale, ctx.canvas.width - ctx.measureText(label).width - 6 * scale),
@@ -3744,6 +3998,19 @@ function indicatorHeaderValuesForSeries(series: IndicatorPaneSeries): IndicatorH
     return latestAtr == null
       ? []
       : [{ label: "ATR", value: formatDynamicIndicatorValue(latestAtr), className: "atr" }];
+  }
+
+  if (series.id === "relativeReturn") {
+    const latestRelativeReturn = lastVisibleLineValue(series.relativeReturn);
+    return latestRelativeReturn == null
+      ? []
+      : [
+          {
+            label: "RS",
+            value: formatRelativeReturnValue(latestRelativeReturn),
+            className: "relative-return",
+          },
+        ];
   }
 
   const values: IndicatorHeaderValue[] = [];
@@ -3888,6 +4155,18 @@ function drawIndicatorTooltip(
     const atr = lineValueNearX(series.atr, candleX);
     if (atr == null) return;
     drawTextBox(ctx, x, y, `ATR ${formatDynamicIndicatorValue(atr)}`);
+    return;
+  }
+
+  if (series.id === "relativeReturn") {
+    const relativeReturn = lineValueNearX(series.relativeReturn, candleX);
+    if (relativeReturn == null) return;
+    drawTextBox(
+      ctx,
+      x,
+      y,
+      `RS vs ${relativeReturnBenchmarkSymbol()} ${formatRelativeReturnValue(relativeReturn)}`,
+    );
     return;
   }
 
@@ -4151,6 +4430,15 @@ function formatSignedIndicatorValue(value: number) {
   return value > 0 ? `+${formatted}` : formatted;
 }
 
+function formatRelativeReturnValue(value: number) {
+  const percent = value * 100;
+  const formatted = Math.abs(percent).toLocaleString("en-US", {
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  });
+  return `${percent > 0 ? "+" : percent < 0 ? "-" : ""}${formatted}%`;
+}
+
 function formatCompactNumber(value: number) {
   return Number.isInteger(value) ? String(value) : value.toFixed(2).replace(/\.?0+$/, "");
 }
@@ -4314,6 +4602,10 @@ function setError(message: string | null) {
 
 .gpu-chart-indicator-value.atr {
   color: var(--gpu-chart-indicator-atr, #eab308);
+}
+
+.gpu-chart-indicator-value.relative-return {
+  color: var(--gpu-chart-indicator-relative-return, #34d399);
 }
 
 .gpu-chart-indicator-value.histogram-up {

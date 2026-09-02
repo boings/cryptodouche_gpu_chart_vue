@@ -34,4 +34,5 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
 };
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];
+export declare function computeRelativeCumulativeReturnLine(candles: CandleRecord[], benchmarkCandles: CandleRecord[]): Float32Array;
 export declare function lineToBytes(line: Float32Array): Uint8Array;

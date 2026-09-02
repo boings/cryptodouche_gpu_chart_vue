@@ -1,6 +1,6 @@
 import { ref } from "vue";
 
-export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr";
+export type GpuChartIndicatorPane = "stochRsi" | "rsi" | "macd" | "atr" | "relativeReturn";
 export type GpuChartIndicatorType =
   | "sma"
   | "ema"
@@ -11,7 +11,8 @@ export type GpuChartIndicatorType =
   | "stochRsi"
   | "rsi"
   | "macd"
-  | "atr";
+  | "atr"
+  | "relativeReturn";
 export type GpuChartIndicatorPlacement = "price" | "lower";
 
 export interface GpuChartIndicatorInstance {
@@ -46,6 +47,8 @@ export interface GpuChartAppearance {
   macdHistogramUpColor: string;
   macdHistogramDownColor: string;
   atrColor: string;
+  relativeReturnColor: string;
+  relativeReturnZeroColor: string;
   volumeUpColor: string;
   volumeDownColor: string;
   gridColor: string;
@@ -85,6 +88,7 @@ export interface GpuChartAppearance {
   macdSmooth: boolean;
   atrPeriod: number;
   atrSmooth: boolean;
+  relativeReturnSmooth: boolean;
   volumeHeightRatio: number;
   volumeOpacity: number;
   activeIndicatorPane: GpuChartIndicatorPane;
@@ -107,6 +111,7 @@ export interface GpuChartAppearance {
   showRsi: boolean;
   showMacd: boolean;
   showAtr: boolean;
+  showRelativeReturn: boolean;
   showVolume: boolean;
 }
 
@@ -139,6 +144,7 @@ type IndicatorShowKey = Extract<
   | "showRsi"
   | "showMacd"
   | "showAtr"
+  | "showRelativeReturn"
 >;
 
 export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
@@ -152,6 +158,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "rsi",
   "macd",
   "atr",
+  "relativeReturn",
 ];
 
 export const GPU_CHART_MOVING_AVERAGE_INDICATOR_TYPES: GpuChartMovingAverageIndicatorType[] = [
@@ -192,6 +199,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   rsi: "lower",
   macd: "lower",
   atr: "lower",
+  relativeReturn: "lower",
 };
 
 export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
@@ -208,6 +216,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   rsi: "showRsi",
   macd: "showMacd",
   atr: "showAtr",
+  relativeReturn: "showRelativeReturn",
 };
 
 export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
@@ -221,6 +230,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "rsi", type: "rsi", enabled: true, placement: "lower" },
   { id: "macd", type: "macd", enabled: true, placement: "lower" },
   { id: "atr", type: "atr", enabled: true, placement: "lower" },
+  { id: "relativeReturn", type: "relativeReturn", enabled: false, placement: "lower" },
 ];
 
 export const DEFAULT_GRID_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] =
@@ -251,6 +261,8 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   macdHistogramUpColor: "#22c55e",
   macdHistogramDownColor: "#ef4444",
   atrColor: "#eab308",
+  relativeReturnColor: "#34d399",
+  relativeReturnZeroColor: "#64748b",
   volumeUpColor: "#22c55e",
   volumeDownColor: "#ef4444",
   gridColor: "#27313d",
@@ -290,6 +302,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   macdSmooth: false,
   atrPeriod: 14,
   atrSmooth: false,
+  relativeReturnSmooth: false,
   volumeHeightRatio: 0.18,
   volumeOpacity: 0.34,
   activeIndicatorPane: "stochRsi",
@@ -312,6 +325,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showRsi: true,
   showMacd: true,
   showAtr: true,
+  showRelativeReturn: false,
   showVolume: true,
 };
 
@@ -382,6 +396,14 @@ export function normalizeGpuChartAppearance(
       defaults.macdHistogramDownColor,
     ),
     atrColor: colorValue(value.atrColor, defaults.atrColor),
+    relativeReturnColor: colorValue(
+      value.relativeReturnColor,
+      defaults.relativeReturnColor,
+    ),
+    relativeReturnZeroColor: colorValue(
+      value.relativeReturnZeroColor,
+      defaults.relativeReturnZeroColor,
+    ),
     volumeUpColor: colorValue(value.volumeUpColor, defaults.volumeUpColor),
     volumeDownColor: colorValue(value.volumeDownColor, defaults.volumeDownColor),
     gridColor: colorValue(value.gridColor, defaults.gridColor),
@@ -481,6 +503,10 @@ export function normalizeGpuChartAppearance(
     macdSmooth: boolValue(value.macdSmooth, defaults.macdSmooth),
     atrPeriod: clampInteger(value.atrPeriod, 2, 100, defaults.atrPeriod),
     atrSmooth: boolValue(value.atrSmooth, defaults.atrSmooth),
+    relativeReturnSmooth: boolValue(
+      value.relativeReturnSmooth,
+      defaults.relativeReturnSmooth,
+    ),
     volumeHeightRatio: clampNumber(
       value.volumeHeightRatio,
       0.05,
@@ -514,6 +540,7 @@ export function normalizeGpuChartAppearance(
     showRsi: boolValue(value.showRsi, defaults.showRsi),
     showMacd: boolValue(value.showMacd, defaults.showMacd),
     showAtr: boolValue(value.showAtr, defaults.showAtr),
+    showRelativeReturn: boolValue(value.showRelativeReturn, defaults.showRelativeReturn),
     showVolume: boolValue(value.showVolume, defaults.showVolume),
   };
   normalized.indicators = indicatorInstancesValue(value.indicators, normalized, defaults);
@@ -661,7 +688,11 @@ function boolValue(value: unknown, fallback: boolean) {
 }
 
 function indicatorPaneValue(value: unknown, fallback: GpuChartIndicatorPane) {
-  return value === "stochRsi" || value === "rsi" || value === "macd" || value === "atr"
+  return value === "stochRsi" ||
+    value === "rsi" ||
+    value === "macd" ||
+    value === "atr" ||
+    value === "relativeReturn"
     ? value
     : fallback;
 }

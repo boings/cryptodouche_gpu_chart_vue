@@ -227,8 +227,44 @@ export function computeSupportResistanceZones(
     .slice(0, maxZones);
 }
 
+export function computeRelativeCumulativeReturnLine(
+  candles: CandleRecord[],
+  benchmarkCandles: CandleRecord[],
+): Float32Array {
+  const benchmarkByBucket = new Map(
+    benchmarkCandles
+      .filter((candle) => validPositivePrice(candle.c))
+      .map((candle) => [candle.bucket, candle]),
+  );
+  let anchorPrice: number | null = null;
+  let anchorBenchmarkPrice: number | null = null;
+  const points: number[] = [];
+
+  for (const candle of candles) {
+    if (!validPositivePrice(candle.c)) continue;
+    const benchmark = benchmarkByBucket.get(candle.bucket);
+    if (!benchmark || !validPositivePrice(benchmark.c)) continue;
+
+    if (anchorPrice == null || anchorBenchmarkPrice == null) {
+      anchorPrice = candle.c;
+      anchorBenchmarkPrice = benchmark.c;
+    }
+
+    points.push(
+      candle.x,
+      Math.log(candle.c / anchorPrice) - Math.log(benchmark.c / anchorBenchmarkPrice),
+    );
+  }
+
+  return new Float32Array(points);
+}
+
 export function lineToBytes(line: Float32Array): Uint8Array {
   return new Uint8Array(line.buffer);
+}
+
+function validPositivePrice(value: number) {
+  return Number.isFinite(value) && value > 0;
 }
 
 function addZonePivot(
