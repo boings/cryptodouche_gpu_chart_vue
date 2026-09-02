@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 
 import {
   computeAnchoredVwapLine,
+  computeAnchoredVwapSignals,
+  computeAnchoredVwapSnapshot,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeSupportResistanceZones,
@@ -76,6 +78,45 @@ describe("gpu chart indicators", () => {
 
   it("returns no anchored VWAP without an anchor", () => {
     expect(computeAnchoredVwapLine([candle(0, 9, 11)]).length).toBe(0);
+  });
+
+  it("summarizes anchored VWAP distance from the latest close", () => {
+    const candles = [
+      candle(0, 9, 11, 10),
+      candle(1, 18, 24, 21),
+      candle(2, 30, 36, 33),
+    ];
+    candles[1].v_base = 2;
+    candles[2].v_base = 1;
+
+    const snapshot = computeAnchoredVwapSnapshot(candles, { anchorBucket: 60 });
+
+    expect(snapshot.value).toBeCloseTo((21 * 2 + 33) / 3, 6);
+    expect(snapshot.distancePct).toBeCloseTo((33 / 25 - 1) * 100, 6);
+    expect(snapshot.candle?.x).toBe(2);
+  });
+
+  it("marks anchored VWAP loss, reclaim, and failed reclaim events", () => {
+    const candles = [
+      candle(0, 9, 11, 10),
+      candle(1, 11, 13, 12),
+      candle(2, 8, 14, 9),
+      candle(3, 7, 10.5, 8),
+      candle(4, 10, 14, 13),
+    ];
+
+    const signals = computeAnchoredVwapSignals(candles, { anchorX: 0 }, 10);
+
+    expect(signals.map((signal) => signal.kind)).toEqual([
+      "loss",
+      "failedReclaim",
+      "reclaim",
+    ]);
+    expect(signals.map((signal) => signal.label)).toEqual([
+      "AVWAP loss",
+      "Failed AVWAP reclaim",
+      "AVWAP reclaim",
+    ]);
   });
 
   it("computes relative cumulative return anchored at zero", () => {

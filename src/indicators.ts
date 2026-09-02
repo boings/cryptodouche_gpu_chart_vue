@@ -87,6 +87,27 @@ export interface AnchoredVwapOptions {
   anchorX?: number | null;
 }
 
+export interface AnchoredVwapSnapshot {
+  anchorBucket: number | null;
+  anchorX: number | null;
+  value: number | null;
+  distancePct: number | null;
+  candle: CandleRecord | null;
+}
+
+export type AnchoredVwapSignalKind = "loss" | "reclaim" | "failedReclaim";
+
+export interface AnchoredVwapSignal {
+  kind: AnchoredVwapSignalKind;
+  label: "AVWAP loss" | "AVWAP reclaim" | "Failed AVWAP reclaim";
+  index: number;
+  x: number;
+  ts: number;
+  bucket: number;
+  price: number;
+  vwap: number;
+}
+
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
   if (candles.length < period) return new Float32Array();
   const points: number[] = [];
@@ -279,6 +300,77 @@ export function computeAnchoredVwapLine(
   return new Float32Array(points);
 }
 
+export function computeAnchoredVwapSnapshot(
+  candles: CandleRecord[],
+  options: AnchoredVwapOptions = {},
+): AnchoredVwapSnapshot {
+  const anchorBucket = normalizedNullableNumber(options.anchorBucket);
+  const anchorX = normalizedNullableNumber(options.anchorX);
+  const line = computeAnchoredVwapLine(candles, options);
+  if (line.length < 2) {
+    return {
+      anchorBucket,
+      anchorX,
+      value: null,
+      distancePct: null,
+      candle: null,
+    };
+  }
+
+  const value = line[line.length - 1];
+  const candle = latestValidCloseCandle(candles);
+  const distancePct =
+    candle && validPositivePrice(value) ? ((candle.c - value) / value) * 100 : null;
+  return {
+    anchorBucket,
+    anchorX,
+    value,
+    distancePct,
+    candle,
+  };
+}
+
+export function computeAnchoredVwapSignals(
+  candles: CandleRecord[],
+  options: AnchoredVwapOptions = {},
+  maxSignals = 20,
+): AnchoredVwapSignal[] {
+  const cappedMaxSignals = clampIntegerOption(maxSignals, 1, 200, 20);
+  const line = computeAnchoredVwapLine(candles, options);
+  if (line.length < 4) return [];
+
+  const candleByX = new Map(candles.map((candle, index) => [candle.x, { candle, index }]));
+  const signals: AnchoredVwapSignal[] = [];
+  let previousRelation: "above" | "below" | null = null;
+  for (let pointIndex = 0; pointIndex < line.length; pointIndex += 2) {
+    const x = line[pointIndex];
+    const vwap = line[pointIndex + 1];
+    const source = candleByX.get(x);
+    if (!source || !validPositivePrice(vwap) || !validPositivePrice(source.candle.c)) continue;
+
+    const relation: "above" | "below" | null =
+      source.candle.c > vwap ? "above" : source.candle.c < vwap ? "below" : null;
+    if (!relation) continue;
+
+    if (previousRelation === "above" && relation === "below") {
+      signals.push(createAnchoredVwapSignal("loss", source.index, source.candle, vwap));
+    } else if (previousRelation === "below" && relation === "above") {
+      signals.push(createAnchoredVwapSignal("reclaim", source.index, source.candle, vwap));
+    } else if (
+      previousRelation === "below" &&
+      relation === "below" &&
+      source.candle.h >= vwap &&
+      source.candle.c < vwap
+    ) {
+      signals.push(createAnchoredVwapSignal("failedReclaim", source.index, source.candle, vwap));
+    }
+
+    previousRelation = relation;
+  }
+
+  return signals.slice(-cappedMaxSignals);
+}
+
 export function computeSwingPoints(
   candles: CandleRecord[],
   options: MarketStructureOptions = {},
@@ -447,6 +539,41 @@ export function lineToBytes(line: Float32Array): Uint8Array {
 
 function validPositivePrice(value: number) {
   return Number.isFinite(value) && value > 0;
+}
+
+function normalizedNullableNumber(value: number | null | undefined) {
+  return value == null || !Number.isFinite(value) ? null : Number(value);
+}
+
+function latestValidCloseCandle(candles: CandleRecord[]) {
+  for (let index = candles.length - 1; index >= 0; index -= 1) {
+    const candle = candles[index];
+    if (validPositivePrice(candle.c)) return candle;
+  }
+  return null;
+}
+
+function createAnchoredVwapSignal(
+  kind: AnchoredVwapSignalKind,
+  index: number,
+  candle: CandleRecord,
+  vwap: number,
+): AnchoredVwapSignal {
+  return {
+    kind,
+    label:
+      kind === "loss"
+        ? "AVWAP loss"
+        : kind === "reclaim"
+          ? "AVWAP reclaim"
+          : "Failed AVWAP reclaim",
+    index,
+    x: candle.x,
+    ts: candle.ts,
+    bucket: candle.bucket,
+    price: candle.c,
+    vwap,
+  };
 }
 
 function anchoredVwapStartIndex(

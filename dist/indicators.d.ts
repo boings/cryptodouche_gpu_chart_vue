@@ -72,6 +72,24 @@ export interface AnchoredVwapOptions {
     anchorBucket?: number | null;
     anchorX?: number | null;
 }
+export interface AnchoredVwapSnapshot {
+    anchorBucket: number | null;
+    anchorX: number | null;
+    value: number | null;
+    distancePct: number | null;
+    candle: CandleRecord | null;
+}
+export type AnchoredVwapSignalKind = "loss" | "reclaim" | "failedReclaim";
+export interface AnchoredVwapSignal {
+    kind: AnchoredVwapSignalKind;
+    label: "AVWAP loss" | "AVWAP reclaim" | "Failed AVWAP reclaim";
+    index: number;
+    x: number;
+    ts: number;
+    bucket: number;
+    price: number;
+    vwap: number;
+}
 export declare function computeSmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeEmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeWmaLine(candles: CandleRecord[], period?: number): Float32Array;
@@ -92,6 +110,8 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
 };
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeAnchoredVwapLine(candles: CandleRecord[], options?: AnchoredVwapOptions): Float32Array;
+export declare function computeAnchoredVwapSnapshot(candles: CandleRecord[], options?: AnchoredVwapOptions): AnchoredVwapSnapshot;
+export declare function computeAnchoredVwapSignals(candles: CandleRecord[], options?: AnchoredVwapOptions, maxSignals?: number): AnchoredVwapSignal[];
 export declare function computeSwingPoints(candles: CandleRecord[], options?: MarketStructureOptions): SwingPoint[];
 export declare function computeMarketStructure(candles: CandleRecord[], options?: MarketStructureOptions): MarketStructureState;
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];

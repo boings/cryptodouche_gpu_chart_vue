@@ -505,6 +505,13 @@
       </select>
       <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
       <span
+        v-if="anchoredVwapDistanceText"
+        class="gpu-chart-avwap-distance"
+        :class="anchoredVwapDistanceClass"
+      >
+        {{ anchoredVwapDistanceText }}
+      </span>
+      <span
         v-if="structureSummaryText"
         class="gpu-chart-structure-summary"
         :class="structureSummaryClass"
@@ -555,6 +562,8 @@ import {
 } from "./data";
 import {
   computeAnchoredVwapLine,
+  computeAnchoredVwapSignals,
+  computeAnchoredVwapSnapshot,
   computeAtrLine,
   computeBollingerBands,
   computeEmaLine,
@@ -567,6 +576,7 @@ import {
   computeSupportResistanceZones,
   computeWmaLine,
   lineToBytes,
+  type AnchoredVwapSignal,
   type MarketStructureState,
   type StructureBreak,
   type StructureSummaryState,
@@ -1494,6 +1504,26 @@ const changeClass = computed(() => ({
   up: (changePct.value ?? 0) > 0,
   down: (changePct.value ?? 0) < 0,
 }));
+const anchoredVwapDistancePct = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !chartIndicatorEnabled("anchoredVwap", appearance)) return null;
+  const snapshot = computeAnchoredVwapSnapshot(state.candles, {
+    anchorBucket: appearance.anchoredVwapAnchorBucket,
+  });
+  return snapshot.distancePct;
+});
+const anchoredVwapDistanceText = computed(() => {
+  const pct = anchoredVwapDistancePct.value;
+  if (pct == null || !Number.isFinite(pct)) return "";
+  const sign = pct > 0 ? "+" : "";
+  return `AVWAP ${sign}${pct.toFixed(1)}%`;
+});
+const anchoredVwapDistanceClass = computed(() => ({
+  above: (anchoredVwapDistancePct.value ?? 0) > 0,
+  below: (anchoredVwapDistancePct.value ?? 0) < 0,
+}));
 const structureSummary = computed(() => {
   void candleCount.value;
   void liveUpdates.value;
@@ -1520,7 +1550,13 @@ const openOnChartClickActive = computed(
 );
 const badgeComponent = computed(() => "div");
 const badgeTitle = computed(() =>
-  [displayTitle.value, lastCloseText.value, changePctText.value, structureSummaryText.value]
+  [
+    displayTitle.value,
+    lastCloseText.value,
+    changePctText.value,
+    anchoredVwapDistanceText.value,
+    structureSummaryText.value,
+  ]
     .filter(Boolean)
     .join(" "),
 );
@@ -3617,6 +3653,7 @@ function drawHud(pos: { px: number; py: number } | null) {
     drawTimeAxis(ctx, priceAxisBottom, priceDecorationBottom, scale, fontPx, pad);
   }
   if (chartIndicatorEnabled("anchoredVwap", appearance)) {
+    drawAnchoredVwapSignals(ctx, priceDecorationBottom, scale);
     drawAnchoredVwapAnchor(ctx, priceDecorationBottom, scale);
   }
 
@@ -3848,6 +3885,70 @@ function drawAnchoredVwapAnchor(
   ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.98);
   ctx.fillText(label, boxX + padX, boxY + boxHeight / 2);
   ctx.restore();
+}
+
+function drawAnchoredVwapSignals(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+) {
+  if (!state?.candles.length || priceBottom <= 0) return;
+  const appearance = resolvedAppearance.value;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  const signals = computeAnchoredVwapSignals(
+    state.candles,
+    { anchorBucket: appearance.anchoredVwapAnchorBucket },
+    32,
+  ).filter((signal) => signal.x >= minX && signal.x <= maxX);
+  if (!signals.length) return;
+
+  ctx.save();
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.68)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "middle";
+  for (const signal of signals) {
+    drawAnchoredVwapSignal(ctx, signal, priceBottom, scale);
+  }
+  ctx.restore();
+}
+
+function drawAnchoredVwapSignal(
+  ctx: CanvasRenderingContext2D,
+  signal: AnchoredVwapSignal,
+  priceBottom: number,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const x = xToPx(signal.x, ctx.canvas.width);
+  const y = yToPx(signal.price, ctx.canvas.height);
+  if (x < -48 * scale || x > ctx.canvas.width + 48 * scale || y < -24 * scale || y > priceBottom + 24 * scale) {
+    return;
+  }
+  const isReclaim = signal.kind === "reclaim";
+  const color = isReclaim
+    ? appearance.upColor
+    : signal.kind === "failedReclaim"
+      ? appearance.anchoredVwapColor
+      : appearance.downColor;
+  const text =
+    signal.kind === "loss"
+      ? "AVWAP loss"
+      : signal.kind === "reclaim"
+        ? "AVWAP reclaim"
+        : "Fail reclaim";
+  const padX = 5 * scale;
+  const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.92);
+  const boxWidth = ctx.measureText(text).width + padX * 2;
+  const offset = (isReclaim ? -1 : 1) * (boxHeight * 1.1);
+  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, x - boxWidth / 2));
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y + offset));
+
+  ctx.fillStyle = hexToRgba(color, 0.16);
+  ctx.strokeStyle = hexToRgba(color, 0.68);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(color, 0.96);
+  ctx.fillText(text, boxX + padX, boxY + boxHeight / 2);
 }
 
 function drawMarketStructureOverlay(
@@ -5810,6 +5911,7 @@ function setError(message: string | null) {
 .gpu-chart-timeframe-select,
 .gpu-chart-price,
 .gpu-chart-change,
+.gpu-chart-avwap-distance,
 .gpu-chart-structure-summary {
   overflow: hidden;
   text-overflow: ellipsis;
@@ -5874,6 +5976,24 @@ function setError(message: string | null) {
 
 .gpu-chart-change.down {
   color: var(--gpu-chart-down-color, rgb(248, 113, 113));
+}
+
+.gpu-chart-avwap-distance {
+  flex: 0 0 auto;
+  padding: 0 4px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.05);
+  color: rgba(203, 213, 225, 0.9);
+  font-size: 0.82em;
+  font-variant-numeric: tabular-nums;
+}
+
+.gpu-chart-avwap-distance.above {
+  color: rgb(74, 222, 128);
+}
+
+.gpu-chart-avwap-distance.below {
+  color: rgb(248, 113, 113);
 }
 
 .gpu-chart-structure-summary {
