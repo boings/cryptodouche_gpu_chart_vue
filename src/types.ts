@@ -34,9 +34,12 @@ export interface ViewBounds {
   maxY: number;
 }
 
-export type GpuChartTimeSyncAction =
-  | { kind: "pan"; deltaSeconds: number }
-  | { kind: "zoom"; scale: number; anchorRatio: number };
+export interface GpuChartTimeWindow {
+  minTs: number;
+  maxTs: number;
+}
+
+export type GpuChartTimeSyncAction = { kind: "window"; window: GpuChartTimeWindow };
 
 export type GpuChartTimeSyncCommand = GpuChartTimeSyncAction & {
   seq: number;

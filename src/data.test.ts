@@ -19,14 +19,14 @@ import {
 } from "./indicators";
 import {
   clampXView,
-  candleShiftToSeconds,
   computeVisibleYBounds,
   isFollowingLatest,
   isYBoundsClose,
   reserveLowerPaneYBounds,
   scaleYView,
-  secondsToCandleShift,
   smoothVisibleYBounds,
+  timeWindowToXBounds,
+  viewBoundsToTimeWindow,
   wheelZoomScale,
   withRightPadding,
 } from "./viewport";
@@ -47,13 +47,22 @@ describe("gpu chart data utilities", () => {
     expect(candlesToBytes(state.candles).byteLength).toBe(2 * 5 * 4);
   });
 
-  it("converts time-locked pan distance across timeframes", () => {
-    const sourceShiftSeconds = candleShiftToSeconds(12, 60);
+  it("maps locked chart windows across timeframes by timestamp", () => {
+    const jan1MidnightUtc = 1704067200;
+    const sourceWindow = viewBoundsToTimeWindow(
+      { minX: 96, maxX: 192 },
+      jan1MidnightUtc,
+      15 * 60,
+    );
 
-    expect(sourceShiftSeconds).toBe(720);
-    expect(secondsToCandleShift(sourceShiftSeconds, 5 * 60)).toBeCloseTo(2.4, 6);
-    expect(secondsToCandleShift(sourceShiftSeconds, 15 * 60)).toBeCloseTo(0.8, 6);
-    expect(secondsToCandleShift(sourceShiftSeconds, 60 * 60)).toBeCloseTo(0.2, 6);
+    expect(sourceWindow).toEqual({
+      minTs: jan1MidnightUtc + 24 * 60 * 60,
+      maxTs: jan1MidnightUtc + 48 * 60 * 60,
+    });
+    expect(timeWindowToXBounds(sourceWindow!, jan1MidnightUtc, 60 * 60)).toEqual({
+      minX: 24,
+      maxX: 48,
+    });
   });
 
   it("collapses duplicate historical buckets by latest candle version", () => {

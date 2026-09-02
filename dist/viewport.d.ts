@@ -1,4 +1,4 @@
-import type { ViewBounds } from "./types";
+import type { GpuChartTimeWindow, ViewBounds } from "./types";
 export declare const MIN_VISIBLE_CANDLES = 8;
 export declare const RIGHT_EDGE_PADDING_CANDLES = 2;
 export declare const FOLLOW_LATEST_EPSILON = 0.05;
@@ -30,5 +30,5 @@ export declare function reserveLowerPaneYBounds(bounds: Pick<ViewBounds, "minY" 
 export declare function isYBoundsClose(current: Pick<ViewBounds, "minY" | "maxY">, target: Pick<ViewBounds, "minY" | "maxY">, epsilonRatio?: number): boolean;
 export declare function wheelZoomScale(deltaPx: number, sensitivity?: number, maxAbsDeltaPx?: number): number;
 export declare function scaleYView(view: ViewBounds, anchorRatio: number, scale: number): ViewBounds;
-export declare function candleShiftToSeconds(shiftCandles: number, timeframeSec: number): number;
-export declare function secondsToCandleShift(deltaSeconds: number, timeframeSec: number): number;
+export declare function viewBoundsToTimeWindow(view: Pick<ViewBounds, "minX" | "maxX">, firstBucket: number, timeframeSec: number): GpuChartTimeWindow | null;
+export declare function timeWindowToXBounds(window: GpuChartTimeWindow, firstBucket: number, timeframeSec: number): Pick<ViewBounds, "minX" | "maxX"> | null;

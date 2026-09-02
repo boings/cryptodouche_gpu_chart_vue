@@ -483,6 +483,7 @@ import type {
   GpuChartOpenPayload,
   GpuChartTimeSyncAction,
   GpuChartTimeSyncCommand,
+  GpuChartTimeWindow,
   GpuSeriesState,
   ViewBounds,
 } from "./types";
@@ -542,15 +543,15 @@ import {
 } from "./timeAxis";
 import {
   clampXView,
-  candleShiftToSeconds,
   computeVisibleYBounds,
   isFollowingLatest,
   isYBoundsClose,
   RIGHT_EDGE_PADDING_CANDLES,
   reserveLowerPaneYBounds,
   scaleYView,
-  secondsToCandleShift,
   smoothVisibleYBounds,
+  timeWindowToXBounds,
+  viewBoundsToTimeWindow,
   withRightPadding,
   wheelZoomScale,
 } from "./viewport";
@@ -2845,17 +2846,37 @@ function applyTimeSyncCommand(command: GpuChartTimeSyncCommand | null | undefine
   if (!chart || !state?.candles.length) return;
   lastAppliedTimeSyncSeq = command.seq;
   if (String(command.sourceId ?? "") === String(props.syncId ?? "")) return;
-  if (command.kind === "pan") {
-    smoothShiftPanBy(secondsToCandleShift(command.deltaSeconds, state.timeframeSec), {
-      emit: false,
-    });
-  } else {
-    smoothZoomBy(command.scale, command.anchorRatio, { emit: false });
+  applyTimeSyncWindow(command.window);
+}
+
+function applyTimeSyncWindow(timeWindow: GpuChartTimeWindow) {
+  if (!state?.candles.length) return;
+  const xBounds = timeWindowToXBounds(timeWindow, state.firstBucket, state.timeframeSec);
+  if (!xBounds) return;
+  const target = clampXBounds({
+    ...view,
+    minX: xBounds.minX,
+    maxX: xBounds.maxX,
+  });
+  if (
+    Math.abs(target.minX - view.minX) <= SMOOTH_X_EPSILON_CANDLES &&
+    Math.abs(target.maxX - view.maxX) <= SMOOTH_X_EPSILON_CANDLES
+  ) {
+    return;
   }
+  setSmoothXTarget(target);
+  void maybeLoadOlderCandles();
 }
 
 function emitTimeSync(value: GpuChartTimeSyncAction) {
   emit("time-sync", value);
+}
+
+function emitTimeSyncWindowForView(nextView: Pick<ViewBounds, "minX" | "maxX">) {
+  if (!state?.candles.length) return;
+  const timeWindow = viewBoundsToTimeWindow(nextView, state.firstBucket, state.timeframeSec);
+  if (!timeWindow) return;
+  emitTimeSync({ kind: "window", window: timeWindow });
 }
 
 function smoothShiftPanBy(shift: number, options: { emit?: boolean } = {}) {
@@ -2869,10 +2890,7 @@ function smoothShiftPanBy(shift: number, options: { emit?: boolean } = {}) {
   if (options.emit !== false) {
     const actualShift = target.minX - base.minX;
     if (Number.isFinite(actualShift) && actualShift !== 0) {
-      emitTimeSync({
-        kind: "pan",
-        deltaSeconds: candleShiftToSeconds(actualShift, state.timeframeSec),
-      });
+      emitTimeSyncWindowForView(target);
     }
   }
   setSmoothXTarget(target);
@@ -2900,7 +2918,7 @@ function smoothZoomBy(
   if (options.emit !== false) {
     const actualScale = Math.max(1e-9, target.maxX - target.minX) / width;
     if (Number.isFinite(actualScale) && Math.abs(actualScale - 1) > 1e-6) {
-      emitTimeSync({ kind: "zoom", scale: actualScale, anchorRatio: ratio });
+      emitTimeSyncWindowForView(target);
     }
   }
   setSmoothXTarget(target);
@@ -3053,12 +3071,8 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
         view.maxY = startView.maxY + dy;
         clampViewX();
         const actualShift = view.minX - previousMinX;
-        const deltaSeconds = candleShiftToSeconds(actualShift, state?.timeframeSec ?? 0);
-        if (Number.isFinite(deltaSeconds) && deltaSeconds !== 0) {
-          emitTimeSync({
-            kind: "pan",
-            deltaSeconds,
-          });
+        if (Number.isFinite(actualShift) && actualShift !== 0) {
+          emitTimeSyncWindowForView(view);
         }
         void maybeLoadOlderCandles();
       }

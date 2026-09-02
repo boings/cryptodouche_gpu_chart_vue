@@ -1,4 +1,4 @@
-import type { ViewBounds } from "./types";
+import type { GpuChartTimeWindow, ViewBounds } from "./types";
 
 export const MIN_VISIBLE_CANDLES = 8;
 export const RIGHT_EDGE_PADDING_CANDLES = 2;
@@ -213,18 +213,47 @@ export function scaleYView(
   };
 }
 
-export function candleShiftToSeconds(shiftCandles: number, timeframeSec: number) {
-  if (!Number.isFinite(shiftCandles) || !Number.isFinite(timeframeSec) || timeframeSec <= 0) {
-    return 0;
+export function viewBoundsToTimeWindow(
+  view: Pick<ViewBounds, "minX" | "maxX">,
+  firstBucket: number,
+  timeframeSec: number,
+): GpuChartTimeWindow | null {
+  if (
+    !Number.isFinite(view.minX) ||
+    !Number.isFinite(view.maxX) ||
+    !Number.isFinite(firstBucket) ||
+    !Number.isFinite(timeframeSec) ||
+    timeframeSec <= 0
+  ) {
+    return null;
   }
-  return shiftCandles * timeframeSec;
+
+  const minTs = firstBucket + Math.min(view.minX, view.maxX) * timeframeSec;
+  const maxTs = firstBucket + Math.max(view.minX, view.maxX) * timeframeSec;
+  if (!Number.isFinite(minTs) || !Number.isFinite(maxTs) || maxTs <= minTs) return null;
+  return { minTs, maxTs };
 }
 
-export function secondsToCandleShift(deltaSeconds: number, timeframeSec: number) {
-  if (!Number.isFinite(deltaSeconds) || !Number.isFinite(timeframeSec) || timeframeSec <= 0) {
-    return 0;
+export function timeWindowToXBounds(
+  window: GpuChartTimeWindow,
+  firstBucket: number,
+  timeframeSec: number,
+): Pick<ViewBounds, "minX" | "maxX"> | null {
+  if (
+    !Number.isFinite(window.minTs) ||
+    !Number.isFinite(window.maxTs) ||
+    !Number.isFinite(firstBucket) ||
+    !Number.isFinite(timeframeSec) ||
+    timeframeSec <= 0 ||
+    window.maxTs <= window.minTs
+  ) {
+    return null;
   }
-  return deltaSeconds / timeframeSec;
+
+  return {
+    minX: (window.minTs - firstBucket) / timeframeSec,
+    maxX: (window.maxTs - firstBucket) / timeframeSec,
+  };
 }
 
 function paddedYBounds(
