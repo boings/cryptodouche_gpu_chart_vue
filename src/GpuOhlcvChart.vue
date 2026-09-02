@@ -677,6 +677,13 @@ interface IndicatorPaneLayout {
   innerHeight: number;
 }
 
+interface HudLabelRect {
+  left: number;
+  top: number;
+  width: number;
+  height: number;
+}
+
 type IndicatorColorField = Extract<
   keyof GpuChartAppearance,
   | "stochRsiKColor"
@@ -3620,6 +3627,7 @@ function drawHud(pos: { px: number; py: number } | null) {
   const priceAxisBottom = Math.max(fontPx * 2, priceBottom - bottomChromeReserve);
   const timeAxisHeightPx = appearance.showTimeAxis ? timeAxisHeight(scale, fontPx) : 0;
   const priceDecorationBottom = Math.max(fontPx * 1.4, priceAxisBottom - timeAxisHeightPx);
+  const labelRects: HudLabelRect[] = [];
   ctx.clearRect(0, 0, w, h);
   ctx.save();
   ctx.font = `${fontPx}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
@@ -3641,20 +3649,20 @@ function drawHud(pos: { px: number; py: number } | null) {
     }
   }
   if (chartIndicatorEnabled("srZones", appearance)) {
-    drawSupportResistanceZones(ctx, priceDecorationBottom, scale);
+    drawSupportResistanceZones(ctx, priceDecorationBottom, scale, labelRects);
   }
   if (chartIndicatorEnabled("volume", appearance)) {
     drawVolumeOverlay(ctx, priceDecorationBottom, scale);
   }
   if (chartIndicatorEnabled("marketStructure", appearance)) {
-    drawMarketStructureOverlay(ctx, priceDecorationBottom, scale);
+    drawMarketStructureOverlay(ctx, priceDecorationBottom, scale, labelRects);
   }
   if (appearance.showGrid || appearance.showTimeAxis) {
     drawTimeAxis(ctx, priceAxisBottom, priceDecorationBottom, scale, fontPx, pad);
   }
   if (chartIndicatorEnabled("anchoredVwap", appearance)) {
-    drawAnchoredVwapSignals(ctx, priceDecorationBottom, scale);
-    drawAnchoredVwapAnchor(ctx, priceDecorationBottom, scale);
+    drawAnchoredVwapSignals(ctx, priceDecorationBottom, scale, labelRects);
+    drawAnchoredVwapAnchor(ctx, priceDecorationBottom, scale, labelRects);
   }
 
   if (appearance.showWindowHighLow) {
@@ -3847,6 +3855,7 @@ function drawAnchoredVwapAnchor(
   ctx: CanvasRenderingContext2D,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   const candle = anchoredVwapAnchorCandle();
   if (!candle || priceBottom <= 0) return;
@@ -3862,11 +3871,8 @@ function drawAnchoredVwapAnchor(
   const padX = 5 * scale;
   const boxHeight = Math.max(14 * scale, appearance.fontSize * scale * 0.95);
   const boxWidth = ctx.measureText(label).width + padX * 2;
-  const boxX = Math.max(
-    2 * scale,
-    Math.min(ctx.canvas.width - boxWidth - 2 * scale, x + 5 * scale),
-  );
-  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2));
+  const boxX = x + 5 * scale;
+  const boxY = y - boxHeight / 2;
 
   ctx.save();
   ctx.setLineDash([3 * scale, 5 * scale]);
@@ -3878,12 +3884,27 @@ function drawAnchoredVwapAnchor(
   ctx.stroke();
   ctx.setLineDash([]);
 
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    boxX,
+    boxY,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    [0, -1, 1, -2, 2],
+  );
+  if (!rect) {
+    ctx.restore();
+    return;
+  }
   ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.2);
   ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.72);
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
   ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.98);
-  ctx.fillText(label, boxX + padX, boxY + boxHeight / 2);
+  ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
   ctx.restore();
 }
 
@@ -3891,6 +3912,7 @@ function drawAnchoredVwapSignals(
   ctx: CanvasRenderingContext2D,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
@@ -3907,7 +3929,7 @@ function drawAnchoredVwapSignals(
   ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.68)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.textBaseline = "middle";
   for (const signal of signals) {
-    drawAnchoredVwapSignal(ctx, signal, priceBottom, scale);
+    drawAnchoredVwapSignal(ctx, signal, priceBottom, scale, labelRects);
   }
   ctx.restore();
 }
@@ -3917,6 +3939,7 @@ function drawAnchoredVwapSignal(
   signal: AnchoredVwapSignal,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   const appearance = resolvedAppearance.value;
   const x = xToPx(signal.x, ctx.canvas.width);
@@ -3940,21 +3963,32 @@ function drawAnchoredVwapSignal(
   const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.92);
   const boxWidth = ctx.measureText(text).width + padX * 2;
   const offset = (isReclaim ? -1 : 1) * (boxHeight * 1.1);
-  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, x - boxWidth / 2));
-  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y + offset));
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    x - boxWidth / 2,
+    y + offset,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    isReclaim ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
+  );
+  if (!rect) return;
 
   ctx.fillStyle = hexToRgba(color, 0.16);
   ctx.strokeStyle = hexToRgba(color, 0.68);
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
   ctx.fillStyle = hexToRgba(color, 0.96);
-  ctx.fillText(text, boxX + padX, boxY + boxHeight / 2);
+  ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
 }
 
 function drawMarketStructureOverlay(
   ctx: CanvasRenderingContext2D,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
@@ -3975,10 +4009,10 @@ function drawMarketStructureOverlay(
   ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.72)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.textBaseline = "middle";
   for (const item of breaks) {
-    drawStructureBreak(ctx, item, priceBottom, scale);
+    drawStructureBreak(ctx, item, priceBottom, scale, labelRects);
   }
   for (const swing of swings) {
-    drawSwingLabel(ctx, swing, priceBottom, scale);
+    drawSwingLabel(ctx, swing, priceBottom, scale, labelRects);
   }
   ctx.restore();
 }
@@ -3988,6 +4022,7 @@ function drawSwingLabel(
   swing: SwingPoint,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   const appearance = resolvedAppearance.value;
   const color =
@@ -4003,14 +4038,24 @@ function drawSwingLabel(
   const boxHeight = Math.max(12 * scale, appearance.fontSize * scale * 0.95);
   const boxWidth = ctx.measureText(swing.label).width + padX * 2;
   const offset = (swing.kind === "SwingHigh" ? -1 : 1) * (boxHeight * 0.9);
-  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, x - boxWidth / 2));
-  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y + offset));
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    x - boxWidth / 2,
+    y + offset,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    swing.kind === "SwingHigh" ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
+  );
+  if (!rect) return;
   ctx.fillStyle = hexToRgba(color, 0.16);
   ctx.strokeStyle = hexToRgba(color, 0.72);
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
   ctx.fillStyle = hexToRgba(color, 0.95);
-  ctx.fillText(swing.label, boxX + padX, boxY + boxHeight / 2);
+  ctx.fillText(swing.label, rect.left + padX, rect.top + boxHeight / 2);
 }
 
 function drawStructureBreak(
@@ -4018,6 +4063,7 @@ function drawStructureBreak(
   item: StructureBreak,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   const appearance = resolvedAppearance.value;
   const y = yToPx(item.level, ctx.canvas.height);
@@ -4039,14 +4085,26 @@ function drawStructureBreak(
   const padX = 5 * scale;
   const boxHeight = Math.max(13 * scale, appearance.fontSize * scale);
   const boxWidth = ctx.measureText(text).width + padX * 2;
-  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, endX + 4 * scale));
-  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2));
-  ctx.fillStyle = hexToRgba(color, 0.18);
-  ctx.strokeStyle = hexToRgba(color, 0.72);
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
-  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
-  ctx.fillStyle = hexToRgba(color, 0.98);
-  ctx.fillText(text, boxX + padX, boxY + boxHeight / 2);
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    endX + 4 * scale,
+    y - boxHeight / 2,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    [0, -1, 1, -2, 2, -3, 3],
+    [0, -1, 1, -2],
+  );
+  if (rect) {
+    ctx.fillStyle = hexToRgba(color, 0.18);
+    ctx.strokeStyle = hexToRgba(color, 0.72);
+    ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+    ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
+    ctx.fillStyle = hexToRgba(color, 0.98);
+    ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
+  }
   ctx.restore();
 }
 
@@ -4054,6 +4112,7 @@ function drawSupportResistanceZones(
   ctx: CanvasRenderingContext2D,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
@@ -4072,7 +4131,7 @@ function drawSupportResistanceZones(
   ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.78)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   for (const zone of zones) {
     if (zone.high < minY || zone.low > maxY) continue;
-    drawSupportResistanceZone(ctx, zone, priceBottom, scale);
+    drawSupportResistanceZone(ctx, zone, priceBottom, scale, labelRects);
   }
   ctx.restore();
 }
@@ -4082,6 +4141,7 @@ function drawSupportResistanceZone(
   zone: SupportResistanceZone,
   priceBottom: number,
   scale: number,
+  labelRects: HudLabelRect[],
 ) {
   const appearance = resolvedAppearance.value;
   const color =
@@ -4118,11 +4178,74 @@ function drawSupportResistanceZone(
   const labelWidth = ctx.measureText(label).width;
   const boxWidth = labelWidth + padX * 2;
   const boxX = 4 * scale;
-  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, centerY - boxHeight / 2));
+  const boxY = centerY - boxHeight / 2;
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    boxX,
+    boxY,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    [0, -1, 1, -2, 2],
+  );
+  if (!rect) return;
   ctx.fillStyle = hexToRgba(color, 0.72);
-  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.fillStyle = "white";
-  ctx.fillText(label, boxX + padX, boxY + boxHeight / 2);
+  ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
+}
+
+function placeHudLabelRect(
+  ctx: CanvasRenderingContext2D,
+  occupied: HudLabelRect[],
+  preferredLeft: number,
+  preferredTop: number,
+  width: number,
+  height: number,
+  priceBottom: number,
+  scale: number,
+  ySteps: number[],
+  xSteps = [0],
+): HudLabelRect | null {
+  const boundsPad = 2 * scale;
+  const minLeft = boundsPad;
+  const maxRight = ctx.canvas.width - boundsPad;
+  const minTop = boundsPad;
+  const maxBottom = priceBottom - boundsPad;
+  if (maxRight - minLeft < width || maxBottom - minTop < height) return null;
+
+  const gap = Math.max(2 * scale, 3);
+  for (const yStep of ySteps) {
+    for (const xStep of xSteps) {
+      const rect = {
+        left: clampLabelCoord(preferredLeft + xStep * (width + gap), width, minLeft, maxRight),
+        top: clampLabelCoord(preferredTop + yStep * (height + gap), height, minTop, maxBottom),
+        width,
+        height,
+      };
+      if (!occupied.some((candidate) => hudLabelRectsOverlap(rect, candidate, gap))) {
+        occupied.push(rect);
+        return rect;
+      }
+    }
+  }
+
+  return null;
+}
+
+function clampLabelCoord(value: number, size: number, min: number, max: number) {
+  return Math.max(min, Math.min(max - size, value));
+}
+
+function hudLabelRectsOverlap(a: HudLabelRect, b: HudLabelRect, gap: number) {
+  return (
+    a.left < b.left + b.width + gap &&
+    a.left + a.width + gap > b.left &&
+    a.top < b.top + b.height + gap &&
+    a.top + a.height + gap > b.top
+  );
 }
 
 function drawTimeAxis(
