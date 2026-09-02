@@ -504,6 +504,13 @@
         </option>
       </select>
       <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
+      <span
+        v-if="structureSummaryText"
+        class="gpu-chart-structure-summary"
+        :class="structureSummaryClass"
+      >
+        {{ structureSummaryText }}
+      </span>
     </component>
     <button
       v-else-if="chartSettingsEnabled"
@@ -560,7 +567,9 @@ import {
   computeSupportResistanceZones,
   computeWmaLine,
   lineToBytes,
+  type MarketStructureState,
   type StructureBreak,
+  type StructureSummaryState,
   type SupportResistanceZone,
   type SwingPoint,
   type SwingPointKind,
@@ -1485,12 +1494,35 @@ const changeClass = computed(() => ({
   up: (changePct.value ?? 0) > 0,
   down: (changePct.value ?? 0) < 0,
 }));
+const structureSummary = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !chartIndicatorEnabled("marketStructure", appearance)) return null;
+  const summary = currentMarketStructure().summary;
+  return summary.state === "neutral" ? null : summary;
+});
+const structureSummaryText = computed(() => {
+  const summary = structureSummary.value;
+  if (!summary) return "";
+  return `${displayTimeframe.value} structure: ${formatStructureSummaryState(summary.state)}`;
+});
+const structureSummaryClass = computed(() => {
+  const state = structureSummary.value?.state ?? "neutral";
+  return {
+    bullish: state === "bullish",
+    bearish: state === "bearish",
+    transitional: state === "transitional",
+  };
+});
 const openOnChartClickActive = computed(
   () => Boolean(props.openOnChartClick && !anchoredVwapPickMode.value),
 );
 const badgeComponent = computed(() => "div");
 const badgeTitle = computed(() =>
-  [displayTitle.value, lastCloseText.value, changePctText.value].filter(Boolean).join(" "),
+  [displayTitle.value, lastCloseText.value, changePctText.value, structureSummaryText.value]
+    .filter(Boolean)
+    .join(" "),
 );
 const badgeProps = computed(() => {
   const attrs = {
@@ -3741,7 +3773,37 @@ function currentMarketStructure() {
         maxSwings: appearance.marketStructureMaxLabels,
         maxBreaks: Math.max(4, Math.ceil(appearance.marketStructureMaxLabels / 2)),
       })
-    : { swings: [], breaks: [], trend: "neutral" as const };
+    : emptyMarketStructure();
+}
+
+function emptyMarketStructure(): MarketStructureState {
+  return {
+    swings: [],
+    breaks: [],
+    trend: "neutral",
+    summary: {
+      state: "neutral",
+      trend: "neutral",
+      lastBreak: null,
+      lastSwingHigh: null,
+      lastSwingLow: null,
+      updatedX: null,
+      updatedTs: null,
+    },
+  };
+}
+
+function formatStructureSummaryState(state: StructureSummaryState) {
+  switch (state) {
+    case "bullish":
+      return "Bullish";
+    case "bearish":
+      return "Bearish";
+    case "transitional":
+      return "Transitional";
+    case "neutral":
+      return "Neutral";
+  }
 }
 
 function drawAnchoredVwapAnchor(
@@ -5747,7 +5809,8 @@ function setError(message: string | null) {
 .gpu-chart-timeframe,
 .gpu-chart-timeframe-select,
 .gpu-chart-price,
-.gpu-chart-change {
+.gpu-chart-change,
+.gpu-chart-structure-summary {
   overflow: hidden;
   text-overflow: ellipsis;
 }
@@ -5811,6 +5874,32 @@ function setError(message: string | null) {
 
 .gpu-chart-change.down {
   color: var(--gpu-chart-down-color, rgb(248, 113, 113));
+}
+
+.gpu-chart-structure-summary {
+  flex: 0 0 auto;
+  max-width: min(22em, 42vw);
+  padding: 0 4px;
+  border: 1px solid rgba(148, 163, 184, 0.18);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.52);
+  color: rgba(203, 213, 225, 0.92);
+  font-size: 0.82em;
+}
+
+.gpu-chart-structure-summary.bullish {
+  border-color: rgba(34, 197, 94, 0.22);
+  color: rgb(74, 222, 128);
+}
+
+.gpu-chart-structure-summary.bearish {
+  border-color: rgba(248, 113, 113, 0.24);
+  color: rgb(248, 113, 113);
+}
+
+.gpu-chart-structure-summary.transitional {
+  border-color: rgba(245, 158, 11, 0.24);
+  color: rgb(251, 191, 36);
 }
 
 .gpu-chart-state {

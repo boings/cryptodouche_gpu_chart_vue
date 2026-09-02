@@ -163,6 +163,39 @@ describe("gpu chart indicators", () => {
       "Shift:bullish",
     ]);
     expect(structure.trend).toBe("bullish");
+    expect(structure.summary.state).toBe("transitional");
+    expect(structure.summary.trend).toBe("bullish");
+    expect(structure.summary.lastBreak?.label).toBe("Shift");
+    expect(structure.summary.lastSwingHigh?.label).toBe("HH");
+    expect(structure.summary.lastSwingLow?.label).toBe("LL");
+  });
+
+  it("summarizes continuation breaks as directional structure", () => {
+    const structure = computeMarketStructure(
+      [
+        candle(0, 90, 100, 95),
+        candle(1, 100, 110, 105),
+        candle(2, 92, 104, 96),
+        candle(3, 101, 108, 106),
+        candle(4, 106, 116, 112),
+        candle(5, 108, 113, 111),
+        candle(6, 111, 121, 120),
+      ],
+      {
+        pivotStrength: 1,
+        atrPeriod: 3,
+        minMoveAtr: 0,
+        maxSwings: 20,
+        maxBreaks: 10,
+      },
+    );
+
+    expect(structure.breaks.map((item) => `${item.label}:${item.direction}`)).toEqual([
+      "BOS:bullish",
+      "BOS:bullish",
+    ]);
+    expect(structure.summary.state).toBe("bullish");
+    expect(structure.summary.lastBreak?.kind).toBe("StructureBreak");
   });
 
   it("returns a flat zero relative return line for a self benchmark", () => {

@@ -29,6 +29,7 @@ export type SwingPointStructure =
 export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
+export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
 
 export interface SwingPoint {
   kind: SwingPointKind;
@@ -64,10 +65,21 @@ export interface MarketStructureOptions {
   maxBreaks?: number;
 }
 
+export interface MarketStructureSummary {
+  state: StructureSummaryState;
+  trend: StructureDirection | "neutral";
+  lastBreak: StructureBreak | null;
+  lastSwingHigh: SwingPoint | null;
+  lastSwingLow: SwingPoint | null;
+  updatedX: number | null;
+  updatedTs: number | null;
+}
+
 export interface MarketStructureState {
   swings: SwingPoint[];
   breaks: StructureBreak[];
   trend: StructureDirection | "neutral";
+  summary: MarketStructureSummary;
 }
 
 export interface AnchoredVwapOptions {
@@ -354,10 +366,13 @@ export function computeMarketStructure(
     }
   }
 
+  const visibleSwings = swings.slice(-maxSwings);
+  const visibleBreaks = breaks.slice(-maxBreaks);
   return {
-    swings: swings.slice(-maxSwings),
-    breaks: breaks.slice(-maxBreaks),
+    swings: visibleSwings,
+    breaks: visibleBreaks,
     trend,
+    summary: summarizeMarketStructure(visibleSwings, visibleBreaks, trend),
   };
 }
 
@@ -527,6 +542,41 @@ function createStructureBreak(
     sourceSwingX: sourceSwing.x,
     sourceSwingPrice: sourceSwing.price,
   };
+}
+
+function summarizeMarketStructure(
+  swings: SwingPoint[],
+  breaks: StructureBreak[],
+  trend: StructureDirection | "neutral",
+): MarketStructureSummary {
+  const lastBreak = breaks[breaks.length - 1] ?? null;
+  const lastSwingHigh = findLastSwing(swings, "SwingHigh");
+  const lastSwingLow = findLastSwing(swings, "SwingLow");
+  const latestSwing = swings[swings.length - 1] ?? null;
+  const state =
+    lastBreak == null
+      ? "neutral"
+      : lastBreak.kind === "StructureShift"
+        ? "transitional"
+        : lastBreak.direction;
+
+  return {
+    state,
+    trend,
+    lastBreak,
+    lastSwingHigh,
+    lastSwingLow,
+    updatedX: lastBreak?.x ?? latestSwing?.x ?? null,
+    updatedTs: lastBreak?.ts ?? latestSwing?.ts ?? null,
+  };
+}
+
+function findLastSwing(swings: SwingPoint[], kind: SwingPointKind) {
+  for (let index = swings.length - 1; index >= 0; index -= 1) {
+    const swing = swings[index];
+    if (swing.kind === kind) return swing;
+  }
+  return null;
 }
 
 function isMoreExtremeSwing(candidate: SwingPoint, existing: SwingPoint) {

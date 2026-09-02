@@ -21,6 +21,7 @@ export type SwingPointStructure = SwingPointKind | "HigherHigh" | "HigherLow" | 
 export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
+export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
 export interface SwingPoint {
     kind: SwingPointKind;
     structure: SwingPointStructure;
@@ -52,10 +53,20 @@ export interface MarketStructureOptions {
     maxSwings?: number;
     maxBreaks?: number;
 }
+export interface MarketStructureSummary {
+    state: StructureSummaryState;
+    trend: StructureDirection | "neutral";
+    lastBreak: StructureBreak | null;
+    lastSwingHigh: SwingPoint | null;
+    lastSwingLow: SwingPoint | null;
+    updatedX: number | null;
+    updatedTs: number | null;
+}
 export interface MarketStructureState {
     swings: SwingPoint[];
     breaks: StructureBreak[];
     trend: StructureDirection | "neutral";
+    summary: MarketStructureSummary;
 }
 export interface AnchoredVwapOptions {
     anchorBucket?: number | null;
