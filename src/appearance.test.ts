@@ -61,6 +61,15 @@ describe("gpu chart appearance", () => {
       srZonePivotStrength: 99,
       srZoneMaxZones: 99,
       srZoneThicknessBps: 0,
+      srZoneOpacity: 9,
+      showSrZoneProjections: "yes" as unknown as boolean,
+      showSrProjection1h: "yes" as unknown as boolean,
+      showSrProjection4h: "yes" as unknown as boolean,
+      showSrProjection1d: "yes" as unknown as boolean,
+      srZoneProjectionOpacity: -1,
+      srZoneProjectionZonesPerSide: 99,
+      marketStructureOpacity: 9,
+      rsDivergenceOpacity: 9,
       macdFastPeriod: 1,
       macdSlowPeriod: 999,
       macdSignalPeriod: -3,
@@ -74,6 +83,9 @@ describe("gpu chart appearance", () => {
       anchoredVwapColor: "yellow",
       anchoredVwapAnchorColor: "gold",
       anchoredVwapAnchorBucket: "bad" as unknown as number,
+      showAnchoredVwapSignals: "yes" as unknown as boolean,
+      anchoredVwapSignalOpacity: 9,
+      anchoredVwapMaxSignals: 999,
       volumeUpColor: "green",
       volumeDownColor: "red",
       volumeHeightRatio: 9,
@@ -134,6 +146,23 @@ describe("gpu chart appearance", () => {
     expect(appearance.srZonePivotStrength).toBe(20);
     expect(appearance.srZoneMaxZones).toBe(12);
     expect(appearance.srZoneThicknessBps).toBe(1);
+    expect(appearance.srZoneOpacity).toBe(1);
+    expect(appearance.showSrZoneProjections).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showSrZoneProjections,
+    );
+    expect(appearance.showSrProjection1h).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showSrProjection1h,
+    );
+    expect(appearance.showSrProjection4h).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showSrProjection4h,
+    );
+    expect(appearance.showSrProjection1d).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showSrProjection1d,
+    );
+    expect(appearance.srZoneProjectionOpacity).toBe(0.05);
+    expect(appearance.srZoneProjectionZonesPerSide).toBe(6);
+    expect(appearance.marketStructureOpacity).toBe(1);
+    expect(appearance.rsDivergenceOpacity).toBe(1);
     expect(appearance.macdFastPeriod).toBe(2);
     expect(appearance.macdSlowPeriod).toBe(200);
     expect(appearance.macdSignalPeriod).toBe(1);
@@ -159,6 +188,11 @@ describe("gpu chart appearance", () => {
     expect(appearance.anchoredVwapAnchorBucket).toBe(
       DEFAULT_GPU_CHART_APPEARANCE.anchoredVwapAnchorBucket,
     );
+    expect(appearance.showAnchoredVwapSignals).toBe(
+      DEFAULT_GPU_CHART_APPEARANCE.showAnchoredVwapSignals,
+    );
+    expect(appearance.anchoredVwapSignalOpacity).toBe(1);
+    expect(appearance.anchoredVwapMaxSignals).toBe(100);
     expect(appearance.volumeUpColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeUpColor);
     expect(appearance.volumeDownColor).toBe(DEFAULT_GPU_CHART_APPEARANCE.volumeDownColor);
     expect(appearance.volumeHeightRatio).toBe(0.35);
@@ -234,6 +268,9 @@ describe("gpu chart appearance", () => {
         anchoredVwapColor: "#facc15",
         anchoredVwapAnchorColor: "#fde047",
         anchoredVwapAnchorBucket: 123456,
+        showAnchoredVwapSignals: false,
+        anchoredVwapSignalOpacity: 0.5,
+        anchoredVwapMaxSignals: 12,
         showSrZones: true,
         srSupportZoneColor: "#059669",
         srResistanceZoneColor: "#dc2626",
@@ -241,6 +278,15 @@ describe("gpu chart appearance", () => {
         srZonePivotStrength: 4,
         srZoneMaxZones: 5,
         srZoneThicknessBps: 14,
+        srZoneOpacity: 0.55,
+        showSrZoneProjections: false,
+        showSrProjection1h: false,
+        showSrProjection4h: true,
+        showSrProjection1d: false,
+        srZoneProjectionOpacity: 0.45,
+        srZoneProjectionZonesPerSide: 3,
+        marketStructureOpacity: 0.65,
+        rsDivergenceOpacity: 0.7,
         macdLineColor: "#0284c7",
         macdSignalColor: "#f97316",
         macdHistogramUpColor: "#16a34a",
@@ -293,6 +339,9 @@ describe("gpu chart appearance", () => {
     expect(saved.anchoredVwapColor).toBe("#facc15");
     expect(saved.anchoredVwapAnchorColor).toBe("#fde047");
     expect(saved.anchoredVwapAnchorBucket).toBe(123456);
+    expect(saved.showAnchoredVwapSignals).toBe(false);
+    expect(saved.anchoredVwapSignalOpacity).toBe(0.5);
+    expect(saved.anchoredVwapMaxSignals).toBe(12);
     expect(saved.showSrZones).toBe(true);
     expect(saved.indicators.find((item) => item.type === "srZones")?.enabled).toBe(true);
     expect(saved.srSupportZoneColor).toBe("#059669");
@@ -301,6 +350,15 @@ describe("gpu chart appearance", () => {
     expect(saved.srZonePivotStrength).toBe(4);
     expect(saved.srZoneMaxZones).toBe(5);
     expect(saved.srZoneThicknessBps).toBe(14);
+    expect(saved.srZoneOpacity).toBe(0.55);
+    expect(saved.showSrZoneProjections).toBe(false);
+    expect(saved.showSrProjection1h).toBe(false);
+    expect(saved.showSrProjection4h).toBe(true);
+    expect(saved.showSrProjection1d).toBe(false);
+    expect(saved.srZoneProjectionOpacity).toBe(0.45);
+    expect(saved.srZoneProjectionZonesPerSide).toBe(3);
+    expect(saved.marketStructureOpacity).toBe(0.65);
+    expect(saved.rsDivergenceOpacity).toBe(0.7);
     expect(saved.indicators.find((item) => item.type === "sma")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "ema")?.enabled).toBe(false);
     expect(saved.indicators.find((item) => item.type === "wma")?.enabled).toBe(true);
@@ -360,6 +418,18 @@ describe("gpu chart appearance", () => {
       anchoredVwapColor: "#facc15",
       anchoredVwapAnchorColor: "#fde047",
       anchoredVwapAnchorBucket: 123456,
+      showAnchoredVwapSignals: false,
+      anchoredVwapSignalOpacity: 0.5,
+      anchoredVwapMaxSignals: 12,
+      srZoneOpacity: 0.55,
+      showSrZoneProjections: false,
+      showSrProjection1h: false,
+      showSrProjection4h: true,
+      showSrProjection1d: false,
+      srZoneProjectionOpacity: 0.45,
+      srZoneProjectionZonesPerSide: 3,
+      marketStructureOpacity: 0.65,
+      rsDivergenceOpacity: 0.7,
       indicators: expect.arrayContaining([
         expect.objectContaining({ type: "sma", enabled: false }),
         expect.objectContaining({ type: "ema", enabled: false }),

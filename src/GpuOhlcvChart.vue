@@ -798,14 +798,21 @@ type ChartIndicatorNumberField = Extract<
   | "srZonePivotStrength"
   | "srZoneMaxZones"
   | "srZoneThicknessBps"
+  | "srZoneOpacity"
+  | "srZoneProjectionOpacity"
+  | "srZoneProjectionZonesPerSide"
   | "marketStructureLookback"
   | "marketStructurePivotStrength"
   | "marketStructureAtrPeriod"
   | "marketStructureMinMoveAtr"
   | "marketStructureMaxLabels"
+  | "marketStructureOpacity"
   | "rsDivergenceLookback"
   | "rsDivergenceMinDeltaPct"
   | "rsDivergenceMaxLabels"
+  | "rsDivergenceOpacity"
+  | "anchoredVwapSignalOpacity"
+  | "anchoredVwapMaxSignals"
   | "volumeHeightRatio"
   | "volumeOpacity"
   | "stochRsiRsiPeriod"
@@ -822,7 +829,19 @@ type ChartIndicatorNumberField = Extract<
   | "macdSignalPeriod"
   | "atrPeriod"
 >;
-type ChartIndicatorToggleField = IndicatorToggleField;
+type ChartIndicatorToggleField = Extract<
+  keyof GpuChartAppearance,
+  | "stochRsiSmooth"
+  | "rsiSmooth"
+  | "macdSmooth"
+  | "atrSmooth"
+  | "relativeReturnSmooth"
+  | "showSrZoneProjections"
+  | "showSrProjection1h"
+  | "showSrProjection4h"
+  | "showSrProjection1d"
+  | "showAnchoredVwapSignals"
+>;
 type ChartNumberField = ChartSettingsNumberField | ChartIndicatorNumberField;
 
 interface ChartIndicatorOption {
@@ -1067,6 +1086,15 @@ const chartSrZonesNumberFields: Array<{
   { key: "srZonePivotStrength", label: "Pivot Strength", min: 1, max: 20, step: 1 },
   { key: "srZoneMaxZones", label: "Max Zones", min: 1, max: 12, step: 1 },
   { key: "srZoneThicknessBps", label: "Width bps", min: 1, max: 100, step: 1 },
+  { key: "srZoneOpacity", label: "Local Opacity", min: 0.05, max: 1, step: 0.05 },
+  { key: "srZoneProjectionOpacity", label: "MTF Opacity", min: 0.05, max: 1, step: 0.05 },
+  { key: "srZoneProjectionZonesPerSide", label: "MTF Zones/Side", min: 1, max: 6, step: 1 },
+];
+const chartSrZonesToggleFields: Array<{ key: ChartIndicatorToggleField; label: string }> = [
+  { key: "showSrZoneProjections", label: "MTF Zones" },
+  { key: "showSrProjection1h", label: "Project 1h" },
+  { key: "showSrProjection4h", label: "Project 4h" },
+  { key: "showSrProjection1d", label: "Project 1D" },
 ];
 const chartMarketStructureColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "marketStructureHighColor", label: "High Labels" },
@@ -1085,6 +1113,7 @@ const chartMarketStructureNumberFields: Array<{
   { key: "marketStructureAtrPeriod", label: "ATR Period", min: 2, max: 100, step: 1 },
   { key: "marketStructureMinMoveAtr", label: "Min Move ATR", min: 0, max: 10, step: 0.05 },
   { key: "marketStructureMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
+  { key: "marketStructureOpacity", label: "Opacity", min: 0.05, max: 1, step: 0.05 },
 ];
 const chartRsDivergenceColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "rsDivergenceBearishColor", label: "Bearish Color" },
@@ -1100,10 +1129,24 @@ const chartRsDivergenceNumberFields: Array<{
   { key: "rsDivergenceLookback", label: "Lookback", min: 20, max: 2000, step: 10 },
   { key: "rsDivergenceMinDeltaPct", label: "Min RS Delta", min: 0, max: 50, step: 0.1 },
   { key: "rsDivergenceMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
+  { key: "rsDivergenceOpacity", label: "Opacity", min: 0.05, max: 1, step: 0.05 },
 ];
 const chartAnchoredVwapColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "anchoredVwapColor", label: "VWAP Color" },
   { key: "anchoredVwapAnchorColor", label: "Anchor Color" },
+];
+const chartAnchoredVwapNumberFields: Array<{
+  key: ChartIndicatorNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "anchoredVwapMaxSignals", label: "Max Signals", min: 1, max: 100, step: 1 },
+  { key: "anchoredVwapSignalOpacity", label: "Signal Opacity", min: 0.05, max: 1, step: 0.05 },
+];
+const chartAnchoredVwapToggleFields: Array<{ key: ChartIndicatorToggleField; label: string }> = [
+  { key: "showAnchoredVwapSignals", label: "Signal Labels" },
 ];
 const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
   {
@@ -1143,7 +1186,7 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     label: "Auto S/R",
     placement: "price",
     colorFields: chartSrZonesColorFields,
-    toggleFields: [],
+    toggleFields: chartSrZonesToggleFields,
     numberFields: chartSrZonesNumberFields,
   },
   {
@@ -1167,8 +1210,8 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     label: "Anchored VWAP",
     placement: "price",
     colorFields: chartAnchoredVwapColorFields,
-    toggleFields: [],
-    numberFields: [],
+    toggleFields: chartAnchoredVwapToggleFields,
+    numberFields: chartAnchoredVwapNumberFields,
   },
   {
     type: "volume",
@@ -1721,7 +1764,7 @@ watch(
       benchmarkLoadKey = "";
       stopBenchmarkStream();
     }
-    if (chartIndicatorEnabled("srZones")) {
+    if (supportResistanceProjectionsEnabled()) {
       void ensureSupportResistanceProjectionStates();
     } else {
       clearSupportResistanceProjectionStates();
@@ -2040,7 +2083,7 @@ function relativeBenchmarkKey(limit: number) {
 
 async function ensureSupportResistanceProjectionStates() {
   const timeframes = supportResistanceProjectionTimeframes();
-  if (!state || !chartIndicatorEnabled("srZones") || !timeframes.length) {
+  if (!state || !supportResistanceProjectionsEnabled() || !timeframes.length) {
     clearSupportResistanceProjectionStates();
     return;
   }
@@ -2093,6 +2136,7 @@ async function loadSupportResistanceProjectionLatest(timeframe: string, limit: n
 function supportResistanceProjectionTimeframes() {
   const current = normalizeRestTimeframe(props.timeframe);
   const currentSec = timeframeToSeconds(current);
+  const appearance = resolvedAppearance.value;
   return Array.from(
     new Set((props.srProjectionTimeframes ?? []).map((item) => normalizeRestTimeframe(item))),
   )
@@ -2101,12 +2145,33 @@ function supportResistanceProjectionTimeframes() {
       return (
         timeframe &&
         timeframe !== current &&
+        supportResistanceProjectionTimeframeEnabled(timeframe, appearance) &&
         Number.isFinite(timeframeSec) &&
         Number.isFinite(currentSec) &&
         timeframeSec > currentSec
       );
     })
     .slice(0, 3);
+}
+
+function supportResistanceProjectionsEnabled(appearance = resolvedAppearance.value) {
+  return chartIndicatorEnabled("srZones", appearance) && appearance.showSrZoneProjections;
+}
+
+function supportResistanceProjectionTimeframeEnabled(
+  timeframe: string,
+  appearance = resolvedAppearance.value,
+) {
+  switch (normalizeRestTimeframe(timeframe)) {
+    case "1h":
+      return appearance.showSrProjection1h;
+    case "4h":
+      return appearance.showSrProjection4h;
+    case "1d":
+      return appearance.showSrProjection1d;
+    default:
+      return true;
+  }
 }
 
 function supportResistanceProjectionLimit(timeframe: string) {
@@ -4086,12 +4151,13 @@ function drawAnchoredVwapSignals(
 ) {
   if (!state?.candles.length || priceBottom <= 0) return;
   const appearance = resolvedAppearance.value;
+  if (!appearance.showAnchoredVwapSignals) return;
   const minX = Math.min(view.minX, view.maxX) - 1;
   const maxX = Math.max(view.minX, view.maxX) + 1;
   const signals = computeAnchoredVwapSignals(
     state.candles,
     { anchorBucket: appearance.anchoredVwapAnchorBucket },
-    32,
+    appearance.anchoredVwapMaxSignals,
   ).filter((signal) => signal.x >= minX && signal.x <= maxX);
   if (!signals.length) return;
 
@@ -4147,12 +4213,13 @@ function drawAnchoredVwapSignal(
   );
   if (!rect) return;
 
-  drawHudLeaderLine(ctx, x, y, rect, color, scale);
-  ctx.fillStyle = hexToRgba(color, 0.16);
-  ctx.strokeStyle = hexToRgba(color, 0.68);
+  const opacity = appearance.anchoredVwapSignalOpacity;
+  drawHudLeaderLine(ctx, x, y, rect, color, scale, opacity);
+  ctx.fillStyle = hexToRgba(color, 0.16 * opacity);
+  ctx.strokeStyle = hexToRgba(color, 0.68 * opacity);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
-  ctx.fillStyle = hexToRgba(color, 0.96);
+  ctx.fillStyle = hexToRgba(color, 0.96 * opacity);
   ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
 }
 
@@ -4214,6 +4281,7 @@ function drawRelativeStrengthDivergence(
     divergence.direction === "bearish"
       ? appearance.rsDivergenceBearishColor
       : appearance.rsDivergenceBullishColor;
+  const opacity = appearance.rsDivergenceOpacity;
   const text = `${divergence.priceLabel}/RS ${divergence.label.slice(3)}`;
   const padX = 5 * scale;
   const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.94);
@@ -4234,8 +4302,8 @@ function drawRelativeStrengthDivergence(
   if (!rect) return;
 
   ctx.save();
-  ctx.fillStyle = hexToRgba(color, 0.9);
-  ctx.strokeStyle = hexToRgba(color, 0.95);
+  ctx.fillStyle = hexToRgba(color, 0.9 * opacity);
+  ctx.strokeStyle = hexToRgba(color, 0.95 * opacity);
   ctx.lineWidth = Math.max(1, scale);
   ctx.beginPath();
   const markerSize = Math.max(3 * scale, 3);
@@ -4251,12 +4319,12 @@ function drawRelativeStrengthDivergence(
   ctx.closePath();
   ctx.fill();
 
-  drawHudLeaderLine(ctx, x, y, rect, color, scale);
-  ctx.fillStyle = hexToRgba(color, 0.16);
-  ctx.strokeStyle = hexToRgba(color, 0.72);
+  drawHudLeaderLine(ctx, x, y, rect, color, scale, opacity);
+  ctx.fillStyle = hexToRgba(color, 0.16 * opacity);
+  ctx.strokeStyle = hexToRgba(color, 0.72 * opacity);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
-  ctx.fillStyle = hexToRgba(color, 0.98);
+  ctx.fillStyle = hexToRgba(color, 0.98 * opacity);
   ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
   ctx.restore();
 }
@@ -4306,6 +4374,7 @@ function drawSwingLabel(
     swing.kind === "SwingHigh"
       ? appearance.marketStructureHighColor
       : appearance.marketStructureLowColor;
+  const opacity = appearance.marketStructureOpacity;
   const x = xToPx(swing.x, ctx.canvas.width);
   const y = yToPx(swing.price, ctx.canvas.height);
   if (x < -48 * scale || x > ctx.canvas.width + 48 * scale || y < -24 * scale || y > priceBottom + 24 * scale) {
@@ -4328,12 +4397,12 @@ function drawSwingLabel(
     [0, -1, 1, -2, 2],
   );
   if (!rect) return;
-  drawHudLeaderLine(ctx, x, y, rect, color, scale);
-  ctx.fillStyle = hexToRgba(color, 0.16);
-  ctx.strokeStyle = hexToRgba(color, 0.72);
+  drawHudLeaderLine(ctx, x, y, rect, color, scale, opacity);
+  ctx.fillStyle = hexToRgba(color, 0.16 * opacity);
+  ctx.strokeStyle = hexToRgba(color, 0.72 * opacity);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
-  ctx.fillStyle = hexToRgba(color, 0.95);
+  ctx.fillStyle = hexToRgba(color, 0.95 * opacity);
   ctx.fillText(swing.label, rect.left + padX, rect.top + boxHeight / 2);
 }
 
@@ -4351,9 +4420,10 @@ function drawStructureBreak(
   const endX = Math.max(0, Math.min(ctx.canvas.width, xToPx(item.x, ctx.canvas.width)));
   if (Math.abs(endX - startX) <= 1) return;
   const color = appearance.marketStructureBreakColor;
+  const opacity = appearance.marketStructureOpacity;
   ctx.save();
   ctx.setLineDash([4 * scale, 5 * scale]);
-  ctx.strokeStyle = hexToRgba(color, 0.68);
+  ctx.strokeStyle = hexToRgba(color, 0.68 * opacity);
   ctx.beginPath();
   ctx.moveTo(startX, y + 0.5);
   ctx.lineTo(endX, y + 0.5);
@@ -4377,12 +4447,12 @@ function drawStructureBreak(
     [0, -1, 1, -2],
   );
   if (rect) {
-    drawHudLeaderLine(ctx, endX, y, rect, color, scale);
-    ctx.fillStyle = hexToRgba(color, 0.18);
-    ctx.strokeStyle = hexToRgba(color, 0.72);
+    drawHudLeaderLine(ctx, endX, y, rect, color, scale, opacity);
+    ctx.fillStyle = hexToRgba(color, 0.18 * opacity);
+    ctx.strokeStyle = hexToRgba(color, 0.72 * opacity);
     ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
     ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
-    ctx.fillStyle = hexToRgba(color, 0.98);
+    ctx.fillStyle = hexToRgba(color, 0.98 * opacity);
     ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
   }
   ctx.restore();
@@ -4405,16 +4475,18 @@ function drawSupportResistanceZones(
     referencePrice,
     zonesPerSide: Math.max(1, Math.ceil(appearance.srZoneMaxZones / 2)),
   });
-  const projectedZones = srProjectionStates.flatMap((projection) =>
-    computeSupportResistanceZones(projection.state.candles, {
-      lookback: appearance.srZoneLookback,
-      pivotStrength: appearance.srZonePivotStrength,
-      maxZones: Math.min(4, appearance.srZoneMaxZones),
-      thicknessBps: appearance.srZoneThicknessBps,
-      referencePrice,
-      zonesPerSide: 2,
-    }).map((zone) => ({ zone, timeframe: projection.timeframe })),
-  );
+  const projectedZones = appearance.showSrZoneProjections
+    ? srProjectionStates.flatMap((projection) =>
+        computeSupportResistanceZones(projection.state.candles, {
+          lookback: appearance.srZoneLookback,
+          pivotStrength: appearance.srZonePivotStrength,
+          maxZones: appearance.srZoneProjectionZonesPerSide * 2,
+          thicknessBps: appearance.srZoneThicknessBps,
+          referencePrice,
+          zonesPerSide: appearance.srZoneProjectionZonesPerSide,
+        }).map((zone) => ({ zone, timeframe: projection.timeframe })),
+      )
+    : [];
   if (!zones.length && !projectedZones.length) return;
 
   const minY = Math.min(view.minY, view.maxY);
@@ -4426,12 +4498,14 @@ function drawSupportResistanceZones(
     if (item.zone.high < minY || item.zone.low > maxY) continue;
     drawSupportResistanceZone(ctx, item.zone, priceBottom, scale, labelRects, {
       labelPrefix: `${item.timeframe.toUpperCase()} `,
-      opacity: 0.82,
+      opacity: appearance.srZoneProjectionOpacity,
     });
   }
   for (const zone of zones) {
     if (zone.high < minY || zone.low > maxY) continue;
-    drawSupportResistanceZone(ctx, zone, priceBottom, scale, labelRects);
+    drawSupportResistanceZone(ctx, zone, priceBottom, scale, labelRects, {
+      opacity: appearance.srZoneOpacity,
+    });
   }
   ctx.restore();
 }
@@ -4445,7 +4519,7 @@ function drawSupportResistanceZone(
   options: { labelPrefix?: string; opacity?: number } = {},
 ) {
   const appearance = resolvedAppearance.value;
-  const opacity = Math.max(0.1, Math.min(1, options.opacity ?? 1));
+  const opacity = Math.max(0.05, Math.min(1, options.opacity ?? 1));
   const color =
     zone.kind === "support"
       ? appearance.srSupportZoneColor
@@ -4550,6 +4624,7 @@ function drawHudLeaderLine(
   rect: HudLabelRect,
   color: string,
   scale: number,
+  opacity = 1,
 ) {
   const toX = Math.max(rect.left, Math.min(rect.left + rect.width, fromX));
   const toY = Math.max(rect.top, Math.min(rect.top + rect.height, fromY));
@@ -4558,7 +4633,7 @@ function drawHudLeaderLine(
   ctx.save();
   ctx.setLineDash([2 * scale, 4 * scale]);
   ctx.lineWidth = Math.max(1, scale);
-  ctx.strokeStyle = hexToRgba(color, 0.45);
+  ctx.strokeStyle = hexToRgba(color, 0.45 * opacity);
   ctx.beginPath();
   ctx.moveTo(fromX + 0.5, fromY + 0.5);
   ctx.lineTo(toX + 0.5, toY + 0.5);

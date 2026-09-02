@@ -80,15 +80,27 @@ export interface GpuChartAppearance {
   srZonePivotStrength: number;
   srZoneMaxZones: number;
   srZoneThicknessBps: number;
+  srZoneOpacity: number;
+  showSrZoneProjections: boolean;
+  showSrProjection1h: boolean;
+  showSrProjection4h: boolean;
+  showSrProjection1d: boolean;
+  srZoneProjectionOpacity: number;
+  srZoneProjectionZonesPerSide: number;
   marketStructureLookback: number;
   marketStructurePivotStrength: number;
   marketStructureAtrPeriod: number;
   marketStructureMinMoveAtr: number;
   marketStructureMaxLabels: number;
+  marketStructureOpacity: number;
   rsDivergenceLookback: number;
   rsDivergenceMinDeltaPct: number;
   rsDivergenceMaxLabels: number;
+  rsDivergenceOpacity: number;
   anchoredVwapAnchorBucket: number | null;
+  showAnchoredVwapSignals: boolean;
+  anchoredVwapSignalOpacity: number;
+  anchoredVwapMaxSignals: number;
   stochRsiRsiPeriod: number;
   stochRsiPeriod: number;
   stochRsiKPeriod: number;
@@ -328,15 +340,27 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   srZonePivotStrength: 3,
   srZoneMaxZones: 6,
   srZoneThicknessBps: 10,
+  srZoneOpacity: 0.9,
+  showSrZoneProjections: true,
+  showSrProjection1h: true,
+  showSrProjection4h: true,
+  showSrProjection1d: true,
+  srZoneProjectionOpacity: 0.68,
+  srZoneProjectionZonesPerSide: 2,
   marketStructureLookback: 500,
   marketStructurePivotStrength: 3,
   marketStructureAtrPeriod: 14,
   marketStructureMinMoveAtr: 0.75,
   marketStructureMaxLabels: 20,
+  marketStructureOpacity: 0.9,
   rsDivergenceLookback: 500,
   rsDivergenceMinDeltaPct: 0.5,
   rsDivergenceMaxLabels: 12,
+  rsDivergenceOpacity: 0.9,
   anchoredVwapAnchorBucket: null,
+  showAnchoredVwapSignals: true,
+  anchoredVwapSignalOpacity: 0.88,
+  anchoredVwapMaxSignals: 16,
   stochRsiRsiPeriod: 14,
   stochRsiPeriod: 14,
   stochRsiKPeriod: 3,
@@ -526,6 +550,26 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.srZoneThicknessBps,
     ),
+    srZoneOpacity: clampNumber(value.srZoneOpacity, 0.05, 1, defaults.srZoneOpacity),
+    showSrZoneProjections: boolValue(
+      value.showSrZoneProjections,
+      defaults.showSrZoneProjections,
+    ),
+    showSrProjection1h: boolValue(value.showSrProjection1h, defaults.showSrProjection1h),
+    showSrProjection4h: boolValue(value.showSrProjection4h, defaults.showSrProjection4h),
+    showSrProjection1d: boolValue(value.showSrProjection1d, defaults.showSrProjection1d),
+    srZoneProjectionOpacity: clampNumber(
+      value.srZoneProjectionOpacity,
+      0.05,
+      1,
+      defaults.srZoneProjectionOpacity,
+    ),
+    srZoneProjectionZonesPerSide: clampInteger(
+      value.srZoneProjectionZonesPerSide,
+      1,
+      6,
+      defaults.srZoneProjectionZonesPerSide,
+    ),
     marketStructureLookback: clampInteger(
       value.marketStructureLookback,
       20,
@@ -556,6 +600,12 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.marketStructureMaxLabels,
     ),
+    marketStructureOpacity: clampNumber(
+      value.marketStructureOpacity,
+      0.05,
+      1,
+      defaults.marketStructureOpacity,
+    ),
     rsDivergenceLookback: clampInteger(
       value.rsDivergenceLookback,
       20,
@@ -574,9 +624,31 @@ export function normalizeGpuChartAppearance(
       100,
       defaults.rsDivergenceMaxLabels,
     ),
+    rsDivergenceOpacity: clampNumber(
+      value.rsDivergenceOpacity,
+      0.05,
+      1,
+      defaults.rsDivergenceOpacity,
+    ),
     anchoredVwapAnchorBucket: nullableFiniteNumber(
       value.anchoredVwapAnchorBucket,
       defaults.anchoredVwapAnchorBucket,
+    ),
+    showAnchoredVwapSignals: boolValue(
+      value.showAnchoredVwapSignals,
+      defaults.showAnchoredVwapSignals,
+    ),
+    anchoredVwapSignalOpacity: clampNumber(
+      value.anchoredVwapSignalOpacity,
+      0.05,
+      1,
+      defaults.anchoredVwapSignalOpacity,
+    ),
+    anchoredVwapMaxSignals: clampInteger(
+      value.anchoredVwapMaxSignals,
+      1,
+      100,
+      defaults.anchoredVwapMaxSignals,
     ),
     stochRsiRsiPeriod: clampInteger(
       value.stochRsiRsiPeriod,
