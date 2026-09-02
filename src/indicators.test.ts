@@ -1,13 +1,14 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeSupportResistanceZones,
+  computeSwingPoints,
 } from "./indicators";
 import type { CandleRecord } from "./types";
 
-function candle(index: number, low: number, high: number): CandleRecord {
-  const close = (low + high) / 2;
+function candle(index: number, low: number, high: number, close = (low + high) / 2): CandleRecord {
   return {
     ts: index * 60,
     bucket: index * 60,
@@ -19,6 +20,22 @@ function candle(index: number, low: number, high: number): CandleRecord {
     v_base: 1,
     v_quote: close,
   };
+}
+
+function structureCandles() {
+  return [
+    candle(0, 90, 100, 95),
+    candle(1, 100, 110, 105),
+    candle(2, 92, 104, 96),
+    candle(3, 101, 108, 106),
+    candle(4, 106, 116, 112),
+    candle(5, 98, 109, 102),
+    candle(6, 105, 112, 111),
+    candle(7, 88, 107, 90),
+    candle(8, 84, 94, 86),
+    candle(9, 91, 118, 117),
+    candle(10, 104, 113, 110),
+  ];
 }
 
 describe("gpu chart indicators", () => {
@@ -39,9 +56,9 @@ describe("gpu chart indicators", () => {
     expect(line[0]).toBe(0);
     expect(line[1]).toBe(0);
     expect(line[2]).toBe(1);
-    expect(line[3]).toBeCloseTo(Math.log(12 / 10) - Math.log(110 / 100), 6);
+    expect(line[3]).toBeCloseTo((12 / 10 / (110 / 100) - 1) * 100, 5);
     expect(line[4]).toBe(2);
-    expect(line[5]).toBeCloseTo(Math.log(16 / 10) - Math.log(120 / 100), 6);
+    expect(line[5]).toBeCloseTo((16 / 10 / (120 / 100) - 1) * 100, 5);
   });
 
   it("skips relative return points without matching benchmark candles", () => {
@@ -52,8 +69,61 @@ describe("gpu chart indicators", () => {
       0,
       0,
       2,
-      expect.closeTo(Math.log(16 / 10) - Math.log(120 / 100), 6),
+      expect.closeTo((16 / 10 / (120 / 100) - 1) * 100, 5),
     ]);
+  });
+
+  it("normalizes relative return as bounded price-ratio percent change", () => {
+    const current = [candle(0, 99, 101), candle(1, 29, 31)];
+    const benchmark = [candle(0, 99, 101), candle(1, 99, 101)];
+
+    const line = Array.from(computeRelativeCumulativeReturnLine(current, benchmark));
+
+    expect(line[3]).toBeCloseTo(-70, 6);
+  });
+
+  it("filters small swing reversals with an ATR threshold", () => {
+    const unfiltered = computeSwingPoints(structureCandles(), {
+      pivotStrength: 1,
+      atrPeriod: 3,
+      minMoveAtr: 0,
+      maxSwings: 20,
+    });
+    const filtered = computeSwingPoints(structureCandles(), {
+      pivotStrength: 1,
+      atrPeriod: 3,
+      minMoveAtr: 1.5,
+      maxSwings: 20,
+    });
+
+    expect(unfiltered.length).toBeGreaterThan(filtered.length);
+    expect(filtered.length).toBeGreaterThan(1);
+  });
+
+  it("labels market structure swings and break direction changes", () => {
+    const structure = computeMarketStructure(structureCandles(), {
+      pivotStrength: 1,
+      atrPeriod: 3,
+      minMoveAtr: 0.2,
+      maxSwings: 20,
+      maxBreaks: 10,
+    });
+
+    expect(structure.swings.map((swing) => swing.label)).toEqual([
+      "SH",
+      "SL",
+      "HH",
+      "HL",
+      "LH",
+      "LL",
+      "HH",
+    ]);
+    expect(structure.breaks.map((item) => `${item.label}:${item.direction}`)).toEqual([
+      "BOS:bullish",
+      "Shift:bearish",
+      "Shift:bullish",
+    ]);
+    expect(structure.trend).toBe("bullish");
   });
 
   it("returns a flat zero relative return line for a self benchmark", () => {

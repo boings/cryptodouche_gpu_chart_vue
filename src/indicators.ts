@@ -15,6 +15,59 @@ export interface SupportResistanceZoneOptions {
   pivotStrength?: number;
   maxZones?: number;
   thicknessBps?: number;
+  atrPeriod?: number;
+  minMoveAtr?: number;
+}
+
+export type SwingPointKind = "SwingHigh" | "SwingLow";
+export type SwingPointStructure =
+  | SwingPointKind
+  | "HigherHigh"
+  | "HigherLow"
+  | "LowerHigh"
+  | "LowerLow";
+export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
+export type StructureBreakKind = "StructureBreak" | "StructureShift";
+export type StructureDirection = "bullish" | "bearish";
+
+export interface SwingPoint {
+  kind: SwingPointKind;
+  structure: SwingPointStructure;
+  label: SwingPointLabel;
+  index: number;
+  x: number;
+  ts: number;
+  bucket: number;
+  price: number;
+  atr: number | null;
+}
+
+export interface StructureBreak {
+  kind: StructureBreakKind;
+  direction: StructureDirection;
+  label: "BOS" | "Shift";
+  index: number;
+  x: number;
+  ts: number;
+  bucket: number;
+  level: number;
+  sourceSwingX: number;
+  sourceSwingPrice: number;
+}
+
+export interface MarketStructureOptions {
+  lookback?: number;
+  pivotStrength?: number;
+  atrPeriod?: number;
+  minMoveAtr?: number;
+  maxSwings?: number;
+  maxBreaks?: number;
+}
+
+export interface MarketStructureState {
+  swings: SwingPoint[];
+  breaks: StructureBreak[];
+  trend: StructureDirection | "neutral";
 }
 
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
@@ -176,27 +229,106 @@ export function computeMacd(
 }
 
 export function computeAtrLine(candles: CandleRecord[], period = 14): Float32Array {
-  const length = normalizedPeriod(period);
-  if (candles.length < length) return new Float32Array();
-  const trueRanges = candles.map((candle, index) => {
-    if (index === 0) return candle.h - candle.l;
-    const previousClose = candles[index - 1].c;
-    return Math.max(
-      candle.h - candle.l,
-      Math.abs(candle.h - previousClose),
-      Math.abs(candle.l - previousClose),
-    );
+  const values = atrValues(candles, period);
+  const points: Array<{ x: number; value: number }> = [];
+  values.forEach((value, index) => {
+    if (value != null) points.push({ x: candles[index].x, value });
   });
-
-  let atr = 0;
-  for (let i = 0; i < length; i++) atr += trueRanges[i];
-  atr /= length;
-  const points: Array<{ x: number; value: number }> = [{ x: candles[length - 1].x, value: atr }];
-  for (let i = length; i < candles.length; i++) {
-    atr = (atr * (length - 1) + trueRanges[i]) / length;
-    points.push({ x: candles[i].x, value: atr });
-  }
   return pointsToLine(points);
+}
+
+export function computeSwingPoints(
+  candles: CandleRecord[],
+  options: MarketStructureOptions = {},
+): SwingPoint[] {
+  const lookback = clampIntegerOption(options.lookback, 20, 2000, 500);
+  const pivotStrength = clampIntegerOption(options.pivotStrength, 1, 20, 3);
+  const atrPeriod = clampIntegerOption(options.atrPeriod, 2, 100, 14);
+  const minMoveAtr = clampNumberOption(options.minMoveAtr, 0, 10, 0.75);
+  const maxSwings = clampIntegerOption(options.maxSwings, 1, 500, 120);
+  const startIndex = Math.max(0, candles.length - lookback);
+  const source = candles.slice(startIndex);
+  if (source.length < pivotStrength * 2 + 1) return [];
+
+  const atrByIndex = atrValues(candles, atrPeriod);
+  const raw: SwingPoint[] = [];
+  for (let index = pivotStrength; index < source.length - pivotStrength; index += 1) {
+    const candle = source[index];
+    const sourceIndex = startIndex + index;
+    const atr = atrByIndex[sourceIndex] ?? null;
+    if (isPivotHigh(source, index, pivotStrength)) {
+      raw.push(createSwingPoint("SwingHigh", sourceIndex, candle, candle.h, atr));
+    }
+    if (isPivotLow(source, index, pivotStrength)) {
+      raw.push(createSwingPoint("SwingLow", sourceIndex, candle, candle.l, atr));
+    }
+  }
+
+  const accepted: SwingPoint[] = [];
+  for (const candidate of raw) {
+    const last = accepted[accepted.length - 1];
+    if (!last) {
+      accepted.push(candidate);
+      continue;
+    }
+    if (last.kind === candidate.kind) {
+      if (isMoreExtremeSwing(candidate, last)) accepted[accepted.length - 1] = candidate;
+      continue;
+    }
+    if (Math.abs(candidate.price - last.price) >= swingMoveThreshold(candidate, last, minMoveAtr)) {
+      accepted.push(candidate);
+    }
+  }
+
+  return classifySwingPoints(accepted).slice(-maxSwings);
+}
+
+export function computeMarketStructure(
+  candles: CandleRecord[],
+  options: MarketStructureOptions = {},
+): MarketStructureState {
+  const maxSwings = clampIntegerOption(options.maxSwings, 1, 500, 120);
+  const maxBreaks = clampIntegerOption(options.maxBreaks, 1, 200, 24);
+  const swings = computeSwingPoints(candles, {
+    ...options,
+    maxSwings: Math.max(maxSwings, maxBreaks * 4),
+  });
+  const breaks: StructureBreak[] = [];
+  const brokenHighs = new Set<number>();
+  const brokenLows = new Set<number>();
+  let swingIndex = 0;
+  let activeHigh: SwingPoint | null = null;
+  let activeLow: SwingPoint | null = null;
+  let trend: MarketStructureState["trend"] = "neutral";
+
+  for (let index = 0; index < candles.length; index += 1) {
+    while (swingIndex < swings.length && swings[swingIndex].index < index) {
+      const swing = swings[swingIndex];
+      if (swing.kind === "SwingHigh") activeHigh = swing;
+      else activeLow = swing;
+      swingIndex += 1;
+    }
+
+    const candle = candles[index];
+    if (activeHigh && !brokenHighs.has(activeHigh.x) && candle.c > activeHigh.price) {
+      const kind: StructureBreakKind = trend === "bearish" ? "StructureShift" : "StructureBreak";
+      breaks.push(createStructureBreak(kind, "bullish", index, candle, activeHigh));
+      brokenHighs.add(activeHigh.x);
+      trend = "bullish";
+    }
+    if (activeLow && !brokenLows.has(activeLow.x) && candle.c < activeLow.price) {
+      const kind: StructureBreakKind = trend === "bullish" ? "StructureShift" : "StructureBreak";
+      breaks.push(createStructureBreak(kind, "bearish", index, candle, activeLow));
+      brokenLows.add(activeLow.x);
+      trend = "bearish";
+    }
+  }
+
+  return {
+    swings: swings.slice(-maxSwings),
+    breaks: breaks.slice(-maxBreaks),
+    trend,
+  };
 }
 
 export function computeSupportResistanceZones(
@@ -207,18 +339,25 @@ export function computeSupportResistanceZones(
   const pivotStrength = clampIntegerOption(options.pivotStrength, 1, 20, 3);
   const maxZones = clampIntegerOption(options.maxZones, 1, 12, 6);
   const thicknessBps = clampNumberOption(options.thicknessBps, 1, 100, 10);
-  const source = candles.slice(-lookback);
-  if (source.length < pivotStrength * 2 + 1) return [];
+  const latestX = candles[candles.length - 1]?.x ?? 0;
 
   const clusters: SupportResistanceZone[] = [];
-  for (let index = pivotStrength; index < source.length - pivotStrength; index += 1) {
-    const candle = source[index];
-    if (isPivotHigh(source, index, pivotStrength)) {
-      addZonePivot(clusters, "resistance", candle.h, candle.x, source.length - index, thicknessBps);
-    }
-    if (isPivotLow(source, index, pivotStrength)) {
-      addZonePivot(clusters, "support", candle.l, candle.x, source.length - index, thicknessBps);
-    }
+  const swings = computeSwingPoints(candles, {
+    lookback,
+    pivotStrength,
+    atrPeriod: options.atrPeriod,
+    minMoveAtr: options.minMoveAtr ?? 0,
+    maxSwings: lookback,
+  });
+  for (const swing of swings) {
+    addZonePivot(
+      clusters,
+      swing.kind === "SwingHigh" ? "resistance" : "support",
+      swing.price,
+      swing.x,
+      latestX - swing.x + 1,
+      thicknessBps,
+    );
   }
 
   return clusters
@@ -250,10 +389,8 @@ export function computeRelativeCumulativeReturnLine(
       anchorBenchmarkPrice = benchmark.c;
     }
 
-    points.push(
-      candle.x,
-      Math.log(candle.c / anchorPrice) - Math.log(benchmark.c / anchorBenchmarkPrice),
-    );
+    const relativeRatio = candle.c / anchorPrice / (benchmark.c / anchorBenchmarkPrice);
+    points.push(candle.x, (relativeRatio - 1) * 100);
   }
 
   return new Float32Array(points);
@@ -265,6 +402,111 @@ export function lineToBytes(line: Float32Array): Uint8Array {
 
 function validPositivePrice(value: number) {
   return Number.isFinite(value) && value > 0;
+}
+
+function createSwingPoint(
+  kind: SwingPointKind,
+  index: number,
+  candle: CandleRecord,
+  price: number,
+  atr: number | null,
+): SwingPoint {
+  return {
+    kind,
+    structure: kind,
+    label: kind === "SwingHigh" ? "SH" : "SL",
+    index,
+    x: candle.x,
+    ts: candle.ts,
+    bucket: candle.bucket,
+    price,
+    atr,
+  };
+}
+
+function classifySwingPoints(swings: SwingPoint[]): SwingPoint[] {
+  let lastHigh: SwingPoint | null = null;
+  let lastLow: SwingPoint | null = null;
+  return swings.map((swing) => {
+    if (swing.kind === "SwingHigh") {
+      const structure: SwingPointStructure =
+        lastHigh == null ? "SwingHigh" : swing.price > lastHigh.price ? "HigherHigh" : "LowerHigh";
+      const label: SwingPointLabel =
+        structure === "SwingHigh" ? "SH" : structure === "HigherHigh" ? "HH" : "LH";
+      const next = { ...swing, structure, label };
+      lastHigh = next;
+      return next;
+    }
+
+    const structure: SwingPointStructure =
+      lastLow == null ? "SwingLow" : swing.price > lastLow.price ? "HigherLow" : "LowerLow";
+    const label: SwingPointLabel =
+      structure === "SwingLow" ? "SL" : structure === "HigherLow" ? "HL" : "LL";
+    const next = { ...swing, structure, label };
+    lastLow = next;
+    return next;
+  });
+}
+
+function createStructureBreak(
+  kind: StructureBreakKind,
+  direction: StructureDirection,
+  index: number,
+  candle: CandleRecord,
+  sourceSwing: SwingPoint,
+): StructureBreak {
+  return {
+    kind,
+    direction,
+    label: kind === "StructureBreak" ? "BOS" : "Shift",
+    index,
+    x: candle.x,
+    ts: candle.ts,
+    bucket: candle.bucket,
+    level: sourceSwing.price,
+    sourceSwingX: sourceSwing.x,
+    sourceSwingPrice: sourceSwing.price,
+  };
+}
+
+function isMoreExtremeSwing(candidate: SwingPoint, existing: SwingPoint) {
+  if (candidate.kind === "SwingHigh") return candidate.price > existing.price;
+  return candidate.price < existing.price;
+}
+
+function swingMoveThreshold(candidate: SwingPoint, previous: SwingPoint, minMoveAtr: number) {
+  const atr =
+    candidate.atr != null && Number.isFinite(candidate.atr)
+      ? candidate.atr
+      : previous.atr != null && Number.isFinite(previous.atr)
+        ? previous.atr
+        : 0;
+  return Math.max(0, atr * minMoveAtr);
+}
+
+function atrValues(candles: CandleRecord[], period: number) {
+  const length = normalizedPeriod(period);
+  const values: Array<number | null> = Array(candles.length).fill(null);
+  if (candles.length < length) return values;
+  const trueRanges = candles.map((candle, index) => {
+    if (index === 0) return candle.h - candle.l;
+    const previousClose = candles[index - 1].c;
+    return Math.max(
+      candle.h - candle.l,
+      Math.abs(candle.h - previousClose),
+      Math.abs(candle.l - previousClose),
+    );
+  });
+
+  let atr = 0;
+  for (let i = 0; i < length; i += 1) atr += trueRanges[i];
+  atr /= length;
+  values[length - 1] = atr;
+  for (let i = length; i < candles.length; i += 1) {
+    atr = (atr * (length - 1) + trueRanges[i]) / length;
+    values[i] = atr;
+  }
+  return values;
 }
 
 function addZonePivot(

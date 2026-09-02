@@ -7,6 +7,7 @@ export type GpuChartIndicatorType =
   | "wma"
   | "bollinger"
   | "srZones"
+  | "marketStructure"
   | "volume"
   | "stochRsi"
   | "rsi"
@@ -37,6 +38,9 @@ export interface GpuChartAppearance {
   bollingerLowerColor: string;
   srSupportZoneColor: string;
   srResistanceZoneColor: string;
+  marketStructureHighColor: string;
+  marketStructureLowColor: string;
+  marketStructureBreakColor: string;
   stochRsiKColor: string;
   stochRsiDColor: string;
   stochRsiRangeColor: string;
@@ -70,6 +74,11 @@ export interface GpuChartAppearance {
   srZonePivotStrength: number;
   srZoneMaxZones: number;
   srZoneThicknessBps: number;
+  marketStructureLookback: number;
+  marketStructurePivotStrength: number;
+  marketStructureAtrPeriod: number;
+  marketStructureMinMoveAtr: number;
+  marketStructureMaxLabels: number;
   stochRsiRsiPeriod: number;
   stochRsiPeriod: number;
   stochRsiKPeriod: number;
@@ -107,6 +116,7 @@ export interface GpuChartAppearance {
   showWma: boolean;
   showBollinger: boolean;
   showSrZones: boolean;
+  showMarketStructure: boolean;
   showStochRsi: boolean;
   showRsi: boolean;
   showMacd: boolean;
@@ -139,6 +149,7 @@ type IndicatorShowKey = Extract<
   | "showWma"
   | "showBollinger"
   | "showSrZones"
+  | "showMarketStructure"
   | "showVolume"
   | "showStochRsi"
   | "showRsi"
@@ -153,6 +164,7 @@ export const GPU_CHART_INDICATOR_TYPES: GpuChartIndicatorType[] = [
   "wma",
   "bollinger",
   "srZones",
+  "marketStructure",
   "volume",
   "stochRsi",
   "rsi",
@@ -194,6 +206,7 @@ export const GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE: Record<
   wma: "price",
   bollinger: "price",
   srZones: "price",
+  marketStructure: "price",
   volume: "price",
   stochRsi: "lower",
   rsi: "lower",
@@ -211,6 +224,7 @@ export const GPU_CHART_INDICATOR_SHOW_KEY_BY_TYPE: Record<
   wma: "showWma",
   bollinger: "showBollinger",
   srZones: "showSrZones",
+  marketStructure: "showMarketStructure",
   volume: "showVolume",
   stochRsi: "showStochRsi",
   rsi: "showRsi",
@@ -225,6 +239,7 @@ export const DEFAULT_GPU_CHART_INDICATORS: GpuChartIndicatorInstance[] = [
   { id: "wma", type: "wma", enabled: false, placement: "price", period: 20, color: "#c084fc" },
   { id: "bollinger", type: "bollinger", enabled: false, placement: "price" },
   { id: "srZones", type: "srZones", enabled: false, placement: "price" },
+  { id: "marketStructure", type: "marketStructure", enabled: false, placement: "price" },
   { id: "volume", type: "volume", enabled: true, placement: "price" },
   { id: "stochRsi", type: "stochRsi", enabled: true, placement: "lower" },
   { id: "rsi", type: "rsi", enabled: true, placement: "lower" },
@@ -251,6 +266,9 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   bollingerLowerColor: "#38bdf8",
   srSupportZoneColor: "#22c55e",
   srResistanceZoneColor: "#ef4444",
+  marketStructureHighColor: "#38bdf8",
+  marketStructureLowColor: "#f59e0b",
+  marketStructureBreakColor: "#e879f9",
   stochRsiKColor: "#f59e0b",
   stochRsiDColor: "#a78bfa",
   stochRsiRangeColor: "#64748b",
@@ -284,6 +302,11 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   srZonePivotStrength: 3,
   srZoneMaxZones: 6,
   srZoneThicknessBps: 10,
+  marketStructureLookback: 500,
+  marketStructurePivotStrength: 3,
+  marketStructureAtrPeriod: 14,
+  marketStructureMinMoveAtr: 0.75,
+  marketStructureMaxLabels: 20,
   stochRsiRsiPeriod: 14,
   stochRsiPeriod: 14,
   stochRsiKPeriod: 3,
@@ -321,6 +344,7 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   showWma: false,
   showBollinger: false,
   showSrZones: false,
+  showMarketStructure: false,
   showStochRsi: true,
   showRsi: true,
   showMacd: true,
@@ -379,6 +403,18 @@ export function normalizeGpuChartAppearance(
     srResistanceZoneColor: colorValue(
       value.srResistanceZoneColor,
       defaults.srResistanceZoneColor,
+    ),
+    marketStructureHighColor: colorValue(
+      value.marketStructureHighColor,
+      defaults.marketStructureHighColor,
+    ),
+    marketStructureLowColor: colorValue(
+      value.marketStructureLowColor,
+      defaults.marketStructureLowColor,
+    ),
+    marketStructureBreakColor: colorValue(
+      value.marketStructureBreakColor,
+      defaults.marketStructureBreakColor,
     ),
     stochRsiKColor: colorValue(value.stochRsiKColor, defaults.stochRsiKColor),
     stochRsiDColor: colorValue(value.stochRsiDColor, defaults.stochRsiDColor),
@@ -444,6 +480,36 @@ export function normalizeGpuChartAppearance(
       1,
       100,
       defaults.srZoneThicknessBps,
+    ),
+    marketStructureLookback: clampInteger(
+      value.marketStructureLookback,
+      20,
+      2000,
+      defaults.marketStructureLookback,
+    ),
+    marketStructurePivotStrength: clampInteger(
+      value.marketStructurePivotStrength,
+      1,
+      20,
+      defaults.marketStructurePivotStrength,
+    ),
+    marketStructureAtrPeriod: clampInteger(
+      value.marketStructureAtrPeriod,
+      2,
+      100,
+      defaults.marketStructureAtrPeriod,
+    ),
+    marketStructureMinMoveAtr: clampNumber(
+      value.marketStructureMinMoveAtr,
+      0,
+      10,
+      defaults.marketStructureMinMoveAtr,
+    ),
+    marketStructureMaxLabels: clampInteger(
+      value.marketStructureMaxLabels,
+      1,
+      100,
+      defaults.marketStructureMaxLabels,
     ),
     stochRsiRsiPeriod: clampInteger(
       value.stochRsiRsiPeriod,
@@ -536,6 +602,10 @@ export function normalizeGpuChartAppearance(
     showWma: boolValue(value.showWma, defaults.showWma),
     showBollinger: boolValue(value.showBollinger, defaults.showBollinger),
     showSrZones: boolValue(value.showSrZones, defaults.showSrZones),
+    showMarketStructure: boolValue(
+      value.showMarketStructure,
+      defaults.showMarketStructure,
+    ),
     showStochRsi: boolValue(value.showStochRsi, defaults.showStochRsi),
     showRsi: boolValue(value.showRsi, defaults.showRsi),
     showMacd: boolValue(value.showMacd, defaults.showMacd),

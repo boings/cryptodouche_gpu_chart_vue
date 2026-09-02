@@ -504,6 +504,7 @@ import {
   computeBollingerBands,
   computeEmaLine,
   computeMacd,
+  computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeRsiLine,
   computeSmaLine,
@@ -511,7 +512,9 @@ import {
   computeSupportResistanceZones,
   computeWmaLine,
   lineToBytes,
+  type StructureBreak,
   type SupportResistanceZone,
+  type SwingPoint,
 } from "./indicators";
 import {
   GPU_CHART_INDICATOR_PLACEMENT_BY_TYPE,
@@ -679,6 +682,9 @@ type ChartIndicatorColorField = Extract<
   | "bollingerLowerColor"
   | "srSupportZoneColor"
   | "srResistanceZoneColor"
+  | "marketStructureHighColor"
+  | "marketStructureLowColor"
+  | "marketStructureBreakColor"
   | "volumeUpColor"
   | "volumeDownColor"
   | "stochRsiKColor"
@@ -705,6 +711,11 @@ type ChartIndicatorNumberField = Extract<
   | "srZonePivotStrength"
   | "srZoneMaxZones"
   | "srZoneThicknessBps"
+  | "marketStructureLookback"
+  | "marketStructurePivotStrength"
+  | "marketStructureAtrPeriod"
+  | "marketStructureMinMoveAtr"
+  | "marketStructureMaxLabels"
   | "volumeHeightRatio"
   | "volumeOpacity"
   | "stochRsiRsiPeriod"
@@ -967,6 +978,24 @@ const chartSrZonesNumberFields: Array<{
   { key: "srZoneMaxZones", label: "Max Zones", min: 1, max: 12, step: 1 },
   { key: "srZoneThicknessBps", label: "Width bps", min: 1, max: 100, step: 1 },
 ];
+const chartMarketStructureColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
+  { key: "marketStructureHighColor", label: "High Labels" },
+  { key: "marketStructureLowColor", label: "Low Labels" },
+  { key: "marketStructureBreakColor", label: "Break Labels" },
+];
+const chartMarketStructureNumberFields: Array<{
+  key: ChartIndicatorNumberField;
+  label: string;
+  min: number;
+  max: number;
+  step: number;
+}> = [
+  { key: "marketStructureLookback", label: "Lookback", min: 20, max: 2000, step: 10 },
+  { key: "marketStructurePivotStrength", label: "Pivot Strength", min: 1, max: 20, step: 1 },
+  { key: "marketStructureAtrPeriod", label: "ATR Period", min: 2, max: 100, step: 1 },
+  { key: "marketStructureMinMoveAtr", label: "Min Move ATR", min: 0, max: 10, step: 0.05 },
+  { key: "marketStructureMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
+];
 const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
   {
     type: "sma",
@@ -1007,6 +1036,14 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     colorFields: chartSrZonesColorFields,
     toggleFields: [],
     numberFields: chartSrZonesNumberFields,
+  },
+  {
+    type: "marketStructure",
+    label: "Market Structure",
+    placement: "price",
+    colorFields: chartMarketStructureColorFields,
+    toggleFields: [],
+    numberFields: chartMarketStructureNumberFields,
   },
   {
     type: "volume",
@@ -2187,6 +2224,8 @@ function chartIndicatorLabel(type: GpuChartIndicatorType) {
       return `BB ${appearance.bollingerPeriod} ${formatCompactNumber(appearance.bollingerStdDev)}`;
     case "srZones":
       return `S/R ${appearance.srZoneLookback}`;
+    case "marketStructure":
+      return `Structure ${appearance.marketStructureLookback}`;
     case "volume":
       return "Volume";
     case "stochRsi":
@@ -3176,6 +3215,9 @@ function indicatorWarmupCandles() {
     movingAverageWarmup,
     appearance.bollingerPeriod,
     chartIndicatorEnabled("srZones", appearance) ? appearance.srZoneLookback : 0,
+    chartIndicatorEnabled("marketStructure", appearance)
+      ? Math.max(appearance.marketStructureLookback, appearance.marketStructureAtrPeriod)
+      : 0,
     appearance.rsiPeriod,
     appearance.macdSlowPeriod + appearance.macdSignalPeriod,
     appearance.atrPeriod,
@@ -3349,6 +3391,9 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (chartIndicatorEnabled("volume", appearance)) {
     drawVolumeOverlay(ctx, priceDecorationBottom, scale);
   }
+  if (chartIndicatorEnabled("marketStructure", appearance)) {
+    drawMarketStructureOverlay(ctx, priceDecorationBottom, scale);
+  }
   if (appearance.showGrid || appearance.showTimeAxis) {
     drawTimeAxis(ctx, priceAxisBottom, priceDecorationBottom, scale, fontPx, pad);
   }
@@ -3492,6 +3537,112 @@ function drawVolumeOverlay(
     );
     ctx.fillRect(px - barWidth / 2, Math.max(top, bottom - barHeight), barWidth, barHeight);
   }
+  ctx.restore();
+}
+
+function drawMarketStructureOverlay(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+) {
+  if (!state?.candles.length || priceBottom <= 0) return;
+  const appearance = resolvedAppearance.value;
+  const structure = computeMarketStructure(state.candles, {
+    lookback: appearance.marketStructureLookback,
+    pivotStrength: appearance.marketStructurePivotStrength,
+    atrPeriod: appearance.marketStructureAtrPeriod,
+    minMoveAtr: appearance.marketStructureMinMoveAtr,
+    maxSwings: appearance.marketStructureMaxLabels,
+    maxBreaks: Math.max(4, Math.ceil(appearance.marketStructureMaxLabels / 2)),
+  });
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  const swings = structure.swings
+    .filter((swing) => swing.x >= minX && swing.x <= maxX)
+    .slice(-appearance.marketStructureMaxLabels);
+  const breaks = structure.breaks.filter(
+    (item) =>
+      (item.x >= minX && item.x <= maxX) ||
+      (item.sourceSwingX >= minX && item.sourceSwingX <= maxX),
+  );
+  if (!swings.length && !breaks.length) return;
+
+  ctx.save();
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.72)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "middle";
+  for (const item of breaks) {
+    drawStructureBreak(ctx, item, priceBottom, scale);
+  }
+  for (const swing of swings) {
+    drawSwingLabel(ctx, swing, priceBottom, scale);
+  }
+  ctx.restore();
+}
+
+function drawSwingLabel(
+  ctx: CanvasRenderingContext2D,
+  swing: SwingPoint,
+  priceBottom: number,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const color =
+    swing.kind === "SwingHigh"
+      ? appearance.marketStructureHighColor
+      : appearance.marketStructureLowColor;
+  const x = xToPx(swing.x, ctx.canvas.width);
+  const y = yToPx(swing.price, ctx.canvas.height);
+  if (x < -48 * scale || x > ctx.canvas.width + 48 * scale || y < -24 * scale || y > priceBottom + 24 * scale) {
+    return;
+  }
+  const padX = 4 * scale;
+  const boxHeight = Math.max(12 * scale, appearance.fontSize * scale * 0.95);
+  const boxWidth = ctx.measureText(swing.label).width + padX * 2;
+  const offset = (swing.kind === "SwingHigh" ? -1 : 1) * (boxHeight * 0.9);
+  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, x - boxWidth / 2));
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y + offset));
+  ctx.fillStyle = hexToRgba(color, 0.16);
+  ctx.strokeStyle = hexToRgba(color, 0.72);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(color, 0.95);
+  ctx.fillText(swing.label, boxX + padX, boxY + boxHeight / 2);
+}
+
+function drawStructureBreak(
+  ctx: CanvasRenderingContext2D,
+  item: StructureBreak,
+  priceBottom: number,
+  scale: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const y = yToPx(item.level, ctx.canvas.height);
+  if (y < 0 || y > priceBottom) return;
+  const startX = Math.max(0, Math.min(ctx.canvas.width, xToPx(item.sourceSwingX, ctx.canvas.width)));
+  const endX = Math.max(0, Math.min(ctx.canvas.width, xToPx(item.x, ctx.canvas.width)));
+  if (Math.abs(endX - startX) <= 1) return;
+  const color = appearance.marketStructureBreakColor;
+  ctx.save();
+  ctx.setLineDash([4 * scale, 5 * scale]);
+  ctx.strokeStyle = hexToRgba(color, 0.68);
+  ctx.beginPath();
+  ctx.moveTo(startX, y + 0.5);
+  ctx.lineTo(endX, y + 0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const text = `${item.label} ${item.direction === "bullish" ? "UP" : "DN"}`;
+  const padX = 5 * scale;
+  const boxHeight = Math.max(13 * scale, appearance.fontSize * scale);
+  const boxWidth = ctx.measureText(text).width + padX * 2;
+  const boxX = Math.max(2 * scale, Math.min(ctx.canvas.width - boxWidth - 2 * scale, endX + 4 * scale));
+  const boxY = Math.max(2 * scale, Math.min(priceBottom - boxHeight - 2 * scale, y - boxHeight / 2));
+  ctx.fillStyle = hexToRgba(color, 0.18);
+  ctx.strokeStyle = hexToRgba(color, 0.72);
+  ctx.fillRect(boxX, boxY, boxWidth, boxHeight);
+  ctx.strokeRect(boxX + 0.5, boxY + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(color, 0.98);
+  ctx.fillText(text, boxX + padX, boxY + boxHeight / 2);
   ctx.restore();
 }
 
@@ -4513,7 +4664,7 @@ function formatSignedIndicatorValue(value: number) {
 }
 
 function formatRelativeReturnValue(value: number) {
-  const percent = value * 100;
+  const percent = value;
   const formatted = Math.abs(percent).toLocaleString("en-US", {
     minimumFractionDigits: 2,
     maximumFractionDigits: 2,
