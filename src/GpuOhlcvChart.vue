@@ -3627,8 +3627,8 @@ function drawHud(pos: { px: number; py: number } | null) {
   const priceAxisBottom = Math.max(fontPx * 2, priceBottom - bottomChromeReserve);
   const timeAxisHeightPx = appearance.showTimeAxis ? timeAxisHeight(scale, fontPx) : 0;
   const priceDecorationBottom = Math.max(fontPx * 1.4, priceAxisBottom - timeAxisHeightPx);
-  const labelRects: HudLabelRect[] = [];
   ctx.clearRect(0, 0, w, h);
+  const labelRects = candleHudLabelObstacles(ctx, priceDecorationBottom, scale);
   ctx.save();
   ctx.font = `${fontPx}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
   ctx.textBaseline = "middle";
@@ -3894,11 +3894,13 @@ function drawAnchoredVwapAnchor(
     priceBottom,
     scale,
     [0, -1, 1, -2, 2],
+    [0, 1, -1, 2, -2],
   );
   if (!rect) {
     ctx.restore();
     return;
   }
+  drawHudLeaderLine(ctx, x, y, rect, appearance.anchoredVwapAnchorColor, scale);
   ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.2);
   ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.72);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
@@ -3973,9 +3975,11 @@ function drawAnchoredVwapSignal(
     priceBottom,
     scale,
     isReclaim ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
+    [0, -1, 1, -2, 2],
   );
   if (!rect) return;
 
+  drawHudLeaderLine(ctx, x, y, rect, color, scale);
   ctx.fillStyle = hexToRgba(color, 0.16);
   ctx.strokeStyle = hexToRgba(color, 0.68);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
@@ -4048,8 +4052,10 @@ function drawSwingLabel(
     priceBottom,
     scale,
     swing.kind === "SwingHigh" ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
+    [0, -1, 1, -2, 2],
   );
   if (!rect) return;
+  drawHudLeaderLine(ctx, x, y, rect, color, scale);
   ctx.fillStyle = hexToRgba(color, 0.16);
   ctx.strokeStyle = hexToRgba(color, 0.72);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
@@ -4098,6 +4104,7 @@ function drawStructureBreak(
     [0, -1, 1, -2],
   );
   if (rect) {
+    drawHudLeaderLine(ctx, endX, y, rect, color, scale);
     ctx.fillStyle = hexToRgba(color, 0.18);
     ctx.strokeStyle = hexToRgba(color, 0.72);
     ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
@@ -4191,12 +4198,79 @@ function drawSupportResistanceZone(
     priceBottom,
     scale,
     [0, -1, 1, -2, 2],
+    [0, 1, 2, 3],
   );
   if (!rect) return;
   ctx.fillStyle = hexToRgba(color, 0.72);
   ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
   ctx.fillStyle = "white";
   ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
+}
+
+function candleHudLabelObstacles(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+): HudLabelRect[] {
+  if (!state?.candles.length || priceBottom <= 0 || view.maxX <= view.minX) return [];
+  const appearance = resolvedAppearance.value;
+  const minX = Math.min(view.minX, view.maxX) - 1;
+  const maxX = Math.max(view.minX, view.maxX) + 1;
+  const span = Math.max(1, view.maxX - view.minX);
+  const slotWidth = ctx.canvas.width / span;
+  const obstacleWidth = Math.max(
+    5 * scale,
+    Math.min(
+      Math.max(7 * scale, slotWidth * 0.92),
+      Math.max(appearance.candleWidth * scale, appearance.wickWidth * scale) + 8 * scale,
+    ),
+  );
+  const minHeight = Math.max(8 * scale, appearance.wickWidth * scale + 6 * scale);
+  const obstacles: HudLabelRect[] = [];
+
+  for (const candle of state.candles) {
+    if (candle.x < minX || candle.x > maxX) continue;
+    const x = xToPx(candle.x, ctx.canvas.width);
+    if (x < -obstacleWidth || x > ctx.canvas.width + obstacleWidth) continue;
+    const highY = yToPx(candle.h, ctx.canvas.height);
+    const lowY = yToPx(candle.l, ctx.canvas.height);
+    const top = Math.max(0, Math.min(highY, lowY));
+    const bottom = Math.min(priceBottom, Math.max(highY, lowY));
+    if (bottom <= 0 || top >= priceBottom) continue;
+    const obstacleHeight = Math.max(minHeight, bottom - top + 8 * scale);
+    const centerY = (top + bottom) / 2;
+    obstacles.push({
+      left: x - obstacleWidth / 2,
+      top: Math.max(0, Math.min(priceBottom - obstacleHeight, centerY - obstacleHeight / 2)),
+      width: obstacleWidth,
+      height: obstacleHeight,
+    });
+  }
+
+  return obstacles;
+}
+
+function drawHudLeaderLine(
+  ctx: CanvasRenderingContext2D,
+  fromX: number,
+  fromY: number,
+  rect: HudLabelRect,
+  color: string,
+  scale: number,
+) {
+  const toX = Math.max(rect.left, Math.min(rect.left + rect.width, fromX));
+  const toY = Math.max(rect.top, Math.min(rect.top + rect.height, fromY));
+  if (Math.hypot(toX - fromX, toY - fromY) < 7 * scale) return;
+
+  ctx.save();
+  ctx.setLineDash([2 * scale, 4 * scale]);
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.strokeStyle = hexToRgba(color, 0.45);
+  ctx.beginPath();
+  ctx.moveTo(fromX + 0.5, fromY + 0.5);
+  ctx.lineTo(toX + 0.5, toY + 0.5);
+  ctx.stroke();
+  ctx.restore();
 }
 
 function placeHudLabelRect(
