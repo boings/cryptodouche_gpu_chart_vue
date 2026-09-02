@@ -29,7 +29,8 @@ export type SwingPointStructure = SwingPointKind | "HigherHigh" | "HigherLow" | 
 export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
-export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
+export type StructureSummaryState = StructureDirection | "transitional" | "range" | "neutral";
+export type StructureActiveLevelRole = "continuation" | "shift" | "rangeHigh" | "rangeLow";
 export type RelativeStrengthDivergenceKind = "bearishHigh" | "bearishLow" | "bullishHigh" | "bullishLow";
 export interface SwingPoint {
     kind: SwingPointKind;
@@ -65,6 +66,7 @@ export interface MarketStructureOptions {
 export interface MarketStructureSummary {
     state: StructureSummaryState;
     trend: StructureDirection | "neutral";
+    transitionDirection: StructureDirection | null;
     lastBreak: StructureBreak | null;
     lastSwingHigh: SwingPoint | null;
     lastSwingLow: SwingPoint | null;
@@ -76,6 +78,15 @@ export interface MarketStructureState {
     breaks: StructureBreak[];
     trend: StructureDirection | "neutral";
     summary: MarketStructureSummary;
+}
+export interface StructureActiveLevel {
+    role: StructureActiveLevelRole;
+    direction: StructureDirection | null;
+    price: number;
+    x: number;
+    ts: number;
+    bucket: number;
+    sourceSwing: SwingPoint;
 }
 export interface RelativeStrengthDivergence {
     kind: RelativeStrengthDivergenceKind;
@@ -141,6 +152,7 @@ export declare function computeAnchoredVwapSnapshot(candles: CandleRecord[], opt
 export declare function computeAnchoredVwapSignals(candles: CandleRecord[], options?: AnchoredVwapOptions, maxSignals?: number): AnchoredVwapSignal[];
 export declare function computeSwingPoints(candles: CandleRecord[], options?: MarketStructureOptions): SwingPoint[];
 export declare function computeMarketStructure(candles: CandleRecord[], options?: MarketStructureOptions): MarketStructureState;
+export declare function computeStructureActiveLevels(structure: MarketStructureState): StructureActiveLevel[];
 export declare function computeSupportResistanceZones(candles: CandleRecord[], options?: SupportResistanceZoneOptions): SupportResistanceZone[];
 export declare function computeSupportResistanceZonesFromSwings(swings: SwingPoint[], options?: SupportResistanceZoneFromSwingsOptions): SupportResistanceZone[];
 export declare function computeRelativeCumulativeReturnLine(candles: CandleRecord[], benchmarkCandles: CandleRecord[]): Float32Array;

@@ -38,7 +38,8 @@ export type SwingPointStructure =
 export type SwingPointLabel = "SH" | "SL" | "HH" | "HL" | "LH" | "LL";
 export type StructureBreakKind = "StructureBreak" | "StructureShift";
 export type StructureDirection = "bullish" | "bearish";
-export type StructureSummaryState = StructureDirection | "transitional" | "neutral";
+export type StructureSummaryState = StructureDirection | "transitional" | "range" | "neutral";
+export type StructureActiveLevelRole = "continuation" | "shift" | "rangeHigh" | "rangeLow";
 export type RelativeStrengthDivergenceKind =
   | "bearishHigh"
   | "bearishLow"
@@ -82,6 +83,7 @@ export interface MarketStructureOptions {
 export interface MarketStructureSummary {
   state: StructureSummaryState;
   trend: StructureDirection | "neutral";
+  transitionDirection: StructureDirection | null;
   lastBreak: StructureBreak | null;
   lastSwingHigh: SwingPoint | null;
   lastSwingLow: SwingPoint | null;
@@ -94,6 +96,16 @@ export interface MarketStructureState {
   breaks: StructureBreak[];
   trend: StructureDirection | "neutral";
   summary: MarketStructureSummary;
+}
+
+export interface StructureActiveLevel {
+  role: StructureActiveLevelRole;
+  direction: StructureDirection | null;
+  price: number;
+  x: number;
+  ts: number;
+  bucket: number;
+  sourceSwing: SwingPoint;
 }
 
 export interface RelativeStrengthDivergence {
@@ -502,6 +514,65 @@ export function computeMarketStructure(
   };
 }
 
+export function computeStructureActiveLevels(
+  structure: MarketStructureState,
+): StructureActiveLevel[] {
+  const { swings, summary } = structure;
+  if (!swings.length || summary.state === "neutral") return [];
+
+  if (summary.state === "range") {
+    return [
+      latestExtremeSwingLevel(swings, "SwingHigh", "rangeHigh", null, true),
+      latestExtremeSwingLevel(swings, "SwingLow", "rangeLow", null, false),
+    ].filter((level): level is StructureActiveLevel => Boolean(level));
+  }
+
+  const direction =
+    summary.state === "transitional"
+      ? summary.transitionDirection ?? summary.lastBreak?.direction ?? structure.trend
+      : summary.state;
+
+  if (direction === "bullish") {
+    return [
+      latestPreferredSwingLevel(
+        swings,
+        "SwingHigh",
+        ["HigherHigh", "SwingHigh"],
+        "continuation",
+        "bullish",
+      ),
+      latestPreferredSwingLevel(
+        swings,
+        "SwingLow",
+        ["HigherLow", "SwingLow"],
+        "shift",
+        "bearish",
+      ),
+    ].filter((level): level is StructureActiveLevel => Boolean(level));
+  }
+
+  if (direction === "bearish") {
+    return [
+      latestPreferredSwingLevel(
+        swings,
+        "SwingLow",
+        ["LowerLow", "SwingLow"],
+        "continuation",
+        "bearish",
+      ),
+      latestPreferredSwingLevel(
+        swings,
+        "SwingHigh",
+        ["LowerHigh", "SwingHigh"],
+        "shift",
+        "bullish",
+      ),
+    ].filter((level): level is StructureActiveLevel => Boolean(level));
+  }
+
+  return [];
+}
+
 export function computeSupportResistanceZones(
   candles: CandleRecord[],
   options: SupportResistanceZoneOptions = {},
@@ -856,22 +927,91 @@ function summarizeMarketStructure(
   const lastSwingHigh = findLastSwing(swings, "SwingHigh");
   const lastSwingLow = findLastSwing(swings, "SwingLow");
   const latestSwing = swings[swings.length - 1] ?? null;
-  const state =
-    lastBreak == null
+  const repeatedOpposingShifts = hasRepeatedOpposingShifts(breaks);
+  const state: StructureSummaryState =
+    swings.length === 0
       ? "neutral"
-      : lastBreak.kind === "StructureShift"
-        ? "transitional"
-        : lastBreak.direction;
+      : lastBreak == null || repeatedOpposingShifts
+        ? "range"
+        : lastBreak.kind === "StructureShift"
+          ? "transitional"
+          : lastBreak.direction;
+  const transitionDirection =
+    state === "transitional" ? lastBreak?.direction ?? null : null;
 
   return {
     state,
     trend,
+    transitionDirection,
     lastBreak,
     lastSwingHigh,
     lastSwingLow,
     updatedX: lastBreak?.x ?? latestSwing?.x ?? null,
     updatedTs: lastBreak?.ts ?? latestSwing?.ts ?? null,
   };
+}
+
+function latestPreferredSwingLevel(
+  swings: SwingPoint[],
+  kind: SwingPointKind,
+  preferredStructures: SwingPointStructure[],
+  role: StructureActiveLevelRole,
+  direction: StructureDirection | null,
+) {
+  for (let index = swings.length - 1; index >= 0; index -= 1) {
+    const swing = swings[index];
+    if (swing.kind === kind && preferredStructures.includes(swing.structure)) {
+      return createStructureActiveLevel(role, direction, swing);
+    }
+  }
+  const fallback = findLastSwing(swings, kind);
+  return fallback ? createStructureActiveLevel(role, direction, fallback) : null;
+}
+
+function latestExtremeSwingLevel(
+  swings: SwingPoint[],
+  kind: SwingPointKind,
+  role: StructureActiveLevelRole,
+  direction: StructureDirection | null,
+  highest: boolean,
+) {
+  let best: SwingPoint | null = null;
+  for (const swing of swings) {
+    if (swing.kind !== kind) continue;
+    if (!best || (highest ? swing.price > best.price : swing.price < best.price)) {
+      best = swing;
+    }
+  }
+  return best ? createStructureActiveLevel(role, direction, best) : null;
+}
+
+function createStructureActiveLevel(
+  role: StructureActiveLevelRole,
+  direction: StructureDirection | null,
+  sourceSwing: SwingPoint,
+): StructureActiveLevel {
+  return {
+    role,
+    direction,
+    price: sourceSwing.price,
+    x: sourceSwing.x,
+    ts: sourceSwing.ts,
+    bucket: sourceSwing.bucket,
+    sourceSwing,
+  };
+}
+
+function hasRepeatedOpposingShifts(breaks: StructureBreak[]) {
+  const recentShifts = breaks
+    .slice(-5)
+    .filter((item) => item.kind === "StructureShift");
+  if (recentShifts.length < 3) return false;
+  for (let index = 1; index < recentShifts.length; index += 1) {
+    if (recentShifts[index].direction === recentShifts[index - 1].direction) {
+      return false;
+    }
+  }
+  return true;
 }
 
 function findLastSwing(swings: SwingPoint[], kind: SwingPointKind) {

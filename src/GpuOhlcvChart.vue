@@ -575,13 +575,17 @@ import {
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
+  computeStructureActiveLevels,
   computeSupportResistanceZones,
   computeWmaLine,
   lineToBytes,
   type AnchoredVwapSignal,
+  type MarketStructureSummary,
   type MarketStructureState,
   type RelativeStrengthDivergence,
+  type StructureActiveLevel,
   type StructureBreak,
+  type StructureDirection,
   type StructureSummaryState,
   type SupportResistanceZone,
   type SwingPoint,
@@ -690,6 +694,11 @@ interface HudLabelRect {
 interface SupportResistanceProjectionState {
   timeframe: string;
   state: GpuSeriesState;
+}
+
+interface MtfStructureEntry {
+  timeframe: string;
+  summary: MarketStructureSummary;
 }
 
 type IndicatorColorField = Extract<
@@ -807,6 +816,7 @@ type ChartIndicatorNumberField = Extract<
   | "marketStructureMinMoveAtr"
   | "marketStructureMaxLabels"
   | "marketStructureOpacity"
+  | "mtfStructureLevelOpacity"
   | "rsDivergenceLookback"
   | "rsDivergenceMinDeltaPct"
   | "rsDivergenceMaxLabels"
@@ -841,6 +851,11 @@ type ChartIndicatorToggleField = Extract<
   | "showSrProjection4h"
   | "showSrProjection1d"
   | "showAnchoredVwapSignals"
+  | "showMtfStructureSummary"
+  | "showMtfStructureLevels"
+  | "showMtfStructure1h"
+  | "showMtfStructure4h"
+  | "showMtfStructure1d"
 >;
 type ChartNumberField = ChartSettingsNumberField | ChartIndicatorNumberField;
 
@@ -1114,6 +1129,14 @@ const chartMarketStructureNumberFields: Array<{
   { key: "marketStructureMinMoveAtr", label: "Min Move ATR", min: 0, max: 10, step: 0.05 },
   { key: "marketStructureMaxLabels", label: "Max Labels", min: 1, max: 100, step: 1 },
   { key: "marketStructureOpacity", label: "Opacity", min: 0.05, max: 1, step: 0.05 },
+  { key: "mtfStructureLevelOpacity", label: "MTF Level Opacity", min: 0.05, max: 1, step: 0.05 },
+];
+const chartMarketStructureToggleFields: Array<{ key: ChartIndicatorToggleField; label: string }> = [
+  { key: "showMtfStructureSummary", label: "MTF Summary" },
+  { key: "showMtfStructureLevels", label: "MTF Levels" },
+  { key: "showMtfStructure1h", label: "Project 1h" },
+  { key: "showMtfStructure4h", label: "Project 4h" },
+  { key: "showMtfStructure1d", label: "Project 1D" },
 ];
 const chartRsDivergenceColorFields: Array<{ key: ChartIndicatorColorField; label: string }> = [
   { key: "rsDivergenceBearishColor", label: "Bearish Color" },
@@ -1194,7 +1217,7 @@ const CHART_INDICATOR_OPTIONS: ChartIndicatorOption[] = [
     label: "Market Structure",
     placement: "price",
     colorFields: chartMarketStructureColorFields,
-    toggleFields: [],
+    toggleFields: chartMarketStructureToggleFields,
     numberFields: chartMarketStructureNumberFields,
   },
   {
@@ -1364,6 +1387,7 @@ const chartSettingsResizing = ref(false);
 const chartSettingsTab = ref<ChartSettingsTab>("indicators");
 const selectedChartIndicatorId = ref("ema");
 const anchoredVwapPickMode = ref(false);
+const projectionRevision = ref(0);
 
 let chart: GpuChartHandle | null = null;
 let state: GpuSeriesState | null = null;
@@ -1619,14 +1643,47 @@ const structureSummary = computed(() => {
   void candleCount.value;
   void liveUpdates.value;
   const appearance = resolvedAppearance.value;
-  if (!state?.candles.length || !chartIndicatorEnabled("marketStructure", appearance)) return null;
+  if (!state?.candles.length || !mtfStructureSummaryEnabled(appearance)) return null;
   const summary = currentMarketStructure().summary;
   return summary.state === "neutral" ? null : summary;
 });
+const mtfStructureEntries = computed<MtfStructureEntry[]>(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  void projectionRevision.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !mtfStructureSummaryEnabled(appearance)) return [];
+
+  const entries: MtfStructureEntry[] = [];
+  const current = currentMarketStructure();
+  if (current.summary.state !== "neutral") {
+    entries.push({
+      timeframe: displayTimeframe.value,
+      summary: current.summary,
+    });
+  }
+
+  for (const projection of srProjectionStates) {
+    if (!mtfStructureProjectionTimeframeEnabled(projection.timeframe, appearance)) continue;
+    const structure = computeProjectedMarketStructure(projection.state);
+    if (structure.summary.state === "neutral") continue;
+    entries.push({
+      timeframe: projection.timeframe,
+      summary: structure.summary,
+    });
+  }
+
+  return entries;
+});
 const structureSummaryText = computed(() => {
-  const summary = structureSummary.value;
-  if (!summary) return "";
-  return `${displayTimeframe.value} structure: ${formatStructureSummaryState(summary.state)}`;
+  const entries = mtfStructureEntries.value;
+  if (!entries.length) return "";
+  return entries
+    .map(
+      (entry) =>
+        `${formatStructureSummaryTimeframe(entry.timeframe)} ${formatStructureSummary(entry.summary)}`,
+    )
+    .join(" | ");
 });
 const structureSummaryClass = computed(() => {
   const state = structureSummary.value?.state ?? "neutral";
@@ -1634,6 +1691,7 @@ const structureSummaryClass = computed(() => {
     bullish: state === "bullish",
     bearish: state === "bearish",
     transitional: state === "transitional",
+    range: state === "range",
   };
 });
 const openOnChartClickActive = computed(
@@ -1764,7 +1822,7 @@ watch(
       benchmarkLoadKey = "";
       stopBenchmarkStream();
     }
-    if (supportResistanceProjectionsEnabled()) {
+    if (projectedHigherTimeframeDataRequired()) {
       void ensureSupportResistanceProjectionStates();
     } else {
       clearSupportResistanceProjectionStates();
@@ -2083,7 +2141,7 @@ function relativeBenchmarkKey(limit: number) {
 
 async function ensureSupportResistanceProjectionStates() {
   const timeframes = supportResistanceProjectionTimeframes();
-  if (!state || !supportResistanceProjectionsEnabled() || !timeframes.length) {
+  if (!state || !projectedHigherTimeframeDataRequired() || !timeframes.length) {
     clearSupportResistanceProjectionStates();
     return;
   }
@@ -2118,6 +2176,7 @@ async function ensureSupportResistanceProjectionStates() {
       return result.value.state.candles.length > 0;
     })
     .map((result) => result.value);
+  projectionRevision.value += 1;
   srProjectionLoadKey = nextLoadKey;
   drawHud(mousePos);
 }
@@ -2145,7 +2204,7 @@ function supportResistanceProjectionTimeframes() {
       return (
         timeframe &&
         timeframe !== current &&
-        supportResistanceProjectionTimeframeEnabled(timeframe, appearance) &&
+        projectedHigherTimeframeRequired(timeframe, appearance) &&
         Number.isFinite(timeframeSec) &&
         Number.isFinite(currentSec) &&
         timeframeSec > currentSec
@@ -2156,6 +2215,19 @@ function supportResistanceProjectionTimeframes() {
 
 function supportResistanceProjectionsEnabled(appearance = resolvedAppearance.value) {
   return chartIndicatorEnabled("srZones", appearance) && appearance.showSrZoneProjections;
+}
+
+function projectedHigherTimeframeDataRequired(appearance = resolvedAppearance.value) {
+  return supportResistanceProjectionsEnabled(appearance) || mtfStructureDataRequired(appearance);
+}
+
+function projectedHigherTimeframeRequired(timeframe: string, appearance = resolvedAppearance.value) {
+  return (
+    (supportResistanceProjectionsEnabled(appearance) &&
+      supportResistanceProjectionTimeframeEnabled(timeframe, appearance)) ||
+    (mtfStructureDataRequired(appearance) &&
+      mtfStructureProjectionTimeframeEnabled(timeframe, appearance))
+  );
 }
 
 function supportResistanceProjectionTimeframeEnabled(
@@ -2180,9 +2252,13 @@ function supportResistanceProjectionLimit(timeframe: string) {
   const projectionSec = Math.max(1, timeframeToSeconds(timeframe));
   const secondsToCover = displayCandleLimit() * currentSec * 8;
   const coverageCandles = Math.ceil(secondsToCover / projectionSec);
+  const srLookback = supportResistanceProjectionsEnabled(appearance) ? appearance.srZoneLookback : 0;
+  const structureLookback = mtfStructureDataRequired(appearance)
+    ? appearance.marketStructureLookback
+    : 0;
   return Math.min(
     MAX_HISTORY_LOAD_CANDLES,
-    Math.max(80, appearance.srZoneLookback, coverageCandles),
+    Math.max(80, srLookback, structureLookback, coverageCandles),
   );
 }
 
@@ -2205,6 +2281,7 @@ function clearSupportResistanceProjectionStates() {
   srProjectionLoadGeneration += 1;
   srProjectionLoadKey = "";
   srProjectionStates = [];
+  projectionRevision.value += 1;
 }
 
 function startSynthetic() {
@@ -3881,6 +3958,9 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (chartIndicatorEnabled("srZones", appearance)) {
     drawSupportResistanceZones(ctx, priceDecorationBottom, scale, labelRects);
   }
+  if (mtfStructureLevelsEnabled(appearance)) {
+    drawMtfStructureActiveLevels(ctx, priceDecorationBottom, scale, labelRects);
+  }
   if (chartIndicatorEnabled("volume", appearance)) {
     drawVolumeOverlay(ctx, priceDecorationBottom, scale);
   }
@@ -4054,6 +4134,20 @@ function currentMarketStructure() {
     : emptyMarketStructure();
 }
 
+function computeProjectedMarketStructure(projectedState: GpuSeriesState) {
+  const appearance = resolvedAppearance.value;
+  return projectedState.candles.length
+    ? computeMarketStructure(projectedState.candles, {
+        lookback: appearance.marketStructureLookback,
+        pivotStrength: appearance.marketStructurePivotStrength,
+        atrPeriod: appearance.marketStructureAtrPeriod,
+        minMoveAtr: appearance.marketStructureMinMoveAtr,
+        maxSwings: Math.max(24, appearance.marketStructureMaxLabels * 2),
+        maxBreaks: Math.max(8, appearance.marketStructureMaxLabels),
+      })
+    : emptyMarketStructure();
+}
+
 function emptyMarketStructure(): MarketStructureState {
   return {
     swings: [],
@@ -4062,6 +4156,7 @@ function emptyMarketStructure(): MarketStructureState {
     summary: {
       state: "neutral",
       trend: "neutral",
+      transitionDirection: null,
       lastBreak: null,
       lastSwingHigh: null,
       lastSwingLow: null,
@@ -4079,9 +4174,179 @@ function formatStructureSummaryState(state: StructureSummaryState) {
       return "Bearish";
     case "transitional":
       return "Transitional";
+    case "range":
+      return "Range";
     case "neutral":
       return "Neutral";
   }
+}
+
+function formatStructureSummary(summary: MarketStructureSummary) {
+  if (summary.state === "transitional") {
+    return `Transitional ${structureDirectionArrow(summary.transitionDirection)}`;
+  }
+  return formatStructureSummaryState(summary.state);
+}
+
+function formatStructureSummaryTimeframe(timeframe: string) {
+  const normalized = normalizeRestTimeframe(timeframe);
+  return normalized.endsWith("d") ? normalized.toUpperCase() : normalized;
+}
+
+function mtfStructureSummaryEnabled(appearance = resolvedAppearance.value) {
+  return chartIndicatorEnabled("marketStructure", appearance) && appearance.showMtfStructureSummary;
+}
+
+function mtfStructureLevelsEnabled(appearance = resolvedAppearance.value) {
+  return chartIndicatorEnabled("marketStructure", appearance) && appearance.showMtfStructureLevels;
+}
+
+function mtfStructureDataRequired(appearance = resolvedAppearance.value) {
+  return mtfStructureSummaryEnabled(appearance) || mtfStructureLevelsEnabled(appearance);
+}
+
+function mtfStructureProjectionTimeframeEnabled(
+  timeframe: string,
+  appearance = resolvedAppearance.value,
+) {
+  switch (normalizeRestTimeframe(timeframe)) {
+    case "1h":
+      return appearance.showMtfStructure1h;
+    case "4h":
+      return appearance.showMtfStructure4h;
+    case "1d":
+      return appearance.showMtfStructure1d;
+    default:
+      return true;
+  }
+}
+
+function structureDirectionArrow(direction: StructureDirection | null) {
+  return direction === "bearish" ? "↓" : direction === "bullish" ? "↑" : "";
+}
+
+function drawMtfStructureActiveLevels(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+  labelRects: HudLabelRect[],
+) {
+  if (!state?.candles.length || priceBottom <= 0 || !srProjectionStates.length) return;
+  const appearance = resolvedAppearance.value;
+  const minY = Math.min(view.minY, view.maxY);
+  const maxY = Math.max(view.minY, view.maxY);
+  const opacity = appearance.marketStructureOpacity * appearance.mtfStructureLevelOpacity;
+  if (opacity <= 0) return;
+
+  ctx.save();
+  ctx.lineWidth = Math.max(1, scale);
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.72)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "middle";
+
+  for (const projection of srProjectionStates) {
+    if (!mtfStructureProjectionTimeframeEnabled(projection.timeframe, appearance)) continue;
+    const structure = computeProjectedMarketStructure(projection.state);
+    const levels = computeStructureActiveLevels(structure).slice(0, 2);
+    for (const level of levels) {
+      if (level.price < minY || level.price > maxY) continue;
+      drawMtfStructureActiveLevel(
+        ctx,
+        projection.timeframe,
+        level,
+        priceBottom,
+        scale,
+        labelRects,
+        opacity,
+      );
+    }
+  }
+  ctx.restore();
+}
+
+function drawMtfStructureActiveLevel(
+  ctx: CanvasRenderingContext2D,
+  timeframe: string,
+  level: StructureActiveLevel,
+  priceBottom: number,
+  scale: number,
+  labelRects: HudLabelRect[],
+  opacity: number,
+) {
+  const appearance = resolvedAppearance.value;
+  const y = yToPx(level.price, ctx.canvas.height);
+  if (y < 0 || y > priceBottom) return;
+  const color = mtfStructureActiveLevelColor(level, appearance);
+  const dash = level.role === "shift" ? [3 * scale, 5 * scale] : [7 * scale, 5 * scale];
+
+  ctx.save();
+  ctx.setLineDash(dash);
+  ctx.strokeStyle = hexToRgba(color, 0.56 * opacity);
+  ctx.beginPath();
+  ctx.moveTo(0, y + 0.5);
+  ctx.lineTo(ctx.canvas.width, y + 0.5);
+  ctx.stroke();
+  ctx.setLineDash([]);
+
+  const text = `${formatStructureActiveLevelTimeframe(timeframe)} ${formatStructureActiveLevelRole(
+    level,
+  )} ${formatPrice(level.price)}`;
+  const padX = 5 * scale;
+  const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.94);
+  const boxWidth = ctx.measureText(text).width + padX * 2;
+  const preferredLeft = Math.max(4 * scale, ctx.canvas.width - boxWidth - 86 * scale);
+  const rect = placeHudLabelRect(
+    ctx,
+    labelRects,
+    preferredLeft,
+    y - boxHeight / 2,
+    boxWidth,
+    boxHeight,
+    priceBottom,
+    scale,
+    [0, -1, 1, -2, 2, -3, 3],
+    [0, -1, -2, -3, -4],
+  );
+  if (!rect) {
+    ctx.restore();
+    return;
+  }
+
+  drawHudLeaderLine(ctx, ctx.canvas.width - 80 * scale, y, rect, color, scale, opacity);
+  ctx.fillStyle = hexToRgba(color, 0.18 * opacity);
+  ctx.strokeStyle = hexToRgba(color, 0.72 * opacity);
+  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
+  ctx.fillStyle = hexToRgba(color, 0.98 * opacity);
+  ctx.fillText(text, rect.left + padX, rect.top + boxHeight / 2);
+  ctx.restore();
+}
+
+function mtfStructureActiveLevelColor(
+  level: StructureActiveLevel,
+  appearance: GpuChartAppearance,
+) {
+  if (level.role === "rangeHigh") return appearance.marketStructureHighColor;
+  if (level.role === "rangeLow") return appearance.marketStructureLowColor;
+  if (level.direction === "bullish") return appearance.marketStructureHighColor;
+  if (level.direction === "bearish") return appearance.marketStructureLowColor;
+  return appearance.marketStructureBreakColor;
+}
+
+function formatStructureActiveLevelRole(level: StructureActiveLevel) {
+  switch (level.role) {
+    case "continuation":
+      return `BOS ${structureDirectionArrow(level.direction)}`;
+    case "shift":
+      return `Shift ${structureDirectionArrow(level.direction)}`;
+    case "rangeHigh":
+      return "Range H";
+    case "rangeLow":
+      return "Range L";
+  }
+}
+
+function formatStructureActiveLevelTimeframe(timeframe: string) {
+  return normalizeRestTimeframe(timeframe).toUpperCase();
 }
 
 function drawAnchoredVwapAnchor(
@@ -6564,8 +6829,8 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-structure-summary {
-  flex: 0 0 auto;
-  max-width: min(22em, 42vw);
+  flex: 1 1 auto;
+  max-width: min(54em, 62vw);
   padding: 0 4px;
   border: 1px solid rgba(148, 163, 184, 0.18);
   border-radius: 4px;
@@ -6587,6 +6852,11 @@ function setError(message: string | null) {
 .gpu-chart-structure-summary.transitional {
   border-color: rgba(245, 158, 11, 0.24);
   color: rgb(251, 191, 36);
+}
+
+.gpu-chart-structure-summary.range {
+  border-color: rgba(148, 163, 184, 0.24);
+  color: rgba(203, 213, 225, 0.94);
 }
 
 .gpu-chart-state {

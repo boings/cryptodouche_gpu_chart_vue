@@ -93,6 +93,12 @@ export interface GpuChartAppearance {
   marketStructureMinMoveAtr: number;
   marketStructureMaxLabels: number;
   marketStructureOpacity: number;
+  showMtfStructureSummary: boolean;
+  showMtfStructureLevels: boolean;
+  showMtfStructure1h: boolean;
+  showMtfStructure4h: boolean;
+  showMtfStructure1d: boolean;
+  mtfStructureLevelOpacity: number;
   rsDivergenceLookback: number;
   rsDivergenceMinDeltaPct: number;
   rsDivergenceMaxLabels: number;
@@ -353,6 +359,12 @@ export const DEFAULT_GPU_CHART_APPEARANCE: GpuChartAppearance = {
   marketStructureMinMoveAtr: 0.75,
   marketStructureMaxLabels: 20,
   marketStructureOpacity: 0.9,
+  showMtfStructureSummary: true,
+  showMtfStructureLevels: true,
+  showMtfStructure1h: true,
+  showMtfStructure4h: true,
+  showMtfStructure1d: true,
+  mtfStructureLevelOpacity: 0.72,
   rsDivergenceLookback: 500,
   rsDivergenceMinDeltaPct: 0.5,
   rsDivergenceMaxLabels: 12,
@@ -605,6 +617,23 @@ export function normalizeGpuChartAppearance(
       0.05,
       1,
       defaults.marketStructureOpacity,
+    ),
+    showMtfStructureSummary: boolValue(
+      value.showMtfStructureSummary,
+      defaults.showMtfStructureSummary,
+    ),
+    showMtfStructureLevels: boolValue(
+      value.showMtfStructureLevels,
+      defaults.showMtfStructureLevels,
+    ),
+    showMtfStructure1h: boolValue(value.showMtfStructure1h, defaults.showMtfStructure1h),
+    showMtfStructure4h: boolValue(value.showMtfStructure4h, defaults.showMtfStructure4h),
+    showMtfStructure1d: boolValue(value.showMtfStructure1d, defaults.showMtfStructure1d),
+    mtfStructureLevelOpacity: clampNumber(
+      value.mtfStructureLevelOpacity,
+      0.05,
+      1,
+      defaults.mtfStructureLevelOpacity,
     ),
     rsDivergenceLookback: clampInteger(
       value.rsDivergenceLookback,

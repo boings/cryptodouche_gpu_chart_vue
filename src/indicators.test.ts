@@ -7,9 +7,11 @@ import {
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeRelativeStrengthDivergences,
+  computeStructureActiveLevels,
   computeSupportResistanceZones,
   computeSupportResistanceZonesFromSwings,
   computeSwingPoints,
+  type MarketStructureState,
   type SwingPoint,
 } from "./indicators";
 import type { CandleRecord } from "./types";
@@ -71,6 +73,38 @@ function swing(
     bucket: index * 60,
     price,
     atr: null,
+  };
+}
+
+function structureState(
+  state: MarketStructureState["summary"]["state"],
+  swings: SwingPoint[],
+  transitionDirection: MarketStructureState["summary"]["transitionDirection"] = null,
+): MarketStructureState {
+  const swingHighs = swings.filter((item) => item.kind === "SwingHigh");
+  const swingLows = swings.filter((item) => item.kind === "SwingLow");
+  const lastSwing = swings.length > 0 ? swings[swings.length - 1] : null;
+
+  return {
+    swings,
+    breaks: [],
+    trend:
+      state === "bullish" || state === "bearish"
+        ? state
+        : transitionDirection ?? "neutral",
+    summary: {
+      state,
+      trend:
+        state === "bullish" || state === "bearish"
+          ? state
+          : transitionDirection ?? "neutral",
+      transitionDirection,
+      lastBreak: null,
+      lastSwingHigh: swingHighs.length > 0 ? swingHighs[swingHighs.length - 1] : null,
+      lastSwingLow: swingLows.length > 0 ? swingLows[swingLows.length - 1] : null,
+      updatedX: lastSwing?.x ?? null,
+      updatedTs: lastSwing?.ts ?? null,
+    },
   };
 }
 
@@ -302,6 +336,57 @@ describe("gpu chart indicators", () => {
     ]);
     expect(structure.summary.state).toBe("bullish");
     expect(structure.summary.lastBreak?.kind).toBe("StructureBreak");
+  });
+
+  it("exposes active continuation and shift levels for directional structure", () => {
+    const swings = [
+      swing(0, "SwingLow", 90, "SwingLow"),
+      swing(1, "SwingHigh", 110, "SwingHigh"),
+      swing(2, "SwingLow", 100, "HigherLow"),
+      swing(3, "SwingHigh", 125, "HigherHigh"),
+    ];
+
+    const levels = computeStructureActiveLevels(structureState("bullish", swings));
+
+    expect(levels.map((level) => `${level.role}:${level.direction}:${level.sourceSwing.label}`)).toEqual([
+      "continuation:bullish:HH",
+      "shift:bearish:HL",
+    ]);
+  });
+
+  it("uses the transition direction for active transitional levels", () => {
+    const swings = [
+      swing(0, "SwingLow", 90, "SwingLow"),
+      swing(1, "SwingHigh", 120, "SwingHigh"),
+      swing(2, "SwingLow", 100, "HigherLow"),
+      swing(3, "SwingHigh", 114, "LowerHigh"),
+      swing(4, "SwingLow", 82, "LowerLow"),
+    ];
+
+    const levels = computeStructureActiveLevels(
+      structureState("transitional", swings, "bearish"),
+    );
+
+    expect(levels.map((level) => `${level.role}:${level.direction}:${level.sourceSwing.label}`)).toEqual([
+      "continuation:bearish:LL",
+      "shift:bullish:LH",
+    ]);
+  });
+
+  it("exposes range high and low when no directional break is established", () => {
+    const swings = [
+      swing(0, "SwingLow", 90, "SwingLow"),
+      swing(1, "SwingHigh", 110, "SwingHigh"),
+      swing(2, "SwingLow", 92, "HigherLow"),
+      swing(3, "SwingHigh", 108, "LowerHigh"),
+    ];
+
+    const levels = computeStructureActiveLevels(structureState("range", swings));
+
+    expect(levels.map((level) => `${level.role}:${level.direction}:${level.price}`)).toEqual([
+      "rangeHigh:null:110",
+      "rangeLow:null:90",
+    ]);
   });
 
   it("returns a flat zero relative return line for a self benchmark", () => {
