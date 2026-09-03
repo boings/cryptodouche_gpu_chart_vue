@@ -517,6 +517,8 @@ export function createDecisionSnapshot(input: DecisionSnapshotInput): DecisionSn
   ) {
     throw new RangeError("Candidate episode provenance does not match the lifecycle snapshot");
   }
+  assertCandidateKnownAt(input.lifecycle.candidate, input.effectiveAsOf);
+  assertCandidateMetricsKnownAt(input.candidateMetrics, input.effectiveAsOf);
 
   const notes = [...input.dataQualityNotes];
   assertReferenceConsistency([
@@ -658,6 +660,41 @@ function candidateMetricsAt(
     return null;
   }
   return metrics;
+}
+
+function assertCandidateKnownAt(
+  candidate: SetupCandidateEpisode | null,
+  asOf: number,
+) {
+  if (!candidate) return;
+  const timestamps = [
+    candidate.detectedAt,
+    candidate.detectionEventTime,
+    candidate.stateSince,
+    candidate.episodeHighTime,
+    candidate.terminalAt,
+    ...candidate.initialMtfContext.map((item) => item.updatedTs),
+  ].filter((value): value is number => value != null);
+  if (timestamps.some((value) => !Number.isFinite(value) || value > asOf)) {
+    throw new RangeError("Candidate episode contains information after effectiveAsOf");
+  }
+}
+
+function assertCandidateMetricsKnownAt(metrics: CandidateMetrics | null, asOf: number) {
+  if (!metrics) return;
+  const timestamps = [
+    metrics.requestedAsOf,
+    metrics.effectiveAsOf,
+    metrics.updatedAt,
+    metrics.historyCoverage.requestedEndTs,
+    metrics.historyCoverage.availableEndTs,
+    metrics.extension.latestTs,
+    metrics.extension.referenceTs,
+    ...Object.values(metrics.timeframeExtensions).map((item) => item.latestTs),
+  ].filter((value): value is number => value != null);
+  if (timestamps.some((value) => !Number.isFinite(value) || value > asOf)) {
+    throw new RangeError("Candidate metrics contain information after effectiveAsOf");
+  }
 }
 
 function structuresAt(

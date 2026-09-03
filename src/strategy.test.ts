@@ -84,6 +84,29 @@ function lifecycle(state: SetupStateSnapshot["currentState"] = "entryCandidate")
   };
 }
 
+function minimalSnapshotInput(
+  lifecycleSnapshot = lifecycle(),
+): Parameters<typeof createDecisionSnapshot>[0] {
+  return {
+    symbol: "FILUSDT",
+    source: "external",
+    decisionTime: asOf,
+    effectiveAsOf: asOf,
+    strategyProfile: DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
+    lifecycle: lifecycleSnapshot,
+    candidateMetrics: null,
+    structureByTimeframe: {},
+    activeStructureLevels: [],
+    supportResistanceZones: [],
+    avwapState: null,
+    avwapEvents: [],
+    relativeStrengthState: null,
+    relativeStrengthEvents: [],
+    visibleOrSelectedReferenceLevels: [],
+    dataQualityNotes: [],
+  };
+}
+
 describe("Impulse Fade strategy profile and decision snapshots", () => {
   it("assigns exact revision identity to frozen structural references", () => {
     const reference = createDecisionReferenceLevel({
@@ -258,6 +281,55 @@ describe("Impulse Fade strategy profile and decision snapshots", () => {
 
     expect(snapshot.lifecycleState).toBe("deteriorating");
     expect(snapshot.candidateEpisode?.currentState).toBe("deteriorating");
+  });
+
+  it("rejects future facts nested inside candidate and metric snapshots", () => {
+    const futureCandidate = lifecycle();
+    futureCandidate.candidate!.episodeHighTime = asOf + 900;
+    expect(() => createDecisionSnapshot(minimalSnapshotInput(futureCandidate))).toThrow(
+      "Candidate episode contains information after effectiveAsOf",
+    );
+
+    const futureMetrics = {
+      symbol: "FILUSDT",
+      exchange: "bybit",
+      marketType: "perp",
+      source: "external" as const,
+      baseTimeframe: "1h",
+      requestedAsOf: asOf,
+      effectiveAsOf: asOf,
+      sampleCount: 1,
+      historyCoverage: {
+        requestedStartTs: asOf - 86_400,
+        requestedEndTs: asOf,
+        availableStartTs: asOf - 86_400,
+        availableEndTs: asOf,
+        coveredSeconds: 86_400,
+        requestedSeconds: 86_400,
+        coverageRatio: 1,
+      },
+      insufficientDataReasons: [],
+      extension: {
+        windowSeconds: 86_400,
+        historyDays: 1,
+        sampleCount: 1,
+        latestTs: asOf,
+        referenceTs: asOf - 86_400,
+        latestClose: 1,
+        referenceClose: 1,
+        returnPct: 0,
+        percentile: 50,
+        zScore: 0,
+      },
+      timeframeExtensions: {},
+      updatedAt: asOf + 1,
+    };
+    expect(() =>
+      createDecisionSnapshot({
+        ...minimalSnapshotInput(),
+        candidateMetrics: futureMetrics,
+      }),
+    ).toThrow("Candidate metrics contain information after effectiveAsOf");
   });
 
   it("excludes nested structure and AVWAP values learned after the cutoff", () => {
