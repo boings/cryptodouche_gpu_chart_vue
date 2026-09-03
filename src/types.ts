@@ -81,3 +81,38 @@ export interface GpuChartOpenPayload {
   marketType?: string;
   timeframe: string | number;
 }
+
+export interface CandidateExtensionMetrics {
+  windowSeconds: number;
+  historyDays: number;
+  sampleCount: number;
+  latestTs: number | null;
+  referenceTs: number | null;
+  latestClose: number | null;
+  referenceClose: number | null;
+  returnPct: number | null;
+  percentile: number | null;
+  zScore: number | null;
+}
+
+export interface CandidateTimeframeExtensionMetrics {
+  timeframe: string;
+  emaPeriod: number;
+  atrPeriod: number;
+  latestTs: number | null;
+  latestClose: number | null;
+  ema: number | null;
+  atr: number | null;
+  atrExtension: number | null;
+}
+
+export interface CandidateMetrics {
+  symbol: string;
+  exchange: string;
+  marketType: string;
+  source: "local" | "external";
+  baseTimeframe: string;
+  extension: CandidateExtensionMetrics;
+  timeframeExtensions: Record<string, CandidateTimeframeExtensionMetrics>;
+  updatedAt: number;
+}

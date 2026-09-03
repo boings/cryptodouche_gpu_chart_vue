@@ -193,6 +193,59 @@ export interface AnchoredVwapSignal {
   vwap: number;
 }
 
+export type SetupStateName =
+  | "notCandidate"
+  | "developing"
+  | "deteriorating"
+  | "waitingForRetest"
+  | "entryCandidate"
+  | "invalidated";
+
+export type SetupStateCheckStatus = "pass" | "pending" | "fail";
+
+export interface SetupExtensionMetrics {
+  returnPct?: number | null;
+  percentile?: number | null;
+  zScore?: number | null;
+  atrExtension?: number | null;
+}
+
+export interface SetupStateCheck {
+  key:
+    | "extension"
+    | "htfResistance"
+    | "rsWeakness"
+    | "structureShift"
+    | "avwapFailure"
+    | "retest";
+  label: string;
+  status: SetupStateCheckStatus;
+  detail: string;
+}
+
+export interface SetupStateOptions {
+  extension?: SetupExtensionMetrics | null;
+  structure?: MarketStructureSummary | null;
+  htfStructures?: Array<{ timeframe: string; summary: MarketStructureSummary }>;
+  srZones?: SupportResistanceZone[];
+  rsDivergences?: RelativeStrengthDivergence[];
+  anchoredVwapSignals?: AnchoredVwapSignal[];
+  avwapDistancePct?: number | null;
+  latestPrice?: number | null;
+  latestTs?: number | null;
+  resistanceNearPct?: number;
+  retestNearPct?: number;
+}
+
+export interface SetupStateSnapshot {
+  strategy: "pumpFade";
+  state: SetupStateName;
+  label: string;
+  reason: string;
+  checks: SetupStateCheck[];
+  updatedTs: number | null;
+}
+
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
   if (candles.length < period) return new Float32Array();
   const points: number[] = [];
@@ -415,6 +468,69 @@ export function computeExtensionSnapshot(
     ema,
     atr,
     atrExtension,
+  };
+}
+
+export function computeSetupState(options: SetupStateOptions = {}): SetupStateSnapshot {
+  const latestPrice = normalizedNullableNumber(options.latestPrice);
+  const structure = options.structure ?? null;
+  const htfStructures = options.htfStructures ?? [];
+  const srZones = options.srZones ?? [];
+  const latestTs =
+    normalizedNullableNumber(options.latestTs) ??
+    normalizedNullableNumber(structure?.updatedTs) ??
+    null;
+  const resistanceNearPct = clampNumberOption(options.resistanceNearPct, 0, 10, 1.5);
+  const retestNearPct = clampNumberOption(options.retestNearPct, 0, 10, 0.8);
+
+  const extension = setupExtensionCheck(options.extension ?? null);
+  const htfResistance = setupResistanceCheck(srZones, latestPrice, resistanceNearPct);
+  const rsWeakness = setupRsWeaknessCheck(options.rsDivergences ?? []);
+  const structureShift = setupStructureShiftCheck(structure);
+  const avwapFailure = setupAvwapFailureCheck(
+    options.anchoredVwapSignals ?? [],
+    options.avwapDistancePct,
+  );
+  const retest = setupRetestCheck(structure, srZones, latestPrice, retestNearPct);
+  const invalidated = setupInvalidated(extension, htfResistance, structure, latestPrice);
+
+  let state: SetupStateName = "notCandidate";
+  if (extension.status !== "pass") {
+    state = "notCandidate";
+  } else if (invalidated) {
+    state = "invalidated";
+  } else if (
+    structureShift.status === "pass" &&
+    retest.status === "pass" &&
+    (rsWeakness.status === "pass" || avwapFailure.status === "pass")
+  ) {
+    state = "entryCandidate";
+  } else if (structureShift.status === "pass") {
+    state = "waitingForRetest";
+  } else if (
+    (rsWeakness.status === "pass" || avwapFailure.status === "pass") &&
+    hasContextForDeveloping(htfResistance, htfStructures)
+  ) {
+    state = "deteriorating";
+  } else if (hasContextForDeveloping(htfResistance, htfStructures)) {
+    state = "developing";
+  }
+
+  const checks = [
+    extension,
+    htfResistance,
+    rsWeakness,
+    structureShift,
+    avwapFailure,
+    retest,
+  ];
+  return {
+    strategy: "pumpFade",
+    state,
+    label: setupStateLabel(state),
+    reason: setupStateReason(state, checks),
+    checks,
+    updatedTs: latestTs,
   };
 }
 
@@ -932,6 +1048,213 @@ export function lineToBytes(line: Float32Array): Uint8Array {
 
 function validPositivePrice(value: number) {
   return Number.isFinite(value) && value > 0;
+}
+
+function setupExtensionCheck(extension: SetupExtensionMetrics | null): SetupStateCheck {
+  const returnPct = normalizedNullableNumber(extension?.returnPct);
+  const percentile = normalizedNullableNumber(extension?.percentile);
+  const zScore = normalizedNullableNumber(extension?.zScore);
+  const atrExtension = normalizedNullableNumber(extension?.atrExtension);
+  const detailParts = [
+    returnPct == null ? null : `24h ${formatSetupSigned(returnPct, 1)}%`,
+    atrExtension == null ? null : `Ext ${formatSetupSigned(atrExtension, 1)} ATR`,
+    zScore == null ? null : `Z ${formatSetupSigned(zScore, 1)}`,
+    percentile == null ? null : `Pctl ${Math.round(percentile)}`,
+  ].filter((item): item is string => Boolean(item));
+  const pass =
+    (returnPct != null && returnPct >= 8) ||
+    (percentile != null && percentile >= 95) ||
+    (zScore != null && zScore >= 2) ||
+    (atrExtension != null && atrExtension >= 2);
+
+  return {
+    key: "extension",
+    label: "Extension",
+    status: pass ? "pass" : "pending",
+    detail: detailParts.join(" | ") || "No extension context yet",
+  };
+}
+
+function setupResistanceCheck(
+  zones: SupportResistanceZone[],
+  latestPrice: number | null,
+  nearPct: number,
+): SetupStateCheck {
+  const zone = nearestResistanceZone(zones, latestPrice, nearPct);
+  if (!zone) {
+    return {
+      key: "htfResistance",
+      label: "HTF resistance",
+      status: "pending",
+      detail: "No nearby resistance zone",
+    };
+  }
+  return {
+    key: "htfResistance",
+    label: "HTF resistance",
+    status: "pass",
+    detail: `R ${formatSetupPrice(zone.low)}-${formatSetupPrice(zone.high)} strength ${zone.strength.toFixed(1)}`,
+  };
+}
+
+function setupRsWeaknessCheck(divergences: RelativeStrengthDivergence[]): SetupStateCheck {
+  const event = [...divergences].reverse().find((item) => item.direction === "bearish");
+  if (!event) {
+    return {
+      key: "rsWeakness",
+      label: "RS weakness",
+      status: "pending",
+      detail: "No bearish RS event",
+    };
+  }
+  return {
+    key: "rsWeakness",
+    label: "RS weakness",
+    status: "pass",
+    detail: event.label,
+  };
+}
+
+function setupStructureShiftCheck(structure: MarketStructureSummary | null): SetupStateCheck {
+  const bearish =
+    structure?.state === "bearish" ||
+    (structure?.state === "transitional" && structure.transitionDirection === "bearish");
+  return {
+    key: "structureShift",
+    label: "Structure shift",
+    status: bearish ? "pass" : "pending",
+    detail: bearish
+      ? structure.state === "bearish"
+        ? "Bearish structure"
+        : "Bearish transition"
+      : "No bearish structure shift",
+  };
+}
+
+function setupAvwapFailureCheck(
+  signals: AnchoredVwapSignal[],
+  distancePct: number | null | undefined,
+): SetupStateCheck {
+  const signal = [...signals]
+    .reverse()
+    .find((item) => item.kind === "loss" || item.kind === "failedReclaim");
+  const normalizedDistance = normalizedNullableNumber(distancePct);
+  const pass = Boolean(signal) || (normalizedDistance != null && normalizedDistance <= -0.2);
+  return {
+    key: "avwapFailure",
+    label: "AVWAP failure",
+    status: pass ? "pass" : "pending",
+    detail: signal?.label ?? (normalizedDistance == null
+      ? "No AVWAP failure"
+      : `AVWAP ${formatSetupSigned(normalizedDistance, 1)}%`),
+  };
+}
+
+function setupRetestCheck(
+  structure: MarketStructureSummary | null,
+  zones: SupportResistanceZone[],
+  latestPrice: number | null,
+  nearPct: number,
+): SetupStateCheck {
+  const breakLevel = normalizedNullableNumber(structure?.lastBreak?.level);
+  const nearBreak =
+    breakLevel != null && latestPrice != null && distancePct(latestPrice, breakLevel) <= nearPct;
+  const nearResistance = nearestResistanceZone(zones, latestPrice, nearPct);
+  const pass = Boolean(nearBreak || nearResistance);
+  return {
+    key: "retest",
+    label: "Retest",
+    status: pass ? "pass" : "pending",
+    detail: nearBreak
+      ? `Retesting ${formatSetupPrice(breakLevel)}`
+      : nearResistance
+        ? `Near R ${formatSetupPrice(nearResistance.center)}`
+        : "No retest yet",
+  };
+}
+
+function setupInvalidated(
+  extension: SetupStateCheck,
+  htfResistance: SetupStateCheck,
+  structure: MarketStructureSummary | null,
+  latestPrice: number | null,
+) {
+  if (extension.status !== "pass" || htfResistance.status !== "pass") return false;
+  if (structure?.state !== "bullish" || latestPrice == null) return false;
+  const high = normalizedNullableNumber(structure.lastSwingHigh?.price);
+  return high != null && latestPrice > high * 1.01;
+}
+
+function hasContextForDeveloping(
+  htfResistance: SetupStateCheck,
+  htfStructures: Array<{ timeframe: string; summary: MarketStructureSummary }>,
+) {
+  return (
+    htfResistance.status === "pass" ||
+    htfStructures.some((entry) => entry.summary.state !== "neutral")
+  );
+}
+
+function nearestResistanceZone(
+  zones: SupportResistanceZone[],
+  latestPrice: number | null,
+  nearPct: number,
+) {
+  if (latestPrice == null || !validPositivePrice(latestPrice)) return null;
+  return zones
+    .filter((zone) => zone.kind === "resistance")
+    .map((zone) => ({
+      zone,
+      distance:
+        latestPrice >= zone.low && latestPrice <= zone.high
+          ? 0
+          : latestPrice < zone.low
+            ? ((zone.low - latestPrice) / latestPrice) * 100
+            : ((latestPrice - zone.high) / latestPrice) * 100,
+    }))
+    .filter((item) => item.distance <= nearPct)
+    .sort((a, b) => a.distance - b.distance || b.zone.strength - a.zone.strength)
+    .map((item) => item.zone)[0] ?? null;
+}
+
+function distancePct(value: number, reference: number) {
+  if (!validPositivePrice(value) || !validPositivePrice(reference)) return Infinity;
+  return Math.abs((value / reference - 1) * 100);
+}
+
+function setupStateLabel(state: SetupStateName) {
+  switch (state) {
+    case "developing":
+      return "Developing";
+    case "deteriorating":
+      return "Deteriorating";
+    case "waitingForRetest":
+      return "Waiting for Retest";
+    case "entryCandidate":
+      return "Entry Candidate";
+    case "invalidated":
+      return "Invalidated";
+    case "notCandidate":
+      return "Not Candidate";
+  }
+}
+
+function setupStateReason(state: SetupStateName, checks: SetupStateCheck[]) {
+  if (state === "notCandidate") return "Waiting for extension context";
+  if (state === "invalidated") return "Continuation invalidated the fade setup";
+  const passed = checks.filter((check) => check.status === "pass").map((check) => check.label);
+  return passed.length ? passed.join(" + ") : setupStateLabel(state);
+}
+
+function formatSetupSigned(value: number, digits = 1) {
+  return `${value > 0 ? "+" : ""}${value.toFixed(digits)}`;
+}
+
+function formatSetupPrice(value: number) {
+  const abs = Math.abs(value);
+  if (abs >= 1000) return value.toFixed(0);
+  if (abs >= 1) return value.toFixed(3).replace(/\.?0+$/, "");
+  return value.toFixed(6).replace(/\.?0+$/, "");
 }
 
 function normalizedNullableNumber(value: number | null | undefined) {

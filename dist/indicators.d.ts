@@ -157,6 +157,44 @@ export interface AnchoredVwapSignal {
     price: number;
     vwap: number;
 }
+export type SetupStateName = "notCandidate" | "developing" | "deteriorating" | "waitingForRetest" | "entryCandidate" | "invalidated";
+export type SetupStateCheckStatus = "pass" | "pending" | "fail";
+export interface SetupExtensionMetrics {
+    returnPct?: number | null;
+    percentile?: number | null;
+    zScore?: number | null;
+    atrExtension?: number | null;
+}
+export interface SetupStateCheck {
+    key: "extension" | "htfResistance" | "rsWeakness" | "structureShift" | "avwapFailure" | "retest";
+    label: string;
+    status: SetupStateCheckStatus;
+    detail: string;
+}
+export interface SetupStateOptions {
+    extension?: SetupExtensionMetrics | null;
+    structure?: MarketStructureSummary | null;
+    htfStructures?: Array<{
+        timeframe: string;
+        summary: MarketStructureSummary;
+    }>;
+    srZones?: SupportResistanceZone[];
+    rsDivergences?: RelativeStrengthDivergence[];
+    anchoredVwapSignals?: AnchoredVwapSignal[];
+    avwapDistancePct?: number | null;
+    latestPrice?: number | null;
+    latestTs?: number | null;
+    resistanceNearPct?: number;
+    retestNearPct?: number;
+}
+export interface SetupStateSnapshot {
+    strategy: "pumpFade";
+    state: SetupStateName;
+    label: string;
+    reason: string;
+    checks: SetupStateCheck[];
+    updatedTs: number | null;
+}
 export declare function computeSmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeEmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeWmaLine(candles: CandleRecord[], period?: number): Float32Array;
@@ -177,6 +215,7 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
 };
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeExtensionSnapshot(candles: CandleRecord[], options?: ExtensionSnapshotOptions): ExtensionSnapshot;
+export declare function computeSetupState(options?: SetupStateOptions): SetupStateSnapshot;
 export declare function computeAnchoredVwapLine(candles: CandleRecord[], options?: AnchoredVwapOptions): Float32Array;
 export declare function computeAnchoredVwapSnapshot(candles: CandleRecord[], options?: AnchoredVwapOptions): AnchoredVwapSnapshot;
 export declare function computeAnchoredVwapSignals(candles: CandleRecord[], options?: AnchoredVwapOptions, maxSignals?: number): AnchoredVwapSignal[];

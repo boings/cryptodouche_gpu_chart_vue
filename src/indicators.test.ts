@@ -6,6 +6,7 @@ import {
   computeAnchoredVwapSnapshot,
   computeExtensionSnapshot,
   computeMarketStructure,
+  computeSetupState,
   computeRelativeCumulativeReturnLine,
   computeRelativeStrengthDivergences,
   computeStructureActiveLevels,
@@ -13,6 +14,8 @@ import {
   computeSupportResistanceZonesFromSwings,
   computeSwingPoints,
   type MarketStructureState,
+  type RelativeStrengthDivergence,
+  type SupportResistanceZone,
   type SwingPoint,
 } from "./indicators";
 import type { CandleRecord } from "./types";
@@ -122,6 +125,42 @@ function structureState(
   };
 }
 
+function resistanceZone(low = 99, high = 102): SupportResistanceZone {
+  return {
+    kind: "resistance",
+    low,
+    high,
+    center: (low + high) / 2,
+    touches: 4,
+    score: 8,
+    strength: 8,
+    lastX: 20,
+    source: "swing",
+    structures: ["HigherHigh"],
+  };
+}
+
+function bearishRsEvent(): RelativeStrengthDivergence {
+  return {
+    kind: "bearishHigh",
+    signal: "divergence",
+    direction: "bearish",
+    label: "RS DIV ↓",
+    index: 20,
+    x: 20,
+    ts: 1200,
+    bucket: 1200,
+    price: 101,
+    previousPrice: 100,
+    rs: 0.02,
+    previousRs: 0.03,
+    priceLabel: "HH",
+    sourceBreak: null,
+    priceStructureState: "bullish",
+    rsStructureState: "bearish",
+  };
+}
+
 describe("gpu chart indicators", () => {
   it("computes anchored VWAP from the selected bucket", () => {
     const candles = [
@@ -227,6 +266,67 @@ describe("gpu chart indicators", () => {
     expect(snapshot.percentile).toBeGreaterThan(80);
     expect(snapshot.zScore).toBeGreaterThan(1);
     expect(snapshot.atrExtension).toBeGreaterThan(0);
+  });
+
+  it("marks an extended coin at nearby resistance as developing", () => {
+    const setup = computeSetupState({
+      extension: { returnPct: 12, percentile: 97, zScore: 2.5, atrExtension: 2.1 },
+      latestPrice: 101,
+      srZones: [resistanceZone()],
+      htfStructures: [{ timeframe: "4h", summary: structureState("bullish", []).summary }],
+    });
+
+    expect(setup.state).toBe("developing");
+    expect(setup.checks.find((check) => check.key === "extension")?.status).toBe("pass");
+    expect(setup.checks.find((check) => check.key === "htfResistance")?.status).toBe("pass");
+  });
+
+  it("promotes developing setups to deteriorating when relative strength weakens", () => {
+    const setup = computeSetupState({
+      extension: { returnPct: 9, percentile: 90, zScore: 1.8, atrExtension: 1.6 },
+      latestPrice: 101,
+      srZones: [resistanceZone()],
+      rsDivergences: [bearishRsEvent()],
+    });
+
+    expect(setup.state).toBe("deteriorating");
+    expect(setup.reason).toContain("RS weakness");
+  });
+
+  it("waits for a retest after bearish structure shifts", () => {
+    const structure = structureState("transitional", [
+      swing(5, "SwingHigh", 105, "HigherHigh"),
+      swing(10, "SwingLow", 95, "HigherLow"),
+    ], "bearish");
+    structure.summary.lastBreak = {
+      kind: "StructureShift",
+      direction: "bearish",
+      label: "Shift",
+      index: 18,
+      x: 18,
+      ts: 1080,
+      bucket: 1080,
+      level: 96,
+      sourceSwingX: 10,
+      sourceSwingPrice: 95,
+    };
+
+    const waiting = computeSetupState({
+      extension: { percentile: 98 },
+      structure: structure.summary,
+      latestPrice: 93,
+      srZones: [resistanceZone()],
+    });
+    const retesting = computeSetupState({
+      extension: { percentile: 98 },
+      structure: structure.summary,
+      latestPrice: 96.2,
+      srZones: [resistanceZone()],
+      rsDivergences: [bearishRsEvent()],
+    });
+
+    expect(waiting.state).toBe("waitingForRetest");
+    expect(retesting.state).toBe("entryCandidate");
   });
 
   it("computes relative cumulative return anchored at zero", () => {

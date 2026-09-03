@@ -1,4 +1,4 @@
-import type { GpuChartDataAdapter, GpuChartOpenPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
+import type { CandidateMetrics, GpuChartDataAdapter, GpuChartOpenPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
 import { type GpuChartAppearance } from "./appearance";
 type __VLS_Props = {
     symbol: string;
@@ -19,6 +19,7 @@ type __VLS_Props = {
     showChartSettings?: boolean;
     syncId?: string | number;
     timeSyncCommand?: GpuChartTimeSyncCommand | null;
+    candidateMetrics?: CandidateMetrics | null;
     appearance?: Partial<GpuChartAppearance>;
 };
 declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -55,5 +56,6 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     showChartSettings: boolean;
     syncId: string | number;
     timeSyncCommand: GpuChartTimeSyncCommand | null;
+    candidateMetrics: CandidateMetrics | null;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

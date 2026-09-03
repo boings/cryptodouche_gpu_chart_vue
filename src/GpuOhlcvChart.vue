@@ -531,6 +531,14 @@
         >
           {{ structureSummaryText }}
         </span>
+        <span
+          v-if="setupStateText"
+          class="gpu-chart-setup-state"
+          :class="setupStateClass"
+          :title="setupStateTitle"
+        >
+          {{ setupStateText }}
+        </span>
       </span>
     </component>
     <button
@@ -552,6 +560,7 @@
 <script setup lang="ts">
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue";
 import type {
+  CandidateMetrics,
   CandleRecord,
   GpuChartDataAdapter,
   GpuChartDataQuery,
@@ -587,6 +596,7 @@ import {
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeRelativeStrengthDivergences,
+  computeSetupState,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -598,6 +608,7 @@ import {
   type MarketStructureSummary,
   type MarketStructureState,
   type RelativeStrengthDivergence,
+  type SetupExtensionMetrics,
   type StructureActiveLevel,
   type StructureBreak,
   type StructureDirection,
@@ -1364,6 +1375,7 @@ const props = withDefaults(
     showChartSettings?: boolean;
     syncId?: string | number;
     timeSyncCommand?: GpuChartTimeSyncCommand | null;
+    candidateMetrics?: CandidateMetrics | null;
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -1382,6 +1394,7 @@ const props = withDefaults(
     showChartSettings: false,
     syncId: "",
     timeSyncCommand: null,
+    candidateMetrics: null,
   },
 );
 
@@ -1684,31 +1697,54 @@ const extensionSnapshot = computed(() => {
     atrPeriod: appearance.extensionAtrPeriod,
   });
 });
+const candidateMetricsForChart = computed(() => {
+  const metrics = props.candidateMetrics;
+  if (!metrics) return null;
+  return metrics.symbol.toUpperCase() === displaySymbol.value ? metrics : null;
+});
+const candidateTimeframeExtension = computed(
+  () => candidateMetricsForChart.value?.timeframeExtensions?.[displayTimeframe.value] ?? null,
+);
+const setupExtensionMetrics = computed<SetupExtensionMetrics | null>(() => {
+  const fixed = candidateMetricsForChart.value?.extension ?? null;
+  const timeframe = candidateTimeframeExtension.value;
+  const local = extensionSnapshot.value;
+  if (!fixed && !timeframe && !local) return null;
+  return {
+    returnPct: finiteOrNull(fixed?.returnPct ?? local?.returnPct),
+    percentile: finiteOrNull(fixed?.percentile ?? local?.percentile),
+    zScore: finiteOrNull(fixed?.zScore ?? local?.zScore),
+    atrExtension: finiteOrNull(timeframe?.atrExtension ?? local?.atrExtension),
+  };
+});
 const extensionContextText = computed(() => {
-  const snapshot = extensionSnapshot.value;
-  if (!snapshot) return "";
+  const metrics = setupExtensionMetrics.value;
+  if (!metrics) return "";
+  const fixed = candidateMetricsForChart.value?.extension ?? null;
+  const local = extensionSnapshot.value;
+  const windowSeconds = fixed?.windowSeconds ?? local?.windowSeconds ?? null;
   const parts: string[] = [];
-  if (snapshot.returnPct != null) {
+  if (metrics.returnPct != null && windowSeconds != null) {
     parts.push(
-      `${formatExtensionWindow(snapshot.windowSeconds)} ${formatSignedPercent(snapshot.returnPct, 1)}`,
+      `${formatExtensionWindow(windowSeconds)} ${formatSignedPercent(metrics.returnPct, 1)}`,
     );
   }
-  if (snapshot.atrExtension != null) {
+  if (metrics.atrExtension != null) {
     parts.push(
-      `${displayTimeframe.value} Ext ${formatSignedCompact(snapshot.atrExtension, 1)} ATR`,
+      `${displayTimeframe.value} Ext ${formatSignedCompact(metrics.atrExtension, 1)} ATR`,
     );
   }
-  if (snapshot.zScore != null) {
-    parts.push(`Z ${formatSignedCompact(snapshot.zScore, 1)}`);
+  if (metrics.zScore != null) {
+    parts.push(`Z ${formatSignedCompact(metrics.zScore, 1)}`);
   }
-  if (snapshot.percentile != null) {
-    parts.push(`Pctl ${Math.round(snapshot.percentile)}`);
+  if (metrics.percentile != null) {
+    parts.push(`Pctl ${Math.round(metrics.percentile)}`);
   }
   return parts.join(" | ");
 });
 const extensionContextClass = computed(() => ({
-  positive: (extensionSnapshot.value?.returnPct ?? 0) > 0,
-  negative: (extensionSnapshot.value?.returnPct ?? 0) < 0,
+  positive: (setupExtensionMetrics.value?.returnPct ?? 0) > 0,
+  negative: (setupExtensionMetrics.value?.returnPct ?? 0) < 0,
 }));
 const anchoredVwapDistancePct = computed(() => {
   void candleCount.value;
@@ -1785,6 +1821,106 @@ const structureSummaryClass = computed(() => {
     range: state === "range",
   };
 });
+const setupSupportResistanceZones = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  void projectionRevision.value;
+  if (!state?.candles.length) return [];
+  const appearance = resolvedAppearance.value;
+  const referencePrice = state.candles[state.candles.length - 1]?.c ?? null;
+  const zones = computeSupportResistanceZones(state.candles, {
+    lookback: appearance.srZoneLookback,
+    pivotStrength: appearance.srZonePivotStrength,
+    maxZones: appearance.srZoneMaxZones,
+    thicknessBps: appearance.srZoneThicknessBps,
+    referencePrice,
+    zonesPerSide: Math.max(1, Math.ceil(appearance.srZoneMaxZones / 2)),
+  });
+  const projectedZones = srProjectionStates.flatMap((projection) =>
+    computeSupportResistanceZones(projection.state.candles, {
+      lookback: appearance.srZoneLookback,
+      pivotStrength: appearance.srZonePivotStrength,
+      maxZones: appearance.srZoneProjectionZonesPerSide * 2,
+      thicknessBps: appearance.srZoneThicknessBps,
+      referencePrice,
+      zonesPerSide: appearance.srZoneProjectionZonesPerSide,
+    }),
+  );
+  return [...projectedZones, ...zones];
+});
+const setupAnchoredVwapSignals = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !chartIndicatorEnabled("anchoredVwap", appearance)) return [];
+  return computeAnchoredVwapSignals(
+    state.candles,
+    { anchorBucket: appearance.anchoredVwapAnchorBucket },
+    appearance.anchoredVwapMaxSignals,
+  );
+});
+const setupRelativeStrengthDivergences = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  const appearance = resolvedAppearance.value;
+  if (!state?.candles.length || !benchmarkState?.candles.length) return [];
+  return computeRelativeStrengthDivergences(
+    state.candles,
+    benchmarkState.candles,
+    {
+      lookback: appearance.rsDivergenceLookback,
+      pivotStrength: appearance.marketStructurePivotStrength,
+      atrPeriod: appearance.marketStructureAtrPeriod,
+      minMoveAtr: appearance.marketStructureMinMoveAtr,
+      minDeltaPct: appearance.rsDivergenceMinDeltaPct,
+      maxAgeBars: appearance.rsDivergenceMaxAgeBars,
+      maxDivergences: appearance.rsDivergenceMaxLabels,
+      includeDivergences: appearance.showRsDivergenceSignal,
+      includeLeads: appearance.showRsLeadSignal,
+      includeBreaks: appearance.showRsBreakSignal,
+      maxBreaks: 24,
+    },
+  );
+});
+const setupState = computed(() => {
+  void candleCount.value;
+  void liveUpdates.value;
+  if (!state?.candles.length || !chartIndicatorEnabled("extensionContext", resolvedAppearance.value)) {
+    return null;
+  }
+  const latestCandle = state.candles[state.candles.length - 1] ?? null;
+  return computeSetupState({
+    extension: setupExtensionMetrics.value,
+    structure: currentMarketStructure().summary,
+    htfStructures: mtfStructureEntries.value,
+    srZones: setupSupportResistanceZones.value,
+    rsDivergences: setupRelativeStrengthDivergences.value,
+    anchoredVwapSignals: setupAnchoredVwapSignals.value,
+    avwapDistancePct: anchoredVwapDistancePct.value,
+    latestPrice: lastClose.value ?? latestCandle?.c ?? null,
+    latestTs: latestCandle?.ts ?? null,
+  });
+});
+const setupStateText = computed(() => {
+  const snapshot = setupState.value;
+  if (!snapshot || snapshot.state === "notCandidate") return "";
+  return `PUMP FADE ${snapshot.label}`;
+});
+const setupStateTitle = computed(() => {
+  const snapshot = setupState.value;
+  if (!snapshot) return "";
+  return [
+    snapshot.reason,
+    ...snapshot.checks.map((check) => `${check.label}: ${check.status} - ${check.detail}`),
+  ].join("\n");
+});
+const setupStateClass = computed(() => ({
+  developing: setupState.value?.state === "developing",
+  deteriorating: setupState.value?.state === "deteriorating",
+  waiting: setupState.value?.state === "waitingForRetest",
+  entry: setupState.value?.state === "entryCandidate",
+  invalidated: setupState.value?.state === "invalidated",
+}));
 const openOnChartClickActive = computed(
   () => Boolean(props.openOnChartClick && !anchoredVwapPickMode.value),
 );
@@ -1797,6 +1933,7 @@ const badgeTitle = computed(() =>
     extensionContextText.value,
     anchoredVwapDistanceText.value,
     structureSummaryText.value,
+    setupStateText.value,
   ]
     .filter(Boolean)
     .join(" "),
@@ -1805,7 +1942,8 @@ const badgeDetailsVisible = computed(() =>
   Boolean(
     extensionContextText.value ||
       anchoredVwapDistanceText.value ||
-      structureSummaryText.value,
+      structureSummaryText.value ||
+      setupStateText.value,
   ),
 );
 const badgeProps = computed(() => {
@@ -2129,8 +2267,13 @@ function relativeReturnEnabled(appearance = resolvedAppearance.value) {
 function relativeBenchmarkRequired(appearance = resolvedAppearance.value) {
   return (
     relativeReturnEnabled(appearance) ||
-    chartIndicatorEnabled("rsDivergence", appearance)
+    chartIndicatorEnabled("rsDivergence", appearance) ||
+    setupStateRequired(appearance)
   );
+}
+
+function setupStateRequired(appearance = resolvedAppearance.value) {
+  return chartIndicatorEnabled("extensionContext", appearance);
 }
 
 function relativeReturnBenchmarkSymbol() {
@@ -6040,6 +6183,10 @@ function formatSignedCompact(value: number, digits = 1) {
   return `${value > 0 ? "+" : value < 0 ? "-" : ""}${formatted}`;
 }
 
+function finiteOrNull(value: number | null | undefined) {
+  return value == null || !Number.isFinite(value) ? null : value;
+}
+
 function formatExtensionWindow(seconds: number) {
   if (seconds % 3_600 === 0 && seconds <= 72 * 3_600) return `${seconds / 3_600}h`;
   if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
@@ -7025,6 +7172,39 @@ function setError(message: string | null) {
 .gpu-chart-structure-summary.range {
   border-color: rgba(148, 163, 184, 0.24);
   color: rgba(203, 213, 225, 0.94);
+}
+
+.gpu-chart-setup-state {
+  flex: 0 0 auto;
+  padding: 0 5px;
+  border: 1px solid rgba(148, 163, 184, 0.24);
+  border-radius: 4px;
+  background: rgba(15, 23, 42, 0.72);
+  color: rgba(226, 232, 240, 0.94);
+  font-size: 0.82em;
+  font-weight: 800;
+  letter-spacing: 0;
+}
+
+.gpu-chart-setup-state.developing {
+  border-color: rgba(56, 189, 248, 0.28);
+  color: rgb(125, 211, 252);
+}
+
+.gpu-chart-setup-state.deteriorating,
+.gpu-chart-setup-state.waiting {
+  border-color: rgba(245, 158, 11, 0.3);
+  color: rgb(251, 191, 36);
+}
+
+.gpu-chart-setup-state.entry {
+  border-color: rgba(248, 113, 113, 0.34);
+  color: rgb(252, 165, 165);
+}
+
+.gpu-chart-setup-state.invalidated {
+  border-color: rgba(148, 163, 184, 0.22);
+  color: rgba(148, 163, 184, 0.9);
 }
 
 .gpu-chart-state {
