@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.21'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.22'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.21'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.22'
 ```
 
 Import the component and CSS:
@@ -224,6 +224,29 @@ pnpm audit:impulse-fade ./path/to/input.json
 
 Add `--out ./trace.json` to also write the trace to a file.
 
+### Headless strategy core
+
+Strategy profiles, cutoff-safe decision snapshots, risk sizing, compliance, and
+decision records are available from the non-visual entry point. Importing it
+does not load Vue components or the WebGPU renderer:
+
+```ts
+import {
+  DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
+  createDecisionSnapshot,
+  createTradePlan,
+} from "@cryptodouche/gpu-chart-vue/core";
+```
+
+The domain model and formulas are documented in
+[`docs/impulse-fade-trade-planning.md`](docs/impulse-fade-trade-planning.md).
+Generate the deterministic Wait, Skip, compliant-plan, and overridden-plan audit
+example with:
+
+```sh
+pnpm audit:trade-plan --out ./trade-plan-audit.json
+```
+
 Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when changing the renderer under `renderer/src`.
 
 Rebuild the renderer after Rust/WebGPU changes:
@@ -244,7 +267,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml docs fixtures scripts src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.12
+git tag v0.1.22
 git push origin main --tags
 ```
 
