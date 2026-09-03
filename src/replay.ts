@@ -11,16 +11,22 @@ import {
   strictTimeframeToSeconds,
 } from "./data";
 import {
+  EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION,
   RADAR_EPISODE_SCHEMA_VERSION,
+  RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
   REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
+  executionVenueEligibilityObservationId,
   radarEpisodeObservationId,
   radarSelectionProfileHash,
   replayCaseManifestId,
+  universeMembershipObservationId,
+  type ExecutionVenueEligibilityObservation,
   type RadarEpisode,
   type RadarPathContext,
   type RadarSelectionAnchor,
   type RadarSelectionProfile,
   type ReplayCaseManifest,
+  type UniverseMembershipObservation,
 } from "./radar";
 import {
   canonicalHash,
@@ -42,6 +48,7 @@ import {
   type VenueRiskRules,
 } from "./tradePlanning";
 import type { CandidateMetrics, CandleRecord } from "./types";
+import { registerReplayPrivilegedDataBundle } from "./replayInternal";
 
 export const REPLAY_ENGINE_VERSION = "replay-engine.1" as const;
 export const REPLAY_SESSION_CONFIG_SCHEMA_VERSION = "replay-session-config.1" as const;
@@ -231,6 +238,8 @@ export type ReplayKnownEventKind =
 export interface ReplayKnownEvent {
   schemaVersion: typeof REPLAY_KNOWN_EVENT_SCHEMA_VERSION;
   id: string;
+  symbol: string;
+  source: string;
   kind: ReplayKnownEventKind;
   eventType: string;
   direction: "bullish" | "bearish" | null;
@@ -262,9 +271,10 @@ export interface ReplayDataBundle {
   candlesByTimeframe: Record<string, ReplayCandleRecord[]>;
   analysisStateHistory: ReplayAnalysisStateObservation[];
   knownEvents: ReplayKnownEvent[];
+  venueEvidence: ExecutionVenueEligibilityObservation[];
+  universeEvidence: UniverseMembershipObservation[];
   radarEpisode: RadarEpisode;
   causalPrefixFingerprint: string;
-  internalBundleFingerprint: string;
   dataQualityNotes: DecisionDataQualityNote[];
 }
 
@@ -300,6 +310,8 @@ export interface InMemoryReplayAdapterInput {
   radarEpisodes: RadarEpisode[];
   analysisStateHistory?: ReplayAnalysisStateObservation[];
   knownEvents?: ReplayKnownEvent[];
+  venueEvidence?: ExecutionVenueEligibilityObservation[];
+  universeEvidence?: UniverseMembershipObservation[];
   revisionHistoryAvailable?: boolean;
 }
 
@@ -311,6 +323,8 @@ export class InMemoryReplayHistoricalDataAdapter implements ReplayHistoricalData
       ...input,
       analysisStateHistory: input.analysisStateHistory ?? [],
       knownEvents: input.knownEvents ?? [],
+      venueEvidence: input.venueEvidence ?? [],
+      universeEvidence: input.universeEvidence ?? [],
       revisionHistoryAvailable: input.revisionHistoryAvailable ?? false,
     });
   }
@@ -349,7 +363,33 @@ export class InMemoryReplayHistoricalDataAdapter implements ReplayHistoricalData
   async loadKnownEvents(query: ReplayEvidenceQuery) {
     return immutableJsonClone(
       (this.#input.knownEvents ?? []).filter(
-        (item) => item.knownAt >= query.from && item.knownAt <= query.to,
+        (item) =>
+          sameInstrument(item, query) && item.knownAt >= query.from && item.knownAt <= query.to,
+      ),
+    );
+  }
+
+  async loadPointInTimeVenueEvidence(query: ReplayEvidenceQuery) {
+    return immutableJsonClone(
+      (this.#input.venueEvidence ?? []).filter(
+        (item) =>
+          item.symbol.toUpperCase() === query.symbol.toUpperCase() &&
+          item.marketDataSource === query.source &&
+          item.knownAt <= query.to &&
+          item.effectiveFrom <= query.to &&
+          (item.effectiveTo == null || item.effectiveTo >= query.from),
+      ),
+    );
+  }
+
+  async loadPointInTimeUniverseEvidence(query: ReplayEvidenceQuery) {
+    return immutableJsonClone(
+      (this.#input.universeEvidence ?? []).filter(
+        (item) =>
+          sameInstrument(item, query) &&
+          item.knownAt <= query.to &&
+          item.effectiveFrom <= query.to &&
+          (item.effectiveTo == null || item.effectiveTo >= query.from),
       ),
     );
   }
@@ -613,7 +653,11 @@ export function createReplayKnownEvent(input: CreateReplayKnownEventInput): Repl
   assertFiniteTimestamp(input.knownAt, "knownAt");
   if (input.knownAt < input.eventTime) throw new RangeError("Event knownAt cannot precede eventTime");
   if (input.timeframe != null) strictTimeframeToSeconds(input.timeframe);
-  const definition = { schemaVersion: REPLAY_KNOWN_EVENT_SCHEMA_VERSION, ...input };
+  const definition = {
+    schemaVersion: REPLAY_KNOWN_EVENT_SCHEMA_VERSION,
+    ...input,
+    symbol: input.symbol.toUpperCase(),
+  };
   return immutableJsonClone({ ...definition, id: replayKnownEventId(definition) });
 }
 
@@ -705,6 +749,15 @@ export async function loadReplayCase(input: LoadReplayCaseInput): Promise<Replay
   }
   const knownEvents = validateKnownEvents(
     (await adapter.loadKnownEvents?.(evidenceQuery)) ?? [],
+    manifest,
+  );
+  const venueEvidence = validateVenueEvidence(
+    (await adapter.loadPointInTimeVenueEvidence?.(evidenceQuery)) ?? [],
+    manifest,
+  );
+  const universeEvidence = validateUniverseEvidence(
+    (await adapter.loadPointInTimeUniverseEvidence?.(evidenceQuery)) ?? [],
+    manifest,
   );
   const common = {
     schemaVersion: REPLAY_DATA_BUNDLE_SCHEMA_VERSION,
@@ -715,17 +768,38 @@ export async function loadReplayCase(input: LoadReplayCaseInput): Promise<Replay
     candlesByTimeframe,
     analysisStateHistory,
     knownEvents,
+    venueEvidence,
+    universeEvidence,
     radarEpisode: episode,
     dataQualityNotes: notes,
   };
   const internalBundleFingerprint = await replaySha256(common);
   const causalPrefixFingerprint = await causalBundleFingerprint(common, manifest.startAsOf);
-  const dataBundle: ReplayDataBundle = immutableJsonClone({
+  const privilegedDataBundle = immutableJsonClone({
     ...common,
     causalPrefixFingerprint,
     internalBundleFingerprint,
   });
-  return {
+  const dataBundle: ReplayDataBundle = immutableJsonClone({
+    ...common,
+    candlesByTimeframe: Object.fromEntries(
+      Object.entries(candlesByTimeframe).map(([timeframe, candles]) => [
+        timeframe,
+        candles.filter(
+          (candle) =>
+            candle.closeTime <= manifest.startAsOf && candle.knownAt <= manifest.startAsOf,
+        ),
+      ]),
+    ),
+    analysisStateHistory: analysisStateHistory.filter(
+      (item) => item.knownAt <= manifest.startAsOf,
+    ),
+    knownEvents: knownEvents.filter((item) => item.knownAt <= manifest.startAsOf),
+    venueEvidence: venueEvidence.filter((item) => item.knownAt <= manifest.startAsOf),
+    universeEvidence: universeEvidence.filter((item) => item.knownAt <= manifest.startAsOf),
+    causalPrefixFingerprint,
+  });
+  const loaded: ReplayLoadedCase = {
     manifest: immutableJsonClone(manifest),
     sessionConfig: immutableJsonClone(config),
     strategyProfile: immutableJsonClone(input.strategyProfile),
@@ -733,19 +807,23 @@ export async function loadReplayCase(input: LoadReplayCaseInput): Promise<Replay
     venueRules: immutableJsonClone(input.venueRules ?? null),
     dataBundle,
   };
+  registerReplayPrivilegedDataBundle(loaded, privilegedDataBundle);
+  return loaded;
 }
 
 export async function replayDataFingerprintAt(
   loaded: ReplayLoadedCase,
   asOf: number,
 ): Promise<string> {
-  const { causalPrefixFingerprint: _prefix, internalBundleFingerprint: _internal, ...bundle } =
-    loaded.dataBundle;
+  if (asOf > loaded.manifest.startAsOf) {
+    throw new RangeError("Public replay fingerprinting cannot inspect data after replay start");
+  }
+  const { causalPrefixFingerprint: _prefix, ...bundle } = loaded.dataBundle;
   return causalBundleFingerprint(bundle, asOf);
 }
 
 async function causalBundleFingerprint(
-  bundle: Omit<ReplayDataBundle, "causalPrefixFingerprint" | "internalBundleFingerprint">,
+  bundle: Omit<ReplayDataBundle, "causalPrefixFingerprint">,
   asOf: number,
 ): Promise<string> {
   return replaySha256({
@@ -761,6 +839,8 @@ async function causalBundleFingerprint(
     ),
     analysisStateHistory: bundle.analysisStateHistory.filter((item) => item.knownAt <= asOf),
     knownEvents: bundle.knownEvents.filter((item) => item.knownAt <= asOf),
+    venueEvidence: bundle.venueEvidence.filter((item) => item.knownAt <= asOf),
+    universeEvidence: bundle.universeEvidence.filter((item) => item.knownAt <= asOf),
     dataQualityNotes: bundle.dataQualityNotes,
   });
 }
@@ -862,6 +942,21 @@ function validateReplayCandles(
 ): ReplayCandleRecord[] {
   const deduplicated = new Map<string, ReplayCandleRecord>();
   for (const candle of candles) {
+    const rebuilt = createReplayCandleRecord({
+      symbol: candle.symbol,
+      source: candle.source,
+      timeframe: candle.timeframe,
+      openTime: candle.openTime,
+      o: candle.o,
+      h: candle.h,
+      l: candle.l,
+      c: candle.c,
+      vBase: candle.vBase,
+      vQuote: candle.vQuote,
+      knownAt: candle.knownAt,
+      revision: candle.revision,
+      correctionPublishedAt: candle.correctionPublishedAt,
+    });
     if (
       candle.symbol.toUpperCase() !== manifest.symbol.toUpperCase() ||
       candle.source !== manifest.source ||
@@ -869,7 +964,8 @@ function validateReplayCandles(
       candle.openTime < from ||
       candle.openTime > to ||
       candle.logicalCandleId !== replayCandleLogicalId(candle) ||
-      candle.observationId !== replayCandleObservationId(candle)
+      candle.observationId !== replayCandleObservationId(candle) ||
+      canonicalSerialize(candle) !== canonicalSerialize(rebuilt)
     ) {
       throw new Error(`Invalid replay candle provenance for ${timeframe}`);
     }
@@ -915,13 +1011,17 @@ function validateAnalysisStateHistory(
   return immutableJsonClone([...byKnownAt.values()]);
 }
 
-function validateKnownEvents(events: ReplayKnownEvent[]): ReplayKnownEvent[] {
+function validateKnownEvents(
+  events: ReplayKnownEvent[],
+  manifest: ReplayCaseManifest,
+): ReplayKnownEvent[] {
   const result = [...events].sort((left, right) => left.knownAt - right.knownAt || left.id.localeCompare(right.id));
   const byId = new Map<string, ReplayKnownEvent>();
   for (const event of result) {
     if (
       event.schemaVersion !== REPLAY_KNOWN_EVENT_SCHEMA_VERSION ||
       event.id !== replayKnownEventId(event) ||
+      !sameInstrument(event, manifest) ||
       event.knownAt < event.eventTime
     ) {
       throw new Error("Replay known event failed deterministic verification");
@@ -933,6 +1033,54 @@ function validateKnownEvents(events: ReplayKnownEvent[]): ReplayKnownEvent[] {
     byId.set(event.id, event);
   }
   return immutableJsonClone([...byId.values()]);
+}
+
+function validateVenueEvidence(
+  evidence: unknown[],
+  manifest: ReplayCaseManifest,
+): ExecutionVenueEligibilityObservation[] {
+  return immutableJsonClone(
+    evidence.map((entry) => {
+      const item = entry as ExecutionVenueEligibilityObservation;
+      if (
+        item.schemaVersion !== EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION ||
+        item.symbol?.toUpperCase() !== manifest.symbol.toUpperCase() ||
+        item.marketDataSource !== manifest.source ||
+        !Number.isFinite(item.knownAt) ||
+        !Number.isFinite(item.effectiveFrom) ||
+        (item.effectiveTo != null &&
+          (!Number.isFinite(item.effectiveTo) || item.effectiveTo <= item.effectiveFrom)) ||
+        item.observationId !== executionVenueEligibilityObservationId(item)
+      ) {
+        throw new Error("Execution-venue evidence failed provenance verification");
+      }
+      return item;
+    }).sort((left, right) => left.knownAt - right.knownAt),
+  );
+}
+
+function validateUniverseEvidence(
+  evidence: unknown[],
+  manifest: ReplayCaseManifest,
+): UniverseMembershipObservation[] {
+  return immutableJsonClone(
+    evidence.map((entry) => {
+      const item = entry as UniverseMembershipObservation;
+      if (
+        item.schemaVersion !== RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION ||
+        item.symbol?.toUpperCase() !== manifest.symbol.toUpperCase() ||
+        item.source !== manifest.source ||
+        !Number.isFinite(item.knownAt) ||
+        !Number.isFinite(item.effectiveFrom) ||
+        (item.effectiveTo != null &&
+          (!Number.isFinite(item.effectiveTo) || item.effectiveTo <= item.effectiveFrom)) ||
+        item.observationId !== universeMembershipObservationId(item)
+      ) {
+        throw new Error("Universe evidence failed provenance verification");
+      }
+      return item;
+    }).sort((left, right) => left.knownAt - right.knownAt),
+  );
 }
 
 function replayCandleToCandle(candle: ReplayCandleRecord): CandleRecord {

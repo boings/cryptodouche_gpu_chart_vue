@@ -88,7 +88,7 @@ export function parseReplayJsonHistoricalDataFixture(
   validateCandles(candles, candleRevisions, symbol, source);
   validateRadarEpisodes(radarEpisodes, symbol, source);
   validateAnalysisStates(analysisStateHistory, symbol, source);
-  validateKnownEvents(knownEvents);
+  validateKnownEvents(knownEvents, symbol, source);
   validateVenueEvidence(venueEvidence, symbol, source);
   validateUniverseEvidence(universeEvidence, symbol, source);
 
@@ -203,7 +203,11 @@ export class JsonReplayHistoricalDataAdapter implements ReplayHistoricalDataAdap
     if (!this.#matchesFixture(query)) return [];
     return immutableJsonClone(
       this.#fixture.knownEvents.filter(
-        (item) => item.knownAt >= query.from && item.knownAt <= query.to,
+        (item) =>
+          item.symbol.toUpperCase() === query.symbol.toUpperCase() &&
+          item.source === query.source &&
+          item.knownAt >= query.from &&
+          item.knownAt <= query.to,
       ),
     );
   }
@@ -337,12 +341,18 @@ function validateAnalysisStates(
   }
 }
 
-function validateKnownEvents(events: readonly ReplayKnownEvent[]) {
+function validateKnownEvents(
+  events: readonly ReplayKnownEvent[],
+  symbol: string,
+  source: string,
+) {
   const byId = new Map<string, ReplayKnownEvent>();
   for (const event of events) {
     requireRecord(event, "Replay known event");
     if (
       event.schemaVersion !== REPLAY_KNOWN_EVENT_SCHEMA_VERSION ||
+      event.symbol.toUpperCase() !== symbol ||
+      event.source !== source ||
       !nonnegativeFinite(event.eventTime) ||
       !nonnegativeFinite(event.knownAt) ||
       event.knownAt < event.eventTime ||

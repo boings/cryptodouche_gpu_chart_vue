@@ -39,6 +39,7 @@ import {
 import { strictTimeframeToSeconds } from "./data";
 import { canonicalHash, canonicalSerialize, immutableJsonClone, type JsonValue } from "./serialization";
 import type { SetupStateName } from "./indicators";
+import { replayPrivilegedDataBundle } from "./replayInternal";
 
 export type ReplayStructureEventType = "BOS" | "Shift" | string;
 export type ReplayAvwapEventType = "loss" | "reclaim" | "failedReclaim" | string;
@@ -538,12 +539,23 @@ async function createDecisionFrame(input: {
   wakeResult?: ReplayWakeResult | null;
 }): Promise<ReplayDecisionFrame> {
   const { loaded, session, effectiveAsOf } = input;
+  const dataBundle = replayPrivilegedDataBundle(loaded);
   if (effectiveAsOf < loaded.manifest.startAsOf) {
     throw new RangeError("A replay frame cannot precede radar detection");
   }
   const analysis = latestAnalysisStateAt(loaded, effectiveAsOf);
   const lifecycle = immutableJsonClone({ ...analysis.lifecycle, asOf: effectiveAsOf });
-  const dataQualityNotes = [...loaded.dataBundle.dataQualityNotes, ...analysis.dataQualityNotes];
+  const dataQualityNotes = [
+    ...dataBundle.dataQualityNotes,
+    ...analysis.dataQualityNotes,
+    ...(analysis.lifecycle.asOf != null && analysis.lifecycle.asOf < effectiveAsOf
+      ? [{
+          code: "CARRIED_FORWARD_ANALYSIS_STATE",
+          severity: "warning" as const,
+          message: `Analysis observation ${analysis.id} was carried forward from ${analysis.lifecycle.asOf}`,
+        }]
+      : []),
+  ];
   const snapshot = createDecisionSnapshot({
     symbol: loaded.manifest.symbol,
     source: loaded.manifest.source,
@@ -567,14 +579,14 @@ async function createDecisionFrame(input: {
   const latestVisibleCandleByTimeframe: Record<string, ReplayCandleRecord | null> = {};
   for (const timeframe of loaded.sessionConfig.visibleTimeframes) {
     const visible = selectedReplayCandlesAt(
-      loaded.dataBundle.candlesByTimeframe[timeframe] ?? [],
+      dataBundle.candlesByTimeframe[timeframe] ?? [],
       effectiveAsOf,
-    ).filter((candle) => candle.openTime >= loaded.dataBundle.displayStartByTimeframe[timeframe]!);
+    ).filter((candle) => candle.openTime >= dataBundle.displayStartByTimeframe[timeframe]!);
     visibleCandlesByTimeframe[timeframe] = visible;
     latestVisibleCandleByTimeframe[timeframe] = visible.at(-1) ?? null;
     visibleCoverageByTimeframe[timeframe] = {
       timeframe,
-      displayStart: loaded.dataBundle.displayStartByTimeframe[timeframe]!,
+      displayStart: dataBundle.displayStartByTimeframe[timeframe]!,
       visibleStart: visible[0]?.openTime ?? null,
       visibleEnd: visible.at(-1)?.closeTime ?? null,
       completedCandleCount: visible.length,
@@ -632,7 +644,9 @@ function replayRadarContext(loaded: ReplayLoadedCase): ReplayRadarContext {
 }
 
 function latestAnalysisStateAt(loaded: ReplayLoadedCase, asOf: number) {
-  const eligible = loaded.dataBundle.analysisStateHistory.filter((item) => item.knownAt <= asOf);
+  const eligible = replayPrivilegedDataBundle(loaded).analysisStateHistory.filter(
+    (item) => item.knownAt <= asOf,
+  );
   const latest = eligible.at(-1);
   if (!latest || latest.id !== replayAnalysisStateObservationId(latest)) {
     throw new Error(`No verified point-in-time analysis state is available at ${asOf}`);
@@ -884,6 +898,7 @@ function applyReplayEvent(session: ReplaySession, event: ReplayEvent): ReplaySes
       `replay-wake-result:${canonicalHash(wakeDefinition).slice("fnv1a64:".length)}`
     ) throw new Error("Replay event wake result identity is invalid");
   }
+  validateReplayEventTransition(session, event);
   return withSessionIntegrity({
     ...session,
     revision: event.sequence,
@@ -905,6 +920,138 @@ function applyReplayEvent(session: ReplaySession, event: ReplayEvent): ReplaySes
     revealedOutcomeEnvelopeId:
       event.revealedOutcomeEnvelopeIdAfter ?? session.revealedOutcomeEnvelopeId,
   });
+}
+
+function validateReplayEventTransition(session: ReplaySession, event: ReplayEvent) {
+  const unchangedClock = event.currentAsOfAfter === session.currentAsOf;
+  const noFrame = event.frame == null;
+  const noDecision = event.decisionRecord == null;
+  const noPlanning = event.planningAttempt == null;
+  const noWake = event.wakePlan == null && event.wakeResult == null;
+  const noReveal =
+    !event.revealedBeforeDecisionCompletionAfter &&
+    event.revealedOutcomeEnvelopeIdAfter == null;
+
+  if (event.stateAfter === "Failed") {
+    throw new Error("Failed replay sessions cannot be synthesized from accepted commands");
+  }
+
+  if (event.command.type === "StartSession") {
+    if (
+      session.state !== "Created" ||
+      event.stateAfter !== "Active" ||
+      !event.frame ||
+      event.currentAsOfAfter !== event.frame.effectiveAsOf ||
+      event.currentAsOfAfter !== session.createdAtLogicalTime ||
+      !noDecision ||
+      !noPlanning ||
+      !noWake ||
+      !noReveal ||
+      event.terminalReasonAfter != null
+    ) throw new Error("StartSession event transition is invalid");
+    return;
+  }
+
+  if (event.command.type === "Wait") {
+    const terminal = event.stateAfter === "CaseWindowEnded";
+    if (
+      session.state !== "Active" ||
+      !event.frame ||
+      !event.decisionRecord ||
+      event.decisionRecord.action !== "Wait" ||
+      !event.wakePlan ||
+      !event.wakeResult ||
+      event.wakeResult.wakePlanId !== event.wakePlan.id ||
+      event.frame.activeWakeResult?.id !== event.wakeResult.id ||
+      event.currentAsOfAfter !== event.frame.effectiveAsOf ||
+      !["Active", "CaseWindowEnded"].includes(event.stateAfter) ||
+      terminal !== (event.terminalReasonAfter != null) ||
+      !noPlanning ||
+      !noReveal
+    ) throw new Error("Wait event transition is invalid");
+    return;
+  }
+
+  if (event.command.type === "Skip") {
+    if (
+      session.state !== "Active" ||
+      event.stateAfter !== "Skipped" ||
+      !event.decisionRecord ||
+      event.decisionRecord.action !== "Skip" ||
+      !unchangedClock ||
+      !noFrame ||
+      !noPlanning ||
+      !noWake ||
+      !noReveal ||
+      event.terminalReasonAfter != null
+    ) throw new Error("Skip event transition is invalid");
+    return;
+  }
+
+  if (event.command.type === "ProposeTrade") {
+    const accepted = event.planningAttempt?.accepted === true;
+    const expectedAttemptId = event.planningAttempt
+      ? `replay-planning-attempt:${canonicalHash({
+          sessionId: session.id,
+          frameId: event.planningAttempt.frameId,
+          tradePlan: event.planningAttempt.tradePlan,
+        }).slice("fnv1a64:".length)}`
+      : null;
+    if (
+      session.state !== "Active" ||
+      !event.planningAttempt ||
+      event.planningAttempt.id !== expectedAttemptId ||
+      event.planningAttempt.frameId !== session.currentFrameId ||
+      event.planningAttempt.attemptedAt !== session.currentAsOf ||
+      event.stateAfter !== (accepted ? "TradePlanRecorded" : "Active") ||
+      (accepted
+        ? event.decisionRecord?.action !== "ProposeTrade"
+        : event.decisionRecord != null) ||
+      !unchangedClock ||
+      !noFrame ||
+      !noWake ||
+      !noReveal ||
+      event.terminalReasonAfter != null
+    ) throw new Error("ProposeTrade event transition is invalid");
+    return;
+  }
+
+  if (event.command.type === "Abandon") {
+    if (
+      session.state !== "Active" ||
+      event.stateAfter !== "Abandoned" ||
+      !unchangedClock ||
+      !noFrame ||
+      !noDecision ||
+      !noPlanning ||
+      !noWake ||
+      !noReveal ||
+      event.terminalReasonAfter != null
+    ) throw new Error("Abandon event transition is invalid");
+    return;
+  }
+
+  const terminalReveal = [
+    "Skipped",
+    "TradePlanRecorded",
+    "CaseWindowEnded",
+    "Abandoned",
+  ].includes(session.state);
+  const earlyReveal =
+    session.state === "Active" &&
+    event.command.payload.abandonActive &&
+    event.revealedBeforeDecisionCompletionAfter;
+  if (
+    (!terminalReveal && !earlyReveal) ||
+    event.stateAfter !== "Revealed" ||
+    !unchangedClock ||
+    !noFrame ||
+    !noDecision ||
+    !noPlanning ||
+    !noWake ||
+    event.revealedOutcomeEnvelopeIdAfter == null ||
+    event.terminalReasonAfter !== session.terminalReason
+  ) throw new Error("RevealOutcome event transition is invalid");
 }
 
 function replayEventId(event: ReplayEvent) {
@@ -965,7 +1112,34 @@ function tradePlanRejectionReason(loaded: ReplayLoadedCase, plan: TradePlan): st
   if (executionVenue && plan.venueRules.venue.toLowerCase() !== executionVenue.toLowerCase()) {
     return "Trade plan venue does not match the manifest execution venue";
   }
+  const eligibility = executionVenueEligibilityAt(loaded, plan.createdAt, executionVenue);
+  if (eligibility === "Unavailable") {
+    return "Execution venue was unavailable at the replay decision time";
+  }
   return null;
+}
+
+function executionVenueEligibilityAt(
+  loaded: ReplayLoadedCase,
+  asOf: number,
+  executionVenue: string,
+) {
+  const evidence = replayPrivilegedDataBundle(loaded).venueEvidence
+    .filter(
+      (item) =>
+        item.knownAt <= asOf &&
+        item.effectiveFrom <= asOf &&
+        (item.effectiveTo == null || item.effectiveTo > asOf) &&
+        item.executionVenue.toLowerCase() === executionVenue.toLowerCase(),
+    )
+    .at(-1);
+  if (evidence) return evidence.status;
+  const manifestEvidence = loaded.manifest.executionVenueEligibility;
+  if (
+    manifestEvidence.effectiveFrom <= asOf &&
+    (manifestEvidence.effectiveTo == null || manifestEvidence.effectiveTo > asOf)
+  ) return manifestEvidence.status;
+  return "Unavailable";
 }
 
 function validateWakePlan(
@@ -983,6 +1157,17 @@ function validateWakePlan(
     plan.deadlineAsOf > loaded.manifest.startAsOf + loaded.sessionConfig.maximumCaseDuration
   ) {
     throw new RangeError("Wake deadline exceeds the configured replay bounds");
+  }
+  if (
+    plan.scheduledReview?.mode === "nextCompletedCandle" &&
+    !Object.hasOwn(
+      replayPrivilegedDataBundle(loaded).candlesByTimeframe,
+      plan.scheduledReview.timeframe,
+    )
+  ) {
+    throw new RangeError(
+      `Scheduled review timeframe ${plan.scheduledReview.timeframe} is not loaded`,
+    );
   }
   for (const condition of flattenWakeConditions(plan.conditions)) {
     if (!loaded.sessionConfig.allowedWakeConditionTypes.includes(condition.type)) {
@@ -1097,6 +1282,7 @@ async function advanceReplayWait(
   plan: ReplayWakePlan,
 ): Promise<ReplayAdvanceResult> {
   const start = frame.effectiveAsOf;
+  const dataBundle = replayPrivilegedDataBundle(loaded);
   const caseHorizon = loaded.manifest.startAsOf + loaded.sessionConfig.maximumCaseDuration;
   const coverageEnd = evaluationCoverageEnd(loaded);
   const scheduledTarget = scheduledReviewTarget(loaded, start, plan.scheduledReview);
@@ -1108,13 +1294,13 @@ async function advanceReplayWait(
   if (boundary < start) throw new Error("Historical coverage ends before the replay clock");
 
   const points = new Set<number>([boundary]);
-  for (const state of loaded.dataBundle.analysisStateHistory) {
+  for (const state of dataBundle.analysisStateHistory) {
     if (state.knownAt > start && state.knownAt <= boundary) points.add(state.knownAt);
   }
-  for (const event of loaded.dataBundle.knownEvents) {
+  for (const event of dataBundle.knownEvents) {
     if (event.knownAt > start && event.knownAt <= boundary) points.add(event.knownAt);
   }
-  for (const candles of Object.values(loaded.dataBundle.candlesByTimeframe)) {
+  for (const candles of Object.values(dataBundle.candlesByTimeframe)) {
     for (const candle of candles) {
       const effective = Math.max(candle.closeTime, candle.knownAt);
       if (effective > start && effective <= boundary) points.add(effective);
@@ -1146,19 +1332,21 @@ async function advanceReplayWait(
     audit.lifecycleTransitionsEncountered.push(...transitions);
     const matches = evaluateWakeConditions(loaded, plan.conditions, start, point, audit);
     const configuredTerminal = configuredTerminalAt(loaded, point, start);
+    if (configuredTerminal) {
+      effectiveAsOf = point;
+      reason = "CASE_BOUNDARY_REACHED";
+      terminalReason = configuredTerminal;
+      triggeredConditionIds = matches.conditionIds;
+      triggeringEventIds = matches.eventIds;
+      if (matches.conditionIds.length) audit.firstTriggeringEffectiveAsOf = point;
+      break;
+    }
     if (matches.conditionIds.length) {
       effectiveAsOf = point;
       reason = "CONDITION_TRIGGERED";
       triggeredConditionIds = matches.conditionIds;
       triggeringEventIds = matches.eventIds;
       audit.firstTriggeringEffectiveAsOf = point;
-      terminalReason = configuredTerminal;
-      break;
-    }
-    if (configuredTerminal) {
-      effectiveAsOf = point;
-      reason = "CASE_BOUNDARY_REACHED";
-      terminalReason = configuredTerminal;
       break;
     }
     if (scheduledTarget != null && point >= scheduledTarget) {
@@ -1223,20 +1411,23 @@ function nextCandleKnowledgePoint(
   timeframe: string,
   after: number,
 ): number | null {
-  return (loaded.dataBundle.candlesByTimeframe[timeframe] ?? [])
+  return (replayPrivilegedDataBundle(loaded).candlesByTimeframe[timeframe] ?? [])
     .filter((candle) => candle.closeTime > after)
     .map((candle) => Math.max(candle.closeTime, candle.knownAt))
     .sort((left, right) => left - right)[0] ?? null;
 }
 
 function evaluationCoverageEnd(loaded: ReplayLoadedCase) {
-  const candles = loaded.dataBundle.candlesByTimeframe[loaded.sessionConfig.evaluationTimeframe] ?? [];
+  const candles =
+    replayPrivilegedDataBundle(loaded).candlesByTimeframe[
+      loaded.sessionConfig.evaluationTimeframe
+    ] ?? [];
   const values = candles.map((candle) => candle.closeTime);
   return values.length ? Math.max(...values) : loaded.manifest.startAsOf;
 }
 
 function lifecycleTransitionsAt(loaded: ReplayLoadedCase, point: number, after: number) {
-  const eventIds = loaded.dataBundle.knownEvents
+  const eventIds = replayPrivilegedDataBundle(loaded).knownEvents
     .filter(
       (event) =>
         event.kind === "lifecycleTransition" &&
@@ -1251,7 +1442,9 @@ function lifecycleTransitionsAt(loaded: ReplayLoadedCase, point: number, after: 
 }
 
 function analysisStateBefore(loaded: ReplayLoadedCase, asOf: number) {
-  return loaded.dataBundle.analysisStateHistory.filter((item) => item.knownAt < asOf).at(-1) ?? null;
+  return replayPrivilegedDataBundle(loaded).analysisStateHistory
+    .filter((item) => item.knownAt < asOf)
+    .at(-1) ?? null;
 }
 
 function evaluateWakeConditions(
@@ -1295,7 +1488,7 @@ function evaluateWakeCondition(
       eventIds: child.eventIds,
     };
   }
-  const events = loaded.dataBundle.knownEvents.filter(
+  const events = replayPrivilegedDataBundle(loaded).knownEvents.filter(
     (event) => event.knownAt === point && event.knownAt > start,
   );
   let matchedEvents: ReplayKnownEvent[] = [];
@@ -1380,7 +1573,7 @@ function configuredTerminalAt(
   point: number,
   after: number,
 ): ReplayTerminalReason | null {
-  const events = loaded.dataBundle.knownEvents.filter(
+  const events = replayPrivilegedDataBundle(loaded).knownEvents.filter(
     (event) => event.knownAt === point && event.knownAt > after,
   );
   if (
@@ -1396,11 +1589,14 @@ function configuredTerminalAt(
 }
 
 function latestCloseAt(loaded: ReplayLoadedCase, timeframe: string, asOf: number) {
-  return selectedReplayCandlesAt(loaded.dataBundle.candlesByTimeframe[timeframe] ?? [], asOf).at(-1)?.c ?? null;
+  return selectedReplayCandlesAt(
+    replayPrivilegedDataBundle(loaded).candlesByTimeframe[timeframe] ?? [],
+    asOf,
+  ).at(-1)?.c ?? null;
 }
 
 function latestCloseBefore(loaded: ReplayLoadedCase, timeframe: string, asOf: number) {
-  const candles = loaded.dataBundle.candlesByTimeframe[timeframe] ?? [];
+  const candles = replayPrivilegedDataBundle(loaded).candlesByTimeframe[timeframe] ?? [];
   const knowledgePoints = candles
     .map((candle) => Math.max(candle.closeTime, candle.knownAt))
     .filter((point) => point < asOf);
@@ -1490,6 +1686,35 @@ export async function resumeReplaySession(
       sessionAtFrame = applyReplayEvent(sessionAtFrame, event);
     }
     const frameEvent = session.events[frameEventIndex]!;
+    let verifiedWakeResult = current.activeWakeResult;
+    if (frameEvent.command.type === "Wait") {
+      const submittedFrame = requireCurrentFrame(sessionAtFrame);
+      if (!frameEvent.wakePlan || !frameEvent.wakeResult) {
+        throw new Error("Replay wait frame is missing its wake audit artifacts");
+      }
+      validateWakePlan(
+        loaded,
+        sessionAtFrame,
+        submittedFrame,
+        frameEvent.wakePlan,
+      );
+      const advanced = await advanceReplayWait(
+        loaded,
+        sessionAtFrame,
+        submittedFrame,
+        frameEvent.wakePlan,
+      );
+      if (
+        canonicalSerialize(advanced.wakeResult) !== canonicalSerialize(frameEvent.wakeResult) ||
+        advanced.requestedAsOf !== current.requestedAsOf ||
+        advanced.effectiveAsOf !== current.effectiveAsOf ||
+        advanced.state !== frameEvent.stateAfter ||
+        advanced.terminalReason !== frameEvent.terminalReasonAfter
+      ) {
+        throw new Error("Replay resume could not causally reproduce the saved wake result");
+      }
+      verifiedWakeResult = advanced.wakeResult;
+    }
     if (frameEvent.decisionRecord) {
       sessionAtFrame = immutableJsonClone({
         ...sessionAtFrame,
@@ -1501,7 +1726,7 @@ export async function resumeReplaySession(
       session: sessionAtFrame,
       requestedAsOf: current.requestedAsOf,
       effectiveAsOf: current.effectiveAsOf,
-      wakeResult: current.activeWakeResult,
+      wakeResult: verifiedWakeResult,
     });
     if (recreated.id !== current.id) {
       throw new Error("Replay resume data does not reproduce the current DecisionFrame");
@@ -1618,6 +1843,24 @@ function assertFrameCutoff(frame: ReplayDecisionFrame) {
       throw new Error("Replay frame contains a future or incomplete candle");
     }
   }
+  assertNoKnowledgeTimestampAfter(frame, frame.effectiveAsOf);
+}
+
+function assertNoKnowledgeTimestampAfter(value: unknown, cutoff: number) {
+  const visit = (entry: unknown) => {
+    if (!entry || typeof entry !== "object") return;
+    if (Array.isArray(entry)) {
+      entry.forEach(visit);
+      return;
+    }
+    for (const [key, child] of Object.entries(entry)) {
+      if (key === "knownAt" && typeof child === "number" && child > cutoff) {
+        throw new Error("Replay frame contains evidence not known at its cutoff");
+      }
+      visit(child);
+    }
+  };
+  visit(value);
 }
 
 function assertNoFutureOutcomePayload(value: unknown) {

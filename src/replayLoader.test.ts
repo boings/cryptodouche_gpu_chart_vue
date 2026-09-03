@@ -190,6 +190,20 @@ describe("replay case loading", () => {
     );
   });
 
+  it("rejects a self-rehashed candle with forged completed-candle timestamps", async () => {
+    const fixture = buildReplayFixture();
+    const original = fixture.candles[0];
+    const forged = {
+      ...original,
+      closeTime: original.closeTime - 1,
+    };
+    forged.observationId = replayCandleObservationId(forged);
+
+    await expect(
+      loadFixture(fixture, { candles: [forged, ...fixture.candles.slice(1)] }),
+    ).rejects.toThrow("Invalid replay candle provenance");
+  });
+
   it("fails closed when analysis pre-roll begins after the required boundary", async () => {
     const fixture = buildReplayFixture();
     const lateCandles = fixture.candles.filter(
@@ -239,15 +253,14 @@ describe("replay case loading", () => {
     const revisions = revised.dataBundle.candlesByTimeframe["1h"].filter(
       (candle) => candle.logicalCandleId === correction.logicalCandleId,
     );
-    expect(revisions.map((candle) => candle.revision)).toEqual([1, 2]);
+    expect(revisions.map((candle) => candle.revision)).toEqual([1]);
     expect(revised.dataBundle.causalPrefixFingerprint).toBe(
       baseline.dataBundle.causalPrefixFingerprint,
     );
-    expect(revised.dataBundle.internalBundleFingerprint).not.toBe(
-      baseline.dataBundle.internalBundleFingerprint,
-    );
-    await expect(replayDataFingerprintAt(revised, DETECTION + HOUR)).resolves.not.toBe(
-      revised.dataBundle.causalPrefixFingerprint,
+    expect(revised.dataBundle).toEqual(baseline.dataBundle);
+    expect(revised.dataBundle).not.toHaveProperty("internalBundleFingerprint");
+    await expect(replayDataFingerprintAt(revised, DETECTION + HOUR)).rejects.toThrow(
+      "cannot inspect data after replay start",
     );
   });
 
@@ -267,9 +280,12 @@ describe("replay case loading", () => {
     expect(loadedA.dataBundle.causalPrefixFingerprint).toBe(
       loadedB.dataBundle.causalPrefixFingerprint,
     );
-    expect(loadedA.dataBundle.internalBundleFingerprint).not.toBe(
-      loadedB.dataBundle.internalBundleFingerprint,
-    );
+    expect(loadedA.dataBundle).toEqual(loadedB.dataBundle);
+    expect(
+      loadedA.dataBundle.candlesByTimeframe["1h"].every(
+        (candle) => candle.closeTime <= DETECTION && candle.knownAt <= DETECTION,
+      ),
+    ).toBe(true);
     await expect(replayDataFingerprintAt(loadedA, DETECTION)).resolves.toBe(
       loadedA.dataBundle.causalPrefixFingerprint,
     );

@@ -145,9 +145,8 @@ describe("Replay Phase 1 session engine", () => {
     expect(pathA.loaded.dataBundle.causalPrefixFingerprint).toBe(
       pathB.loaded.dataBundle.causalPrefixFingerprint,
     );
-    expect(pathA.loaded.dataBundle.internalBundleFingerprint).not.toBe(
-      pathB.loaded.dataBundle.internalBundleFingerprint,
-    );
+    expect(pathA.loaded.dataBundle).toEqual(pathB.loaded.dataBundle);
+    expect(pathA.loaded.dataBundle).not.toHaveProperty("internalBundleFingerprint");
 
     const createdA = createReplaySession(pathA.loaded);
     const createdB = createReplaySession(pathB.loaded);
@@ -641,7 +640,7 @@ describe("Replay Phase 1 session engine", () => {
     const { integrityHash: _ignored, ...sessionDefinition } = started;
     const contaminatedDefinition = {
       ...sessionDefinition,
-      futureCandlesByTimeframe: { "1h": fixture.loaded.dataBundle.candlesByTimeframe["1h"] },
+      futureCandlesByTimeframe: { "1h": fixture.candles },
     };
     const contaminated = {
       ...contaminatedDefinition,
@@ -677,6 +676,22 @@ describe("Replay Phase 1 session engine", () => {
     await expect(
       resumeReplaySession(serializeReplaySession(afterResume.session), fixture.loaded),
     ).resolves.toEqual(afterResume.session);
+  });
+
+  it("rejects a self-rehashed event log with an impossible state transition", async () => {
+    const fixture = await buildReplayFixture();
+    const started = await startSession(fixture.loaded, "start:illegal-transition");
+    const original = started.events[0];
+    const { id: _ignored, ...definition } = original;
+    const tamperedDefinition = { ...definition, stateAfter: "Skipped" as const };
+    const tamperedEvent = {
+      ...tamperedDefinition,
+      id: `replay-event:${canonicalHash(tamperedDefinition).slice("fnv1a64:".length)}`,
+    };
+
+    expect(() =>
+      reconstructReplaySession({ ...started, events: [tamperedEvent] }),
+    ).toThrow("StartSession event transition is invalid");
   });
 
   it("keeps outcomes behind the reveal barrier and permanently marks explicit early reveal", async () => {
@@ -759,9 +774,7 @@ describe("Replay Phase 1 session engine", () => {
     expect(full.loaded.dataBundle.causalPrefixFingerprint).toBe(
       truncated.loaded.dataBundle.causalPrefixFingerprint,
     );
-    expect(full.loaded.dataBundle.internalBundleFingerprint).not.toBe(
-      truncated.loaded.dataBundle.internalBundleFingerprint,
-    );
+    expect(full.loaded.dataBundle).toEqual(truncated.loaded.dataBundle);
 
     const fullStarted = await startSession(full.loaded, "start:truncated-equivalence");
     const truncatedStarted = await startSession(
@@ -1303,6 +1316,8 @@ function knownEvent(
 ) {
   return createReplayKnownEvent({
     ...input,
+    symbol: SYMBOL,
+    source: SOURCE,
     lifecycleState: null,
     avwapId: input.avwapId ?? null,
     detail: { fixture: true },
@@ -1486,7 +1501,7 @@ function expectNoFillOrPnlKeys(value: unknown) {
 
 function outcomeStore(fixture: ReplayFixture) {
   const outcome: ReplayCaseOutcome = {
-    futureCandlesByTimeframe: fixture.loaded.dataBundle.candlesByTimeframe,
+    futureCandlesByTimeframe: { "1h": fixture.candles },
     lifecycleTimeline: [{ knownAt: DETECTION + HOUR, state: "deteriorating" }],
     radarTerminalResult: { secret: "FUTURE_OUTCOME_SENTINEL" },
     maximumFavorablePriceExcursionFromDetected: 12,

@@ -7,6 +7,7 @@ import {
   createReplayCandleRecord,
   createReplayKnownEvent,
   replayCandleObservationId,
+  replayKnownEventId,
 } from "./replay";
 import {
   JsonReplayHistoricalDataAdapter,
@@ -108,6 +109,15 @@ describe("JSON replay historical-data adapter", () => {
         revisionHistoryAvailable: false,
       }),
     ).toThrow("Candle revisions require revisionHistoryAvailable=true");
+
+    const foreignEvent = { ...fixture.knownEvents[0], symbol: "BTCUSDT" };
+    foreignEvent.id = replayKnownEventId(foreignEvent);
+    expect(() =>
+      parseReplayJsonHistoricalDataFixture({
+        ...fixture,
+        knownEvents: [foreignEvent],
+      }),
+    ).toThrow("Invalid replay known event");
   });
 });
 
@@ -151,6 +161,8 @@ function jsonFixture(): ReplayJsonHistoricalDataFixture {
     correctionPublishedAt: START + 2 * HOUR,
   });
   const knownEvent = createReplayKnownEvent({
+    symbol: SYMBOL,
+    source: SOURCE,
     kind: "structure",
     eventType: "Shift",
     direction: "bearish",
