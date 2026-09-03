@@ -2,6 +2,13 @@ import type { CandleRecord } from "./types";
 export declare const IMPULSE_FADE_SETUP_FAMILY: "impulse_fade_v1";
 export declare const IMPULSE_FADE_LIFECYCLE_VERSION: "impulse_fade_v1.lifecycle.1";
 export declare const IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION: "impulse_fade_v1.lifecycle-config.1";
+export declare const IMPULSE_FADE_CANDIDATE_GATE: Readonly<{
+    returnPct: 8;
+    percentile: 95;
+    zScore: 2;
+    atrExtension: 2;
+    mode: "any";
+}>;
 export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
 export interface SupportResistanceZone {
     kind: "support" | "resistance";

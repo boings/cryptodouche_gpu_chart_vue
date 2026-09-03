@@ -6,6 +6,13 @@ export const IMPULSE_FADE_SETUP_FAMILY = "impulse_fade_v1" as const;
 export const IMPULSE_FADE_LIFECYCLE_VERSION = "impulse_fade_v1.lifecycle.1" as const;
 export const IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION =
   "impulse_fade_v1.lifecycle-config.1" as const;
+export const IMPULSE_FADE_CANDIDATE_GATE = Object.freeze({
+  returnPct: 8,
+  percentile: 95,
+  zScore: 2,
+  atrExtension: 2,
+  mode: "any" as const,
+});
 
 export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
 
@@ -797,13 +804,7 @@ export function impulseFadeLifecycleConfigHash(
   return canonicalHash({
     lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
     lifecycleConfigVersion: IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION,
-    candidateGate: {
-      returnPct: 8,
-      percentile: 95,
-      zScore: 2,
-      atrExtension: 2,
-      mode: "any",
-    },
+    candidateGate: IMPULSE_FADE_CANDIDATE_GATE,
     extension: {
       windowSeconds: clampIntegerOption(
         config.extensionOptions?.windowSeconds,
@@ -2424,10 +2425,12 @@ function setupMetricsFromExtensionSnapshot(snapshot: ExtensionSnapshot): SetupEx
 function setupExtensionGatePass(extension: SetupExtensionMetrics | null) {
   const metrics = setupMetricsFromPartial(extension);
   return (
-    (metrics.returnPct != null && metrics.returnPct >= 8) ||
-    (metrics.percentile != null && metrics.percentile >= 95) ||
-    (metrics.zScore != null && metrics.zScore >= 2) ||
-    (metrics.atrExtension != null && metrics.atrExtension >= 2)
+    (metrics.returnPct != null && metrics.returnPct >= IMPULSE_FADE_CANDIDATE_GATE.returnPct) ||
+    (metrics.percentile != null &&
+      metrics.percentile >= IMPULSE_FADE_CANDIDATE_GATE.percentile) ||
+    (metrics.zScore != null && metrics.zScore >= IMPULSE_FADE_CANDIDATE_GATE.zScore) ||
+    (metrics.atrExtension != null &&
+      metrics.atrExtension >= IMPULSE_FADE_CANDIDATE_GATE.atrExtension)
   );
 }
 

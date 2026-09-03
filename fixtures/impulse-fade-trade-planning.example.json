@@ -1,0 +1,1289 @@
+{
+  "auditSchemaVersion": "impulse-fade-trade-plan-audit.1",
+  "setupFamily": "impulse_fade_v1",
+  "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+  "lifecycleConfigHash": "fnv1a64:761921830014999a",
+  "strategyProfile": {
+    "createdAt": 1788393600,
+    "entryPolicy": {
+      "confirmedRejectionRequired": true,
+      "eligibleLifecycleStates": [
+        "entryCandidate"
+      ],
+      "factors": {
+        "contextualConfluence": [
+          "higherTimeframeResistance",
+          "relativeStrengthWeakness",
+          "avwapFailure"
+        ],
+        "hardGate": [
+          "activeCandidate",
+          "entryCandidate",
+          "confirmedRetest",
+          "referenceIntegrity",
+          "dataQuality",
+          "risk",
+          "margin",
+          "rewardRisk"
+        ],
+        "informational": [
+          "stochRsi",
+          "volume",
+          "extensionBadges"
+        ]
+      },
+      "maxAgeSinceEntryCandidateSeconds": 21600,
+      "minimumRewardRisk": 1.5,
+      "permittedOrderPlanTypes": [
+        "marketNextAvailable",
+        "limit",
+        "stopMarket",
+        "manualReference"
+      ],
+      "requiredDataQuality": {
+        "candidateMetricsRequired": true,
+        "minimumHistoryCoverageRatio": 0.9,
+        "rejectedNoteSeverities": [
+          "error"
+        ]
+      },
+      "retestRequired": true
+    },
+    "executionAssumptions": {
+      "adverseEntrySlippageBps": 5,
+      "adverseStopSlippageBps": 5,
+      "adverseTargetSlippageBps": 5,
+      "entryFeeRate": 0.00055,
+      "stopExitFeeRate": 0.00055,
+      "targetExitFeeRate": 0.00055
+    },
+    "id": "impulse_fade_v1.research.default",
+    "lifecycleConfigHash": "fnv1a64:761921830014999a",
+    "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+    "name": "Impulse Fade v1 research default",
+    "profileHash": "fnv1a64:d775f8489b62ae94",
+    "riskPolicy": {
+      "maximumAccountRiskFraction": 0.01,
+      "maximumMarginAllocationFraction": 0.25,
+      "maximumNotional": null
+    },
+    "schemaVersion": "strategy-profile.1",
+    "setupFamily": "impulse_fade_v1",
+    "side": "short",
+    "stopPolicy": {
+      "permittedDerivations": [
+        "episodeHigh",
+        "structuralInvalidation",
+        "supportResistanceZoneBoundary",
+        "avwapReference",
+        "manual"
+      ],
+      "requireOutsideEpisodeHigh": true
+    },
+    "targetPolicy": {
+      "fractionTolerance": 1e-8,
+      "maximumTargets": 4,
+      "permittedDerivations": [
+        "supportZone",
+        "avwap",
+        "preImpulseBase",
+        "fixedRMultiple",
+        "manual"
+      ]
+    },
+    "timeframeRoles": {
+      "candidateTimeframe": "1h",
+      "contextTimeframes": [
+        "4h",
+        "1d"
+      ],
+      "executionTimeframe": "15m",
+      "structureTimeframe": "1h",
+      "triggerTimeframe": "15m"
+    },
+    "version": "1"
+  },
+  "snapshots": {
+    "developing": {
+      "activeCandidateId": "fil-episode-1",
+      "activeStructureLevels": [
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ],
+      "avwapEvents": [],
+      "avwapState": null,
+      "candidateEpisode": {
+        "currentState": "developing",
+        "detectedAt": 1699992800,
+        "detectionEventTime": 1699991900,
+        "detectionMetrics": {
+          "atrExtension": 2.4,
+          "percentile": 98,
+          "returnPct": 13.6,
+          "zScore": 2.7
+        },
+        "episodeHigh": 0.82,
+        "episodeHighTime": 1699996400,
+        "executionTimeframe": "15m",
+        "id": "fil-episode-1",
+        "initialMtfContext": [],
+        "lifecycleConfigHash": "fnv1a64:761921830014999a",
+        "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+        "setupFamily": "impulse_fade_v1",
+        "source": "external",
+        "stateSince": 1699999100,
+        "symbol": "FILUSDT",
+        "terminalAt": null,
+        "venue": "bybit"
+      },
+      "candidateMetrics": {
+        "baseTimeframe": "1h",
+        "effectiveAsOf": 1700000000,
+        "exchange": "bybit",
+        "extension": {
+          "historyDays": 180,
+          "latestClose": 0.79,
+          "latestTs": 1699996400,
+          "percentile": 98,
+          "referenceClose": 0.695,
+          "referenceTs": 1699913600,
+          "returnPct": 13.6,
+          "sampleCount": 100,
+          "windowSeconds": 86400,
+          "zScore": 2.7
+        },
+        "historyCoverage": {
+          "availableEndTs": 1700000000,
+          "availableStartTs": 1684448000,
+          "coverageRatio": 1,
+          "coveredSeconds": 15552000,
+          "requestedEndTs": 1700000000,
+          "requestedSeconds": 15552000,
+          "requestedStartTs": 1684448000
+        },
+        "insufficientDataReasons": [],
+        "marketType": "perp",
+        "requestedAsOf": 1700000000,
+        "sampleCount": 100,
+        "source": "external",
+        "symbol": "FILUSDT",
+        "timeframeExtensions": {},
+        "updatedAt": 1700000000
+      },
+      "dataQualityNotes": [],
+      "decisionTime": 1700000000,
+      "effectiveAsOf": 1700000000,
+      "id": "decision-snapshot:11f0591fced9b330",
+      "lifecycleConfigHash": "fnv1a64:761921830014999a",
+      "lifecycleEvidence": [
+        {
+          "code": "candidate_detected",
+          "contributesTo": "developing",
+          "eventTime": 1699991900,
+          "explanation": "Extension gate crossed from false to true",
+          "id": "candidate-detected",
+          "knownAt": 1699992800,
+          "sourceTimeframe": "1h"
+        }
+      ],
+      "lifecycleState": "developing",
+      "lifecycleStateSince": 1699999100,
+      "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+      "pendingConditions": [
+        "Confirmed structure and retest"
+      ],
+      "relativeStrengthEvents": [],
+      "relativeStrengthState": null,
+      "setupFamily": "impulse_fade_v1",
+      "snapshotSchemaVersion": "decision-snapshot.1",
+      "source": "external",
+      "strategyProfileHash": "fnv1a64:d775f8489b62ae94",
+      "strategyProfileId": "impulse_fade_v1.research.default",
+      "strategyProfileVersion": "1",
+      "structureByTimeframe": {},
+      "supportResistanceZones": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        }
+      ],
+      "symbol": "FILUSDT",
+      "visibleOrSelectedReferenceLevels": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        },
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ]
+    },
+    "deteriorating": {
+      "activeCandidateId": "fil-episode-1",
+      "activeStructureLevels": [
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ],
+      "avwapEvents": [],
+      "avwapState": null,
+      "candidateEpisode": {
+        "currentState": "deteriorating",
+        "detectedAt": 1699992800,
+        "detectionEventTime": 1699991900,
+        "detectionMetrics": {
+          "atrExtension": 2.4,
+          "percentile": 98,
+          "returnPct": 13.6,
+          "zScore": 2.7
+        },
+        "episodeHigh": 0.82,
+        "episodeHighTime": 1699996400,
+        "executionTimeframe": "15m",
+        "id": "fil-episode-1",
+        "initialMtfContext": [],
+        "lifecycleConfigHash": "fnv1a64:761921830014999a",
+        "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+        "setupFamily": "impulse_fade_v1",
+        "source": "external",
+        "stateSince": 1699999100,
+        "symbol": "FILUSDT",
+        "terminalAt": null,
+        "venue": "bybit"
+      },
+      "candidateMetrics": {
+        "baseTimeframe": "1h",
+        "effectiveAsOf": 1700000000,
+        "exchange": "bybit",
+        "extension": {
+          "historyDays": 180,
+          "latestClose": 0.79,
+          "latestTs": 1699996400,
+          "percentile": 98,
+          "referenceClose": 0.695,
+          "referenceTs": 1699913600,
+          "returnPct": 13.6,
+          "sampleCount": 100,
+          "windowSeconds": 86400,
+          "zScore": 2.7
+        },
+        "historyCoverage": {
+          "availableEndTs": 1700000000,
+          "availableStartTs": 1684448000,
+          "coverageRatio": 1,
+          "coveredSeconds": 15552000,
+          "requestedEndTs": 1700000000,
+          "requestedSeconds": 15552000,
+          "requestedStartTs": 1684448000
+        },
+        "insufficientDataReasons": [],
+        "marketType": "perp",
+        "requestedAsOf": 1700000000,
+        "sampleCount": 100,
+        "source": "external",
+        "symbol": "FILUSDT",
+        "timeframeExtensions": {},
+        "updatedAt": 1700000000
+      },
+      "dataQualityNotes": [],
+      "decisionTime": 1700000000,
+      "effectiveAsOf": 1700000000,
+      "id": "decision-snapshot:e06159d671ffe375",
+      "lifecycleConfigHash": "fnv1a64:761921830014999a",
+      "lifecycleEvidence": [
+        {
+          "code": "candidate_detected",
+          "contributesTo": "developing",
+          "eventTime": 1699991900,
+          "explanation": "Extension gate crossed from false to true",
+          "id": "candidate-detected",
+          "knownAt": 1699992800,
+          "sourceTimeframe": "1h"
+        },
+        {
+          "code": "rs_bearish_break",
+          "contributesTo": "deteriorating",
+          "eventTime": 1699996400,
+          "explanation": "RS/BTC structure broke bearishly",
+          "id": "rs-break",
+          "knownAt": 1699997300,
+          "sourceTimeframe": "1h"
+        }
+      ],
+      "lifecycleState": "deteriorating",
+      "lifecycleStateSince": 1699999100,
+      "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+      "pendingConditions": [
+        "Confirmed structure and retest"
+      ],
+      "relativeStrengthEvents": [],
+      "relativeStrengthState": null,
+      "setupFamily": "impulse_fade_v1",
+      "snapshotSchemaVersion": "decision-snapshot.1",
+      "source": "external",
+      "strategyProfileHash": "fnv1a64:d775f8489b62ae94",
+      "strategyProfileId": "impulse_fade_v1.research.default",
+      "strategyProfileVersion": "1",
+      "structureByTimeframe": {},
+      "supportResistanceZones": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        }
+      ],
+      "symbol": "FILUSDT",
+      "visibleOrSelectedReferenceLevels": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        },
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ]
+    },
+    "entryCandidate": {
+      "activeCandidateId": "fil-episode-1",
+      "activeStructureLevels": [
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ],
+      "avwapEvents": [],
+      "avwapState": null,
+      "candidateEpisode": {
+        "currentState": "entryCandidate",
+        "detectedAt": 1699992800,
+        "detectionEventTime": 1699991900,
+        "detectionMetrics": {
+          "atrExtension": 2.4,
+          "percentile": 98,
+          "returnPct": 13.6,
+          "zScore": 2.7
+        },
+        "episodeHigh": 0.82,
+        "episodeHighTime": 1699996400,
+        "executionTimeframe": "15m",
+        "id": "fil-episode-1",
+        "initialMtfContext": [],
+        "lifecycleConfigHash": "fnv1a64:761921830014999a",
+        "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+        "setupFamily": "impulse_fade_v1",
+        "source": "external",
+        "stateSince": 1699999100,
+        "symbol": "FILUSDT",
+        "terminalAt": null,
+        "venue": "bybit"
+      },
+      "candidateMetrics": {
+        "baseTimeframe": "1h",
+        "effectiveAsOf": 1700000000,
+        "exchange": "bybit",
+        "extension": {
+          "historyDays": 180,
+          "latestClose": 0.79,
+          "latestTs": 1699996400,
+          "percentile": 98,
+          "referenceClose": 0.695,
+          "referenceTs": 1699913600,
+          "returnPct": 13.6,
+          "sampleCount": 100,
+          "windowSeconds": 86400,
+          "zScore": 2.7
+        },
+        "historyCoverage": {
+          "availableEndTs": 1700000000,
+          "availableStartTs": 1684448000,
+          "coverageRatio": 1,
+          "coveredSeconds": 15552000,
+          "requestedEndTs": 1700000000,
+          "requestedSeconds": 15552000,
+          "requestedStartTs": 1684448000
+        },
+        "insufficientDataReasons": [],
+        "marketType": "perp",
+        "requestedAsOf": 1700000000,
+        "sampleCount": 100,
+        "source": "external",
+        "symbol": "FILUSDT",
+        "timeframeExtensions": {},
+        "updatedAt": 1700000000
+      },
+      "dataQualityNotes": [],
+      "decisionTime": 1700000000,
+      "effectiveAsOf": 1700000000,
+      "id": "decision-snapshot:bed7b6779ed9e3f0",
+      "lifecycleConfigHash": "fnv1a64:761921830014999a",
+      "lifecycleEvidence": [
+        {
+          "code": "candidate_detected",
+          "contributesTo": "developing",
+          "eventTime": 1699991900,
+          "explanation": "Extension gate crossed from false to true",
+          "id": "candidate-detected",
+          "knownAt": 1699992800,
+          "sourceTimeframe": "1h"
+        },
+        {
+          "code": "rs_bearish_break",
+          "contributesTo": "deteriorating",
+          "eventTime": 1699996400,
+          "explanation": "RS/BTC structure broke bearishly",
+          "id": "rs-break",
+          "knownAt": 1699997300,
+          "sourceTimeframe": "1h"
+        },
+        {
+          "code": "bearish_retest_rejection",
+          "contributesTo": "entryCandidate",
+          "eventTime": 1699998200,
+          "explanation": "Later candle retested and rejected the break level",
+          "id": "retest-rejection",
+          "knownAt": 1699999100,
+          "sourceTimeframe": "15m"
+        }
+      ],
+      "lifecycleState": "entryCandidate",
+      "lifecycleStateSince": 1699999100,
+      "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+      "pendingConditions": [],
+      "relativeStrengthEvents": [],
+      "relativeStrengthState": null,
+      "setupFamily": "impulse_fade_v1",
+      "snapshotSchemaVersion": "decision-snapshot.1",
+      "source": "external",
+      "strategyProfileHash": "fnv1a64:d775f8489b62ae94",
+      "strategyProfileId": "impulse_fade_v1.research.default",
+      "strategyProfileVersion": "1",
+      "structureByTimeframe": {},
+      "supportResistanceZones": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        }
+      ],
+      "symbol": "FILUSDT",
+      "visibleOrSelectedReferenceLevels": [
+        {
+          "eventTime": 1699913600,
+          "id": "fil-support-zone-1",
+          "kind": "supportZone",
+          "knownAt": 1699928000,
+          "price": 0.72,
+          "rangeHigh": 0.725,
+          "rangeLow": 0.715,
+          "sourceObject": {
+            "objectId": "fil-support-zone-1",
+            "objectType": "SupportResistanceZone",
+            "snapshot": {
+              "high": 0.725,
+              "kind": "support",
+              "low": 0.715,
+              "strength": 8.1
+            }
+          },
+          "sourceTimeframe": "4h"
+        },
+        {
+          "eventTime": 1699996400,
+          "id": "fil-episode-1:high",
+          "kind": "candidateEpisodeHigh",
+          "knownAt": 1699997300,
+          "price": 0.82,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-episode-1",
+            "objectType": "SetupCandidateEpisode",
+            "snapshot": {
+              "episodeHigh": 0.82,
+              "episodeHighTime": 1699996400
+            }
+          },
+          "sourceTimeframe": "1h"
+        },
+        {
+          "eventTime": 1699998200,
+          "id": "fil-break-retest-1",
+          "kind": "structureLevel",
+          "knownAt": 1699999100,
+          "price": 0.79,
+          "rangeHigh": null,
+          "rangeLow": null,
+          "sourceObject": {
+            "objectId": "fil-break-retest-1",
+            "objectType": "SetupLifecycleLevel",
+            "snapshot": {
+              "evidenceId": "retest-rejection",
+              "level": 0.79
+            }
+          },
+          "sourceTimeframe": "15m"
+        }
+      ]
+    }
+  },
+  "decisions": {
+    "wait": {
+      "action": "Wait",
+      "confidence": 0.7,
+      "decisionTime": 1700000000,
+      "id": "decision:302d16892442f77a",
+      "nextCondition": "Wait for RS weakness or a bearish structure break",
+      "schemaVersion": "decision-record.1",
+      "sessionId": null,
+      "skipReason": null,
+      "snapshotId": "decision-snapshot:11f0591fced9b330",
+      "tags": [
+        "training",
+        "impulse-fade-v1"
+      ],
+      "thesis": "Extension is present but structure has not deteriorated",
+      "tradePlan": null
+    },
+    "skip": {
+      "action": "Skip",
+      "confidence": 0.85,
+      "decisionTime": 1700000000,
+      "id": "decision:cf5914059e0d915c",
+      "nextCondition": null,
+      "schemaVersion": "decision-record.1",
+      "sessionId": null,
+      "skipReason": "noViableStop",
+      "snapshotId": "decision-snapshot:11f0591fced9b330",
+      "tags": [
+        "training",
+        "risk-first"
+      ],
+      "thesis": "No viable structural stop inside the risk envelope",
+      "tradePlan": null
+    },
+    "proposeCompliant": {
+      "action": "ProposeTrade",
+      "confidence": null,
+      "decisionTime": 1700000000,
+      "id": "decision:e5643dac713dea76",
+      "nextCondition": null,
+      "schemaVersion": "decision-record.1",
+      "sessionId": null,
+      "skipReason": null,
+      "snapshotId": "decision-snapshot:bed7b6779ed9e3f0",
+      "tags": [
+        "training",
+        "compliant"
+      ],
+      "thesis": "Structure broke and the later retest rejected",
+      "tradePlan": {
+        "accountState": {
+          "availableBalance": 6000,
+          "equity": 10000,
+          "quoteCurrency": "USDT"
+        },
+        "complianceResult": {
+          "classification": "Compliant",
+          "hardErrors": [],
+          "overrideReason": null,
+          "strategyViolations": [],
+          "warnings": [
+            {
+              "code": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+              "message": "Exact liquidation is unavailable without a verified venue calculator"
+            }
+          ]
+        },
+        "createdAt": 1700000000,
+        "discretionaryOverrideReason": null,
+        "entryPlan": {
+          "associatedReferenceLevel": {
+            "eventTime": 1699998200,
+            "id": "fil-break-retest-1",
+            "kind": "structureLevel",
+            "knownAt": 1699999100,
+            "price": 0.79,
+            "rangeHigh": null,
+            "rangeLow": null,
+            "sourceObject": {
+              "objectId": "fil-break-retest-1",
+              "objectType": "SetupLifecycleLevel",
+              "snapshot": {
+                "evidenceId": "retest-rejection",
+                "level": 0.79
+              }
+            },
+            "sourceTimeframe": "15m"
+          },
+          "associatedReferenceLevelId": "fil-break-retest-1",
+          "cancellationCondition": "Cancel if price closes above the episode high",
+          "expiresAt": 1700003600,
+          "intendedPrice": 0.79,
+          "orderPlanType": "limit",
+          "priceSource": "frozen retest level"
+        },
+        "executionAssumptions": {
+          "adverseEntrySlippageBps": 5,
+          "adverseStopSlippageBps": 5,
+          "adverseTargetSlippageBps": 5,
+          "entryFeeRate": 0.00055,
+          "stopExitFeeRate": 0.00055,
+          "targetExitFeeRate": 0.00055
+        },
+        "id": "trade-plan:44cc31471e18b9aa",
+        "leveragePolicy": {
+          "mode": "derivedMinimum"
+        },
+        "lifecycleConfigHash": "fnv1a64:761921830014999a",
+        "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+        "riskRequest": {
+          "accountRiskFraction": 0.01,
+          "fixedRiskAmount": null,
+          "maximumMarginAllocationFraction": 0.25,
+          "maximumNotional": null
+        },
+        "schemaVersion": "trade-plan.1",
+        "setupFamily": "impulse_fade_v1",
+        "side": "short",
+        "sizingResult": {
+          "effectiveEntry": 0.7896050000000001,
+          "effectiveStop": 0.8254124999999999,
+          "estimatedEntryFee": 1.1834639220250003,
+          "estimatedStopFee": 1.2371323820624998,
+          "grossNotional": 2152.829,
+          "hardErrors": [],
+          "initialMargin": 2152.829,
+          "liquidationStatus": {
+            "exactPrice": null,
+            "modelVersion": null,
+            "reason": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+            "status": "unavailable"
+          },
+          "marginPercentAvailableBalance": 35.88048333333334,
+          "marginPercentEquity": 21.528290000000002,
+          "minimumRequiredLeverage": 0.8611316000000001,
+          "projectedLossAtStop": 99.99961455408686,
+          "projectedLossPercentEquity": 0.9999961455408687,
+          "rawQuantity": 2725.1105038270653,
+          "riskBudget": 100,
+          "roundedQuantity": 2725.1,
+          "schemaVersion": "sizing-result.1",
+          "selectedLeverage": 1,
+          "side": "short",
+          "sizingModelVersion": "linear-quote-perpetual-risk.1",
+          "stopDistanceAbsolute": 0.03580749999999977,
+          "stopDistanceAtr": 1.4,
+          "stopDistancePercent": 4.534862367892777,
+          "targetOutcomes": [
+            {
+              "effectiveTargetPrice": 0.7203599999999999,
+              "expectedEntryFee": 1.1834639220250003,
+              "expectedExitFee": 1.0796791698,
+              "grossR": 1.9338127487258445,
+              "grossReward": 188.69954950000061,
+              "netProjectedReward": 186.43640640817563,
+              "positionFraction": 1,
+              "projectedR": 1.864371250224546,
+              "targetId": "target-support",
+              "targetPrice": 0.72,
+              "weightedGrossRContribution": 1.9338127487258445,
+              "weightedRContribution": 1.864371250224546
+            }
+          ],
+          "warnings": [
+            {
+              "code": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+              "message": "Exact liquidation is unavailable without a verified venue calculator"
+            }
+          ],
+          "weightedGrossR": 1.9338127487258445,
+          "weightedGrossReward": 188.69954950000061,
+          "weightedProjectedR": 1.864371250224546,
+          "weightedProjectedReward": 186.43640640817563
+        },
+        "snapshotId": "decision-snapshot:bed7b6779ed9e3f0",
+        "status": "finalized",
+        "stopPlan": {
+          "buffer": {
+            "atrFraction": null,
+            "atrValue": null,
+            "basisPoints": 60.9756097561
+          },
+          "derivationType": "episodeHigh",
+          "rationale": "Stop beyond the frozen candidate episode high",
+          "referenceLevel": {
+            "eventTime": 1699996400,
+            "id": "fil-episode-1:high",
+            "kind": "candidateEpisodeHigh",
+            "knownAt": 1699997300,
+            "price": 0.82,
+            "rangeHigh": null,
+            "rangeLow": null,
+            "sourceObject": {
+              "objectId": "fil-episode-1",
+              "objectType": "SetupCandidateEpisode",
+              "snapshot": {
+                "episodeHigh": 0.82,
+                "episodeHighTime": 1699996400
+              }
+            },
+            "sourceTimeframe": "1h"
+          },
+          "referenceLevelId": "fil-episode-1:high",
+          "stopPrice": 0.825
+        },
+        "strategyProfileHash": "fnv1a64:d775f8489b62ae94",
+        "strategyProfileId": "impulse_fade_v1.research.default",
+        "strategyProfileVersion": "1",
+        "targetPlans": [
+          {
+            "derivationType": "supportZone",
+            "id": "target-support",
+            "positionFraction": 1,
+            "rationale": "Nearest frozen 4h support zone",
+            "referenceLevel": {
+              "eventTime": 1699913600,
+              "id": "fil-support-zone-1",
+              "kind": "supportZone",
+              "knownAt": 1699928000,
+              "price": 0.72,
+              "rangeHigh": 0.725,
+              "rangeLow": 0.715,
+              "sourceObject": {
+                "objectId": "fil-support-zone-1",
+                "objectType": "SupportResistanceZone",
+                "snapshot": {
+                  "high": 0.725,
+                  "kind": "support",
+                  "low": 0.715,
+                  "strength": 8.1
+                }
+              },
+              "sourceTimeframe": "4h"
+            },
+            "referenceLevelId": "fil-support-zone-1",
+            "targetPrice": 0.72
+          }
+        ],
+        "venueRules": {
+          "feeSchedule": {
+            "makerRate": 0.0002,
+            "takerRate": 0.00055,
+            "version": "research-example.1"
+          },
+          "leverageStep": 1,
+          "liquidationModel": null,
+          "maintenanceMarginModel": null,
+          "maxLeverage": 25,
+          "minNotional": 5,
+          "minQuantity": 0.1,
+          "priceTick": 0.0001,
+          "quantityStep": 0.1,
+          "symbol": "FILUSDT",
+          "venue": "bybit"
+        }
+      }
+    },
+    "proposeOverride": {
+      "action": "ProposeTrade",
+      "confidence": null,
+      "decisionTime": 1700000000,
+      "id": "decision:294af316485df255",
+      "nextCondition": null,
+      "schemaVersion": "decision-record.1",
+      "sessionId": null,
+      "skipReason": null,
+      "snapshotId": "decision-snapshot:e06159d671ffe375",
+      "tags": [
+        "training",
+        "override"
+      ],
+      "thesis": "Relative weakness leads absolute structure",
+      "tradePlan": {
+        "accountState": {
+          "availableBalance": 6000,
+          "equity": 10000,
+          "quoteCurrency": "USDT"
+        },
+        "complianceResult": {
+          "classification": "Overridden",
+          "hardErrors": [],
+          "overrideReason": "Researching RS deterioration before price structure breaks",
+          "strategyViolations": [
+            {
+              "code": "ENTRY_BEFORE_ENTRY_CANDIDATE",
+              "message": "Lifecycle state deteriorating is not entry-eligible"
+            },
+            {
+              "code": "ENTRY_BEFORE_STRUCTURE_BREAK",
+              "message": "Entry precedes a confirmed bearish structure break"
+            },
+            {
+              "code": "ENTRY_BEFORE_RETEST",
+              "message": "The profile requires a confirmed retest rejection"
+            }
+          ],
+          "warnings": [
+            {
+              "code": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+              "message": "Exact liquidation is unavailable without a verified venue calculator"
+            }
+          ]
+        },
+        "createdAt": 1700000000,
+        "discretionaryOverrideReason": "Researching RS deterioration before price structure breaks",
+        "entryPlan": {
+          "associatedReferenceLevel": {
+            "eventTime": 1699998200,
+            "id": "fil-break-retest-1",
+            "kind": "structureLevel",
+            "knownAt": 1699999100,
+            "price": 0.79,
+            "rangeHigh": null,
+            "rangeLow": null,
+            "sourceObject": {
+              "objectId": "fil-break-retest-1",
+              "objectType": "SetupLifecycleLevel",
+              "snapshot": {
+                "evidenceId": "retest-rejection",
+                "level": 0.79
+              }
+            },
+            "sourceTimeframe": "15m"
+          },
+          "associatedReferenceLevelId": "fil-break-retest-1",
+          "cancellationCondition": "Cancel if price closes above the episode high",
+          "expiresAt": 1700003600,
+          "intendedPrice": 0.79,
+          "orderPlanType": "limit",
+          "priceSource": "frozen retest level"
+        },
+        "executionAssumptions": {
+          "adverseEntrySlippageBps": 5,
+          "adverseStopSlippageBps": 5,
+          "adverseTargetSlippageBps": 5,
+          "entryFeeRate": 0.00055,
+          "stopExitFeeRate": 0.00055,
+          "targetExitFeeRate": 0.00055
+        },
+        "id": "trade-plan:51fa24d471c0b03e",
+        "leveragePolicy": {
+          "mode": "derivedMinimum"
+        },
+        "lifecycleConfigHash": "fnv1a64:761921830014999a",
+        "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+        "riskRequest": {
+          "accountRiskFraction": 0.01,
+          "fixedRiskAmount": null,
+          "maximumMarginAllocationFraction": 0.25,
+          "maximumNotional": null
+        },
+        "schemaVersion": "trade-plan.1",
+        "setupFamily": "impulse_fade_v1",
+        "side": "short",
+        "sizingResult": {
+          "effectiveEntry": 0.7896050000000001,
+          "effectiveStop": 0.8254124999999999,
+          "estimatedEntryFee": 1.1834639220250003,
+          "estimatedStopFee": 1.2371323820624998,
+          "grossNotional": 2152.829,
+          "hardErrors": [],
+          "initialMargin": 2152.829,
+          "liquidationStatus": {
+            "exactPrice": null,
+            "modelVersion": null,
+            "reason": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+            "status": "unavailable"
+          },
+          "marginPercentAvailableBalance": 35.88048333333334,
+          "marginPercentEquity": 21.528290000000002,
+          "minimumRequiredLeverage": 0.8611316000000001,
+          "projectedLossAtStop": 99.99961455408686,
+          "projectedLossPercentEquity": 0.9999961455408687,
+          "rawQuantity": 2725.1105038270653,
+          "riskBudget": 100,
+          "roundedQuantity": 2725.1,
+          "schemaVersion": "sizing-result.1",
+          "selectedLeverage": 1,
+          "side": "short",
+          "sizingModelVersion": "linear-quote-perpetual-risk.1",
+          "stopDistanceAbsolute": 0.03580749999999977,
+          "stopDistanceAtr": 1.4,
+          "stopDistancePercent": 4.534862367892777,
+          "targetOutcomes": [
+            {
+              "effectiveTargetPrice": 0.7203599999999999,
+              "expectedEntryFee": 1.1834639220250003,
+              "expectedExitFee": 1.0796791698,
+              "grossR": 1.9338127487258445,
+              "grossReward": 188.69954950000061,
+              "netProjectedReward": 186.43640640817563,
+              "positionFraction": 1,
+              "projectedR": 1.864371250224546,
+              "targetId": "target-support",
+              "targetPrice": 0.72,
+              "weightedGrossRContribution": 1.9338127487258445,
+              "weightedRContribution": 1.864371250224546
+            }
+          ],
+          "warnings": [
+            {
+              "code": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+              "message": "Exact liquidation is unavailable without a verified venue calculator"
+            }
+          ],
+          "weightedGrossR": 1.9338127487258445,
+          "weightedGrossReward": 188.69954950000061,
+          "weightedProjectedR": 1.864371250224546,
+          "weightedProjectedReward": 186.43640640817563
+        },
+        "snapshotId": "decision-snapshot:e06159d671ffe375",
+        "status": "finalized",
+        "stopPlan": {
+          "buffer": {
+            "atrFraction": null,
+            "atrValue": null,
+            "basisPoints": 60.9756097561
+          },
+          "derivationType": "episodeHigh",
+          "rationale": "Stop beyond the frozen candidate episode high",
+          "referenceLevel": {
+            "eventTime": 1699996400,
+            "id": "fil-episode-1:high",
+            "kind": "candidateEpisodeHigh",
+            "knownAt": 1699997300,
+            "price": 0.82,
+            "rangeHigh": null,
+            "rangeLow": null,
+            "sourceObject": {
+              "objectId": "fil-episode-1",
+              "objectType": "SetupCandidateEpisode",
+              "snapshot": {
+                "episodeHigh": 0.82,
+                "episodeHighTime": 1699996400
+              }
+            },
+            "sourceTimeframe": "1h"
+          },
+          "referenceLevelId": "fil-episode-1:high",
+          "stopPrice": 0.825
+        },
+        "strategyProfileHash": "fnv1a64:d775f8489b62ae94",
+        "strategyProfileId": "impulse_fade_v1.research.default",
+        "strategyProfileVersion": "1",
+        "targetPlans": [
+          {
+            "derivationType": "supportZone",
+            "id": "target-support",
+            "positionFraction": 1,
+            "rationale": "Nearest frozen 4h support zone",
+            "referenceLevel": {
+              "eventTime": 1699913600,
+              "id": "fil-support-zone-1",
+              "kind": "supportZone",
+              "knownAt": 1699928000,
+              "price": 0.72,
+              "rangeHigh": 0.725,
+              "rangeLow": 0.715,
+              "sourceObject": {
+                "objectId": "fil-support-zone-1",
+                "objectType": "SupportResistanceZone",
+                "snapshot": {
+                  "high": 0.725,
+                  "kind": "support",
+                  "low": 0.715,
+                  "strength": 8.1
+                }
+              },
+              "sourceTimeframe": "4h"
+            },
+            "referenceLevelId": "fil-support-zone-1",
+            "targetPrice": 0.72
+          }
+        ],
+        "venueRules": {
+          "feeSchedule": {
+            "makerRate": 0.0002,
+            "takerRate": 0.00055,
+            "version": "research-example.1"
+          },
+          "leverageStep": 1,
+          "liquidationModel": null,
+          "maintenanceMarginModel": null,
+          "maxLeverage": 25,
+          "minNotional": 5,
+          "minQuantity": 0.1,
+          "priceTick": 0.0001,
+          "quantityStep": 0.1,
+          "symbol": "FILUSDT",
+          "venue": "bybit"
+        }
+      }
+    }
+  },
+  "summary": {
+    "riskBudget": 100,
+    "quantity": 2725.1,
+    "notional": 2152.829,
+    "selectedLeverage": 1,
+    "initialMargin": 2152.829,
+    "projectedLossAtStop": 99.99961455408686,
+    "projectedR": 1.864371250224546,
+    "compliantClassification": "Compliant",
+    "overrideClassification": "Overridden",
+    "overrideViolations": [
+      "ENTRY_BEFORE_ENTRY_CANDIDATE",
+      "ENTRY_BEFORE_STRUCTURE_BREAK",
+      "ENTRY_BEFORE_RETEST"
+    ],
+    "liquidationStatus": {
+      "exactPrice": null,
+      "modelVersion": null,
+      "reason": "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
+      "status": "unavailable"
+    }
+  }
+}

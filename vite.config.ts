@@ -5,9 +5,13 @@ export default defineConfig({
   plugins: [vue()],
   build: {
     lib: {
-      entry: "src/index.ts",
+      entry: {
+        index: "src/index.ts",
+        core: "src/core.ts",
+      },
+      cssFileName: "index",
       formats: ["es"],
-      fileName: "index",
+      fileName: (_format, entryName) => `${entryName}.js`,
     },
     rollupOptions: {
       external: ["vue"],
