@@ -253,6 +253,9 @@ export interface ExecutionCandleQuery extends ExecutionDataQuery {
 }
 
 export interface ReplayExecutionDataAdapter {
+  readonly fundingDataAvailable?: boolean;
+  readonly tradeDataCompleteness?: "complete" | "partial" | "unavailable";
+  readonly quoteDataCompleteness?: "complete" | "partial" | "unavailable";
   getCoverage(query: ExecutionDataQuery): Promise<Record<string, { from: number; to: number; count: number }>>;
   loadCandles(query: ExecutionCandleQuery): Promise<ExecutionCandleObservation[]>;
   loadTrades?(query: ExecutionDataQuery): Promise<ExecutionTradeObservation[]>;
@@ -268,7 +271,9 @@ export interface InMemoryExecutionDataInput {
   funding?: FundingObservation[];
   fundingDataAvailable?: boolean;
   trades?: ExecutionTradeObservation[];
+  tradeDataCompleteness?: "complete" | "partial" | "unavailable";
   quotes?: ExecutionQuoteObservation[];
+  quoteDataCompleteness?: "complete" | "partial" | "unavailable";
   markPrices?: ExecutionQuoteObservation[];
   indexPrices?: ExecutionQuoteObservation[];
   venueRuleEvidence?: VenueExecutionRules[];
@@ -282,7 +287,9 @@ export interface ExecutionDataBundle {
   to: number;
   candlesByTimeframe: Record<string, ExecutionCandleObservation[]>;
   trades: ExecutionTradeObservation[];
+  tradeDataCompleteness: "complete" | "partial" | "unavailable";
   quotes: ExecutionQuoteObservation[];
+  quoteDataCompleteness: "complete" | "partial" | "unavailable";
   markPrices: ExecutionQuoteObservation[];
   indexPrices: ExecutionQuoteObservation[];
   funding: FundingObservation[];
@@ -318,14 +325,22 @@ export interface LoadExecutionCaseInput {
 
 export class InMemoryReplayExecutionDataAdapter implements ReplayExecutionDataAdapter {
   readonly #input: InMemoryExecutionDataInput;
+  readonly fundingDataAvailable: boolean;
+  readonly tradeDataCompleteness: "complete" | "partial" | "unavailable";
+  readonly quoteDataCompleteness: "complete" | "partial" | "unavailable";
 
   constructor(input: InMemoryExecutionDataInput) {
+    this.fundingDataAvailable = input.fundingDataAvailable ?? input.funding !== undefined;
+    this.tradeDataCompleteness = input.tradeDataCompleteness ?? (input.trades ? "partial" : "unavailable");
+    this.quoteDataCompleteness = input.quoteDataCompleteness ?? (input.quotes ? "partial" : "unavailable");
     this.#input = immutableJsonClone({
       ...input,
       funding: input.funding ?? [],
       fundingDataAvailable: input.fundingDataAvailable ?? input.funding !== undefined,
       trades: input.trades ?? [],
+      tradeDataCompleteness: input.tradeDataCompleteness ?? (input.trades ? "partial" : "unavailable"),
       quotes: input.quotes ?? [],
+      quoteDataCompleteness: input.quoteDataCompleteness ?? (input.quotes ? "partial" : "unavailable"),
       markPrices: input.markPrices ?? [],
       indexPrices: input.indexPrices ?? [],
       venueRuleEvidence: input.venueRuleEvidence ?? [],
@@ -517,6 +532,14 @@ export function createVenueExecutionRules(
     definition.minimumNotional,
     definition.maximumLeverage,
   ]) if (!Number.isFinite(value) || value <= 0) throw new RangeError("Venue execution limits must be positive");
+  for (const [value, label] of [
+    [definition.maximumQuantity, "maximumQuantity"],
+    [definition.maximumNotional, "maximumNotional"],
+  ] as const) {
+    if (value != null && (!Number.isFinite(value) || value <= 0)) {
+      throw new RangeError(`${label} must be null or positive`);
+    }
+  }
   if (
     definition.feeScheduleRef.id !== feeSchedule.id ||
     definition.feeScheduleRef.version !== feeSchedule.version ||
@@ -838,6 +861,15 @@ export interface PositionLedger {
   liquidationEvaluation: "Unavailable" | "VerifiedModelNotImplemented";
 }
 
+export interface ExecutionExcursionObservation {
+  sourceObservationId: string;
+  eventTime: number;
+  processingAsOf: number;
+  resolution: string;
+  high: number;
+  low: number;
+}
+
 export type ExecutionEventType =
   | "ExecutionCreated"
   | "EntryOrderActivated"
@@ -857,7 +889,8 @@ export type ExecutionEventType =
   | "ForcedHorizonClose"
   | "AmbiguityDetected"
   | "BankruptcyBoundCrossed"
-  | "ExecutionFailed";
+  | "ExecutionFailed"
+  | "PathResolved";
 
 export interface ExecutionEvent {
   schemaVersion: typeof EXECUTION_EVENT_SCHEMA_VERSION;
@@ -884,6 +917,7 @@ export interface ExecutionEvent {
   positionLedgerAfter: PositionLedger;
   pathResolutionRecordsAfter: ExecutionPathResolution[];
   fundingRecordsAfter: ExecutionFundingRecord[];
+  excursionObservationsAfter: ExecutionExcursionObservation[];
   resultAfter: ExecutionResult | null;
   errorsAfter: string[];
 }
@@ -903,7 +937,23 @@ export interface ExecutionResult {
   schemaVersion: typeof EXECUTION_RESULT_SCHEMA_VERSION;
   id: string;
   executionSessionId: string;
+  replaySessionId: string;
+  replayFrameId: string;
+  decisionSnapshotId: string;
   tradePlanId: string;
+  tradePlanSchemaVersion: typeof TRADE_PLAN_SCHEMA_VERSION;
+  strategyProfileRef: ExecutionVersionedRef;
+  lifecycleVersion: string;
+  lifecycleConfigHash: string;
+  sizingModelVersion: typeof SIZING_MODEL_VERSION;
+  replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+  executionProfileRef: ExecutionVersionedRef;
+  venueRulesRef: ExecutionVersionedRef;
+  feeScheduleRef: ExecutionVersionedRef;
+  marketDataBundleFingerprint: string;
+  usedMarketDataFingerprint: string;
+  pathResolutionRecords: ExecutionPathResolution[];
+  fundingDataFingerprint: string | null;
   status: Extract<ExecutionSessionState, "Closed" | "EntryExpired" | "OpenAtHorizon" | "Ambiguous" | "Failed">;
   closeReason: ExecutionCloseReason | null;
   entrySummary: ExecutionFill | null;
@@ -980,6 +1030,7 @@ export interface ExecutionSession extends ExecutionSessionIdentity {
   executionEvents: ExecutionEvent[];
   pathResolutionRecords: ExecutionPathResolution[];
   fundingRecords: ExecutionFundingRecord[];
+  excursionObservations: ExecutionExcursionObservation[];
   result: ExecutionResult | null;
   dataQualityNotes: string[];
   errors: string[];
@@ -1010,7 +1061,8 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
   const quotes = await optionalLoad(input.historicalDataAdapter.loadQuotes, input.historicalDataAdapter, query);
   const markPrices = await optionalLoad(input.historicalDataAdapter.loadMarkPrices, input.historicalDataAdapter, query);
   const indexPrices = await optionalLoad(input.historicalDataAdapter.loadIndexPrices, input.historicalDataAdapter, query);
-  const fundingDataAvailable = input.historicalDataAdapter.loadFundingObservations != null;
+  const fundingDataAvailable = input.historicalDataAdapter.fundingDataAvailable ??
+    input.historicalDataAdapter.loadFundingObservations != null;
   const funding = await optionalLoad(
     input.historicalDataAdapter.loadFundingObservations,
     input.historicalDataAdapter,
@@ -1022,7 +1074,16 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
     query,
   );
   validateTimedExecutionData(trades, quotes, markPrices, indexPrices, funding, query.venue, query.symbol);
-  const futureData = { candlesByTimeframe, trades, quotes, markPrices, indexPrices };
+  const futureData = {
+    candlesByTimeframe,
+    trades,
+    tradeDataCompleteness: input.historicalDataAdapter.tradeDataCompleteness ?? "unavailable",
+    quotes,
+    quoteDataCompleteness: input.historicalDataAdapter.quoteDataCompleteness ?? "unavailable",
+    markPrices,
+    indexPrices,
+    funding,
+  };
   const causalPrefix = {
     candlesByTimeframe: Object.fromEntries(Object.entries(candlesByTimeframe).map(([timeframe, candles]) => [
       timeframe,
@@ -1039,6 +1100,15 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
     ...(input.venueRules.assumptionStatus === "researchAssumption" ? ["RESEARCH_VENUE_RULE_ASSUMPTION"] : []),
     ...(!fundingDataAvailable ? ["FUNDING_DATA_UNAVAILABLE"] : []),
     ...(!input.venueRules.liquidationModel ? ["EXACT_LIQUIDATION_MODEL_UNAVAILABLE"] : []),
+    ...(trades.length && input.historicalDataAdapter.tradeDataCompleteness !== "complete"
+      ? ["PARTIAL_TRADE_DATA_NOT_USED_FOR_PATH_RESOLUTION"]
+      : []),
+    ...(
+      input.executionProfile.stopTriggerPolicy.source !== "last" &&
+      input.executionProfile.stopTriggerPolicy.authorizedFallback === "last"
+        ? ["STOP_TRIGGER_LAST_PRICE_FALLBACK_AUTHORIZED"]
+        : []
+    ),
   ];
   const dataBundle: ExecutionDataBundle = {
     schemaVersion: EXECUTION_DATA_BUNDLE_SCHEMA_VERSION,
@@ -1048,7 +1118,9 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
     to: query.to,
     candlesByTimeframe: immutableJsonClone(candlesByTimeframe),
     trades: immutableJsonClone(trades),
+    tradeDataCompleteness: input.historicalDataAdapter.tradeDataCompleteness ?? "unavailable",
     quotes: immutableJsonClone(quotes),
+    quoteDataCompleteness: input.historicalDataAdapter.quoteDataCompleteness ?? "unavailable",
     markPrices: immutableJsonClone(markPrices),
     indexPrices: immutableJsonClone(indexPrices),
     funding: immutableJsonClone(funding),
@@ -1056,10 +1128,21 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
     venueRuleEvidence: immutableJsonClone(venueRuleEvidence),
     causalPrefixFingerprint: await replaySha256(causalPrefix),
     internalBundleFingerprint: await replaySha256(futureData),
-    fundingDataFingerprint: fundingDataAvailable ? await replaySha256(funding) : null,
+    fundingDataFingerprint: fundingDataAvailable
+      ? await replaySha256(funding.filter((item) => item.knownAt <= decisionTime))
+      : null,
     dataQualityNotes,
   };
-  return immutableJsonClone({ ...input, dataBundle } as ExecutionLoadedCase);
+  return immutableJsonClone({
+    replaySession: input.replaySession,
+    replayFrame: input.replayFrame,
+    tradePlan: input.tradePlan,
+    strategyProfile: input.strategyProfile,
+    executionProfile: input.executionProfile,
+    venueRules: input.venueRules,
+    feeSchedule: input.feeSchedule,
+    dataBundle,
+  });
 }
 
 function validateExecutionCaseIdentity(input: LoadExecutionCaseInput) {
@@ -1104,6 +1187,13 @@ function validateExecutionCaseIdentity(input: LoadExecutionCaseInput) {
   const decisionTime = frame.effectiveAsOf;
   assertEffectiveAt(feeSchedule, decisionTime, "fee schedule");
   assertEffectiveAt(venueRules, decisionTime, "venue execution rules");
+  const requiredThrough = decisionTime +
+    executionProfile.orderActivationPolicy.delaySeconds +
+    executionProfile.maximumExecutionHorizon;
+  if (
+    (feeSchedule.effectiveUntil != null && feeSchedule.effectiveUntil < requiredThrough) ||
+    (venueRules.effectiveUntil != null && venueRules.effectiveUntil < requiredThrough)
+  ) throw new Error("Selected fee schedule and venue rules must cover the execution horizon");
   if (
     venueRules.venue.toLowerCase() !== plan.venueRules.venue.toLowerCase() ||
     venueRules.symbol !== plan.venueRules.symbol.toUpperCase() ||
@@ -1129,6 +1219,23 @@ function validateExecutionCaseIdentity(input: LoadExecutionCaseInput) {
   const quantity = plan.sizingResult.roundedQuantity;
   if (quantity == null || quantity <= 0 || !isStepAligned(quantity, venueRules.quantityStep)) {
     throw new Error("TradePlan has no executable step-aligned quantity");
+  }
+  const plannedNotional = quantity * plan.entryPlan.intendedPrice;
+  if (
+    quantity < venueRules.minimumQuantity ||
+    plannedNotional < venueRules.minimumNotional ||
+    (venueRules.maximumQuantity != null && quantity > venueRules.maximumQuantity) ||
+    (venueRules.maximumNotional != null && plannedNotional > venueRules.maximumNotional) ||
+    (plan.sizingResult.selectedLeverage ?? Number.POSITIVE_INFINITY) > venueRules.maximumLeverage
+  ) throw new Error("TradePlan exceeds selected venue execution limits");
+  if (!executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst.includes(
+    strategyProfile.timeframeRoles.executionTimeframe,
+  )) throw new Error("Execution profile must include the strategy execution timeframe");
+  const initialMargin = plan.sizingResult.initialMargin;
+  if (initialMargin == null || initialMargin <= 0) throw new Error("TradePlan has no initial margin");
+  const plannedBankruptcyBound = plan.entryPlan.intendedPrice + initialMargin / quantity;
+  if (plan.stopPlan.stopPrice >= plannedBankruptcyBound) {
+    throw new Error("Planned stop reaches the bankruptcy bound without a verified liquidation model");
   }
 }
 
