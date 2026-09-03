@@ -179,6 +179,7 @@ export interface ExecutionVenueEligibilityObservation {
     evidenceSource: string;
     dataQualityNotes: RadarDataQualityNote[];
 }
+export type CreateExecutionVenueEligibilityObservationInput = Omit<ExecutionVenueEligibilityObservation, "schemaVersion" | "logicalObjectId" | "observationId">;
 export interface UniverseMembershipObservation {
     logicalObjectId: string;
     observationId: string;
@@ -325,6 +326,8 @@ export interface RadarScanResult {
 }
 export declare function radarSelectionProfileHash(profile: RadarSelectionProfileDefinition | RadarSelectionProfile): string;
 export declare function createRadarSelectionProfile(definition: RadarSelectionProfileDefinition): RadarSelectionProfile;
+export declare function createExecutionVenueEligibilityObservation(input: CreateExecutionVenueEligibilityObservationInput): ExecutionVenueEligibilityObservation;
+export declare function executionVenueEligibilityObservationId(observation: Omit<ExecutionVenueEligibilityObservation, "observationId"> | ExecutionVenueEligibilityObservation): string;
 export declare const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE: RadarSelectionProfile;
 export declare function scanRadarEpisodes(input: RadarScanInput): RadarScanResult;
 export declare function canonicalRadarJson(value: unknown): string;

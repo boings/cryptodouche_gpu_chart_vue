@@ -217,6 +217,11 @@ export interface ExecutionVenueEligibilityObservation {
   dataQualityNotes: RadarDataQualityNote[];
 }
 
+export type CreateExecutionVenueEligibilityObservationInput = Omit<
+  ExecutionVenueEligibilityObservation,
+  "schemaVersion" | "logicalObjectId" | "observationId"
+>;
+
 export interface UniverseMembershipObservation {
   logicalObjectId: string;
   observationId: string;
@@ -403,6 +408,40 @@ export function createRadarSelectionProfile(
     ...definition,
     canonicalConfigHash: radarSelectionProfileHash(definition),
   });
+}
+
+export function createExecutionVenueEligibilityObservation(
+  input: CreateExecutionVenueEligibilityObservationInput,
+): ExecutionVenueEligibilityObservation {
+  if (
+    !input.symbol.trim() ||
+    !input.marketDataSource.trim() ||
+    !input.executionVenue.trim() ||
+    !input.evidenceSource.trim() ||
+    !Number.isFinite(input.effectiveFrom) ||
+    !Number.isFinite(input.knownAt) ||
+    (input.effectiveTo != null &&
+      (!Number.isFinite(input.effectiveTo) || input.effectiveTo < input.effectiveFrom))
+  ) {
+    throw new RangeError("Execution-venue eligibility observation is invalid");
+  }
+  const definition = {
+    schemaVersion: EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION,
+    logicalObjectId: `execution-venue:${input.executionVenue.toLowerCase()}:${input.symbol.toUpperCase()}`,
+    ...input,
+  };
+  return immutableJsonClone({
+    ...definition,
+    observationId: executionVenueEligibilityObservationId(definition),
+  });
+}
+
+export function executionVenueEligibilityObservationId(
+  observation: Omit<ExecutionVenueEligibilityObservation, "observationId"> | ExecutionVenueEligibilityObservation,
+) {
+  const { observationId: _observationId, ...definition } =
+    observation as ExecutionVenueEligibilityObservation;
+  return `execution-venue-observation:${hashSuffix(definition)}`;
 }
 
 export const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE = createRadarSelectionProfile({
@@ -979,7 +1018,10 @@ function createRadarEpisode(input: {
     terminalReason: null,
     rearmState: "blockedUntilReset" as const,
     executionVenueEligibility: input.venueEligibility,
-    dataQualityNotes: dedupeNotes(contextObservations.flatMap((item) => item.dataQualityNotes)),
+    dataQualityNotes: dedupeNotes([
+      ...contextObservations.flatMap((item) => item.dataQualityNotes),
+      ...input.venueEligibility.dataQualityNotes,
+    ]),
   };
   const id = `radar-episode:${hashSuffix({
     symbol: episodeBase.symbol,
@@ -1336,10 +1378,13 @@ function venueEligibilityAt(
     )
     .sort((left, right) => left.effectiveFrom - right.effectiveFrom || left.knownAt - right.knownAt)
     .at(-1);
-  if (match) return match;
-  const definition = {
-    schemaVersion: EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION,
-    logicalObjectId: `execution-venue:${venue}:${series.symbol}`,
+  if (match) {
+    if (executionVenueEligibilityObservationId(match) !== match.observationId) {
+      throw new Error("Execution-venue eligibility observation failed deterministic verification");
+    }
+    return match;
+  }
+  return createExecutionVenueEligibilityObservation({
     symbol: series.symbol,
     marketDataSource: series.source,
     executionVenue: venue,
@@ -1355,10 +1400,6 @@ function venueEligibilityAt(
         "No point-in-time execution-venue eligibility observation was supplied",
       ),
     ],
-  };
-  return immutableJsonClone({
-    ...definition,
-    observationId: `execution-venue-observation:${hashSuffix(definition)}`,
   });
 }
 

@@ -2,12 +2,15 @@ import { describe, expect, it } from "vitest";
 import type { CandleRecord } from "./types";
 import {
   createRadarSelectionProfile,
+  createExecutionVenueEligibilityObservation,
   scanRadarEpisodes,
   type ElapsedWindowReturnDetector,
   type EmaAtrDisplacementDetector,
   type MaximumWindowReturnDetector,
   type RadarDetectorCombination,
+  type RadarScanInput,
   type RadarSelectionProfileDefinition,
+  type RollingTroughRunupDetector,
 } from "./radar";
 
 const HOUR = 3_600;
@@ -39,20 +42,7 @@ function profileDefinition(
     setupFamily: "impulse_fade_v1",
     scanTimeframe: "1h",
     evaluationCadence: { mode: "completedScanCandle", everyBars: 1 },
-    moveDetectors: [
-      {
-        id: "recent-trough-runup",
-        type: "rollingTroughRunup",
-        lookbackSeconds: 48 * HOUR,
-        minimumRunupPct: 15,
-        maximumTroughAgeSeconds: 48 * HOUR,
-        referenceField: "close",
-        minimumPercentile: null,
-        minimumZScore: null,
-        minimumSampleCount: 0,
-        historyLookbackSeconds: 90 * DAY,
-      },
-    ],
+    moveDetectors: [troughDetector()],
     detectorCombination: { mode: "any" },
     hardGates: [],
     resetPolicy: { minimumFalseDurationSeconds: 2 * HOUR },
@@ -68,6 +58,24 @@ function profileDefinition(
       missingData: "warn",
     },
     createdAt: START,
+    ...overrides,
+  };
+}
+
+function troughDetector(
+  overrides: Partial<RollingTroughRunupDetector> = {},
+): RollingTroughRunupDetector {
+  return {
+    id: "recent-trough-runup",
+    type: "rollingTroughRunup",
+    lookbackSeconds: 48 * HOUR,
+    minimumRunupPct: 15,
+    maximumTroughAgeSeconds: 48 * HOUR,
+    referenceField: "close",
+    minimumPercentile: null,
+    minimumZScore: null,
+    minimumSampleCount: 0,
+    historyLookbackSeconds: 90 * DAY,
     ...overrides,
   };
 }
@@ -94,6 +102,7 @@ function scan(
   candlesByTimeframe: Record<string, CandleRecord[]>,
   overrides: Partial<RadarSelectionProfileDefinition>,
   to: number,
+  inputOverrides: Partial<RadarScanInput> = {},
 ) {
   return scanRadarEpisodes({
     candlesBySymbolAndTimeframe: {
@@ -107,6 +116,7 @@ function scan(
     selectionProfile: createRadarSelectionProfile(profileDefinition(overrides)),
     from: START - DAY,
     to,
+    ...inputOverrides,
   });
 }
 
@@ -254,5 +264,272 @@ describe("path-aware radar scanning", () => {
     );
 
     expect(result.gateEvaluations.at(-1)?.compositePassed).toBe(expected);
+  });
+
+  it("does not create episodes in a flat market", () => {
+    const candles = Array.from({ length: 100 }, (_, index) =>
+      candle(START + index * HOUR, 100),
+    );
+
+    expect(scan({ "1h": candles }, {}, START + 100 * HOUR).episodes).toHaveLength(0);
+  });
+
+  it("creates no early episode and is unchanged when future candles are removed", () => {
+    const prefix = [
+      candle(START, 100),
+      candle(START + HOUR, 105),
+      candle(START + 2 * HOUR, 111),
+    ];
+    const full = scan(
+      { "1h": [...prefix, candle(START + 3 * HOUR, 140)] },
+      { moveDetectors: [elapsedDetector("two-hour-return", 2 * HOUR, 10)] },
+      START + 3 * HOUR,
+    );
+    const truncated = scan(
+      { "1h": prefix },
+      { moveDetectors: [elapsedDetector("two-hour-return", 2 * HOUR, 10)] },
+      START + 3 * HOUR,
+    );
+
+    expect(full.episodes).toEqual(truncated.episodes);
+    expect(full.episodes[0].detectedAt).toBe(START + 3 * HOUR);
+    expect(
+      full.gateEvaluations.filter((item) => item.asOf < START + 3 * HOUR),
+    ).toSatisfy((items: typeof full.gateEvaluations) => items.every((item) => !item.compositePassed));
+  });
+
+  it("produces deeply equal cutoff results for full and physically truncated history", () => {
+    const prefix = [
+      candle(START, 100),
+      candle(START + HOUR, 90),
+      candle(START + 2 * HOUR, 108),
+    ];
+    const profile = createRadarSelectionProfile(profileDefinition());
+    const baseInput = {
+      selectionProfile: profile,
+      from: START,
+      to: START + 3 * HOUR,
+    } as const;
+    const truncated = scanRadarEpisodes({
+      ...baseInput,
+      candlesBySymbolAndTimeframe: {
+        FILUSDT: { symbol: "FILUSDT", source: "bybit", candlesByTimeframe: { "1h": prefix } },
+      },
+    });
+    const full = scanRadarEpisodes({
+      ...baseInput,
+      candlesBySymbolAndTimeframe: {
+        FILUSDT: {
+          symbol: "FILUSDT",
+          source: "bybit",
+          candlesByTimeframe: { "1h": [...prefix, candle(START + 3 * HOUR, 160)] },
+        },
+      },
+    });
+
+    expect(full).toEqual(truncated);
+  });
+
+  it("creates one episode while the radar gate remains continuously true", () => {
+    const candles = [100, 120, 125, 130, 135].map((close, index) =>
+      candle(START + index * HOUR, close),
+    );
+    const result = scan({ "1h": candles }, {}, START + 5 * HOUR);
+
+    expect(result.episodes).toHaveLength(1);
+    expect(result.episodeStatusObservations.filter((item) => item.reason === "detected")).toHaveLength(1);
+  });
+
+  it("requires a continuous false duration before rearming a later crossing", () => {
+    const candles = [100, 120, 121, 100, 100, 120].map((close, index) =>
+      candle(START + index * HOUR, close),
+    );
+    const result = scan(
+      { "1h": candles },
+      {
+        moveDetectors: [
+          troughDetector({ lookbackSeconds: 2 * HOUR, maximumTroughAgeSeconds: 2 * HOUR }),
+        ],
+        resetPolicy: { minimumFalseDurationSeconds: HOUR },
+      },
+      START + 6 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(2);
+    expect(result.episodes.map((item) => item.detectedAt)).toEqual([
+      START + 2 * HOUR,
+      START + 6 * HOUR,
+    ]);
+    expect(result.episodes[0].id).not.toBe(result.episodes[1].id);
+    expect(result.episodeStatusObservations.some((item) => item.reason === "radarGateReset")).toBe(true);
+  });
+
+  it("does not use a trough older than the configured maximum age", () => {
+    const result = scan(
+      { "1h": [candle(START, 80), candle(START + 3 * HOUR, 92)] },
+      {
+        moveDetectors: [
+          troughDetector({ lookbackSeconds: 48 * HOUR, maximumTroughAgeSeconds: 2 * HOUR }),
+        ],
+      },
+      START + 4 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(0);
+    expect(result.gateEvaluations.at(-1)?.detectorResults[0].passed).toBe(false);
+  });
+
+  it("does not create an episode from an intrabar threshold crossing", () => {
+    const candles = [candle(START, 100), candle(START + HOUR, 120)];
+    const beforeClose = scan({ "1h": candles }, {}, START + HOUR + 1_800);
+    const afterClose = scan({ "1h": candles }, {}, START + 2 * HOUR);
+
+    expect(beforeClose.episodes).toHaveLength(0);
+    expect(afterClose.episodes).toHaveLength(1);
+  });
+
+  it("makes insufficient statistical history explicit and non-passing", () => {
+    const detector = elapsedDetector("percentile-gate", HOUR, 1);
+    detector.minimumPercentile = 95;
+    detector.minimumZScore = 2;
+    detector.minimumSampleCount = 20;
+    const result = scan(
+      { "1h": [candle(START, 100), candle(START + HOUR, 120)] },
+      { moveDetectors: [detector], hardGates: ["dataQuality"] },
+      START + 2 * HOUR,
+    );
+    const latest = result.observations.find(
+      (item) => item.metricCode === "elapsed_window_return" && item.effectiveAsOf === START + 2 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(0);
+    expect(latest).toMatchObject({ percentile: null, zScore: null, sampleCount: 0 });
+    expect(latest?.dataQualityNotes.map((item) => item.code)).toContain(
+      "INSUFFICIENT_METRIC_HISTORY",
+    );
+  });
+
+  it("applies point-in-time execution-venue eligibility without current-listing leakage", () => {
+    const candles = [candle(START, 100), candle(START + HOUR, 120)];
+    const detectedAt = START + 2 * HOUR;
+    const unavailable = createExecutionVenueEligibilityObservation({
+      symbol: "FILUSDT",
+      marketDataSource: "bybit",
+      executionVenue: "phemex",
+      status: "Unavailable",
+      effectiveFrom: START,
+      effectiveTo: null,
+      knownAt: START,
+      evidenceSource: "historical-listing-fixture",
+      dataQualityNotes: [],
+    });
+    const futureAvailable = createExecutionVenueEligibilityObservation({
+      symbol: "FILUSDT",
+      marketDataSource: "bybit",
+      executionVenue: "phemex",
+      status: "Available",
+      effectiveFrom: detectedAt + DAY,
+      effectiveTo: null,
+      knownAt: detectedAt + DAY,
+      evidenceSource: "current-listing-fixture",
+      dataQualityNotes: [],
+    });
+    const requiredProfile = {
+      hardGates: ["executionVenueEligibility" as const],
+      executionVenuePolicy: { intendedVenue: "phemex", mode: "requireKnownAvailable" as const },
+    };
+    const unavailableResult = scan(
+      { "1h": candles },
+      requiredProfile,
+      detectedAt,
+      { venueEligibilityHistory: [unavailable] },
+    );
+    const futureResult = scan(
+      { "1h": candles },
+      requiredProfile,
+      detectedAt,
+      { venueEligibilityHistory: [futureAvailable] },
+    );
+    const unknownAllowed = scan(
+      { "1h": candles },
+      {
+        hardGates: ["executionVenueEligibility"],
+        executionVenuePolicy: { intendedVenue: "phemex", mode: "allowUnknown" },
+      },
+      detectedAt,
+    );
+
+    expect(unavailableResult.episodes).toHaveLength(0);
+    expect(futureResult.episodes).toHaveLength(0);
+    expect(futureResult.gateEvaluations.at(-1)?.hardGateResults[0]).toMatchObject({
+      passed: false,
+      explanation: "Execution venue Unknown",
+    });
+    expect(unknownAllowed.episodes).toHaveLength(1);
+    expect(unknownAllowed.episodes[0].executionVenueEligibility.status).toBe("Unknown");
+  });
+
+  it("uses durable metric IDs and changes revisions with cutoff or config", () => {
+    const candles = [candle(START, 100), candle(START + HOUR, 120), candle(START + 2 * HOUR, 130)];
+    const first = scan({ "1h": candles }, {}, START + 2 * HOUR);
+    const repeated = scan({ "1h": candles }, {}, START + 2 * HOUR);
+    const later = scan({ "1h": candles }, {}, START + 3 * HOUR);
+    const changed = scan(
+      { "1h": candles },
+      { moveDetectors: [troughDetector({ minimumRunupPct: 16 })] },
+      START + 2 * HOUR,
+    );
+    const firstMetric = first.observations.find((item) => item.metricCode === "rolling_trough_runup")!;
+    const repeatedMetric = repeated.observations.find((item) => item.metricCode === "rolling_trough_runup")!;
+    const laterMetric = later.observations.find(
+      (item) => item.metricCode === "rolling_trough_runup" && item.effectiveAsOf === START + 3 * HOUR,
+    )!;
+    const changedMetric = changed.observations.find((item) => item.metricCode === "rolling_trough_runup")!;
+
+    expect(firstMetric).toEqual(repeatedMetric);
+    expect(firstMetric.observationId).toBe(repeatedMetric.observationId);
+    expect(laterMetric.observationId).not.toBe(firstMetric.observationId);
+    expect(changedMetric.logicalObjectId).not.toBe(firstMetric.logicalObjectId);
+    expect(changedMetric.observationId).not.toBe(firstMetric.observationId);
+  });
+
+  it("keeps detection artifacts identical for divergent future paths", () => {
+    const prefix = [candle(START, 100), candle(START + HOUR, 120)];
+    const continuation = scan(
+      { "1h": [...prefix, candle(START + 2 * HOUR, 150)] },
+      {},
+      START + 3 * HOUR,
+    );
+    const reversal = scan(
+      { "1h": [...prefix, candle(START + 2 * HOUR, 80)] },
+      {},
+      START + 3 * HOUR,
+    );
+
+    expect(continuation.episodes[0]).toEqual(reversal.episodes[0]);
+    expect(continuation.replayCaseManifests[0]).toEqual(reversal.replayCaseManifests[0]);
+    expect(continuation.replayCaseManifests[0]).toMatchObject({
+      startAsOf: START + 2 * HOUR,
+      futureOutcomeRef: null,
+    });
+  });
+
+  it("retains a qualifying pump that continues upward", () => {
+    const result = scan(
+      {
+        "1h": [
+          candle(START, 100),
+          candle(START + HOUR, 120),
+          candle(START + 2 * HOUR, 145),
+          candle(START + 3 * HOUR, 170),
+        ],
+      },
+      {},
+      START + 4 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(1);
+    expect(result.episodes[0].detectedAt).toBe(START + 2 * HOUR);
+    expect(result.replayCaseManifests).toHaveLength(1);
   });
 });
