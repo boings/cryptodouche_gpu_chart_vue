@@ -1,32 +1,32 @@
-function re(e) {
+function K(e) {
   const t = String(e).trim().toLowerCase();
   return t.endsWith("m") ? parseInt(t, 10) * 60 : t.endsWith("h") ? parseInt(t, 10) * 60 * 60 : t.endsWith("d") ? parseInt(t, 10) * 24 * 60 * 60 : parseInt(t, 10) * 60;
 }
-function fi(e) {
+function pi(e) {
   const t = String(e).trim().toLowerCase();
   return t === "60" ? "1h" : t.endsWith("m") || t.endsWith("h") || t.endsWith("d") ? t : `${t}m`;
 }
-function ie(e, t) {
+function ae(e, t) {
   return Math.floor(e / t) * t;
 }
-function st(e) {
-  const t = ut(e);
+function dt(e) {
+  const t = yt(e);
   if (!t || typeof t != "object") return null;
-  const n = t, r = Xt(n.ts), o = Z(n.o), i = Z(n.h), s = Z(n.l), a = Z(n.c);
+  const n = t, r = nn(n.ts), o = re(n.o), i = re(n.h), s = re(n.l), a = re(n.c);
   return r == null || o == null || i == null || s == null || a == null ? null : {
     ts: r,
     o,
     h: i,
     l: s,
     c: a,
-    v_base: Z(n.v_base),
-    v_quote: Z(n.v_quote),
-    ver: Z(n.ver)
+    v_base: re(n.v_base),
+    v_quote: re(n.v_quote),
+    ver: re(n.ver)
   };
 }
-function at(e, t, n) {
-  const r = re(t), o = Qt(
-    e.map((a, c) => ct(a, c)).filter((a) => a != null),
+function mt(e, t, n) {
+  const r = K(t), o = en(
+    e.map((a, c) => ht(a, c)).filter((a) => a != null),
     r
   ).slice(-Math.max(1, n));
   if (!o.length)
@@ -36,68 +36,68 @@ function at(e, t, n) {
       candles: [],
       positionByBucket: /* @__PURE__ */ new Map()
     };
-  const i = ie(o[0].ts, r), s = o.map((a) => {
-    const c = ie(a.ts, r);
+  const i = ae(o[0].ts, r), s = o.map((a) => {
+    const c = ae(a.ts, r);
     return {
       ...a,
       bucket: c,
       x: (c - i) / r
     };
   });
-  return Me({
+  return He({
     timeframeSec: r,
     firstBucket: i,
     candles: s,
     positionByBucket: /* @__PURE__ */ new Map()
   });
 }
-function di(e, t, n) {
-  const r = e.candles.length, o = t.map((s, a) => ct(s, a)).filter((s) => s != null).filter((s) => ie(s.ts, e.timeframeSec) < e.firstBucket).sort(lt);
+function Si(e, t, n) {
+  const r = e.candles.length, o = t.map((s, a) => ht(s, a)).filter((s) => s != null).filter((s) => ae(s.ts, e.timeframeSec) < e.firstBucket).sort(vt);
   if (!o.length) return 0;
-  const i = at(
+  const i = mt(
     [...o, ...e.candles],
     n,
     o.length + e.candles.length
   );
   return e.timeframeSec = i.timeframeSec, e.firstBucket = i.firstBucket, e.candles = i.candles, e.positionByBucket = i.positionByBucket, Math.max(0, e.candles.length - r);
 }
-function jt(e) {
+function Yt(e) {
   const t = new Float32Array(e.length * 5);
   return e.forEach((n, r) => {
     t.set([n.x, n.o, n.h, n.l, n.c], r * 5);
   }), new Uint8Array(t.buffer);
 }
-function Qe(e) {
+function et(e) {
   const t = new Float32Array([e.x, e.o, e.h, e.l, e.c]);
   return new Uint8Array(t.buffer);
 }
-function mi(e) {
+function wi(e) {
   if (e.length < 2) return null;
   const t = e[e.length - 2], n = e[e.length - 1];
   return !Number.isFinite(t.c) || !Number.isFinite(n.c) || t.c === 0 ? null : (n.c - t.c) / Math.abs(t.c) * 100;
 }
-function zt(e, t, n, r = 3) {
-  const o = st(t);
+function Zt(e, t, n, r = 3) {
+  const o = dt(t);
   if (!o) return { kind: "ignore", reason: "invalid-payload" };
   if (!e.candles.length || e.firstBucket === 0)
     return { kind: "ignore", reason: "empty-history" };
-  const i = ie(o.ts, e.timeframeSec);
+  const i = ae(o.ts, e.timeframeSec);
   if (i < e.firstBucket) return { kind: "ignore", reason: "before-history" };
   const s = e.positionByBucket.get(i), a = (i - e.firstBucket) / e.timeframeSec, c = { ...o, bucket: i, x: a };
   if (s != null)
-    return Jt(c, e.candles[s]) ? { kind: "ignore", reason: "stale-version" } : Zt(e.candles[s], c) ? (e.candles[s] = c, { kind: "ignore", reason: "unchanged" }) : (e.candles[s] = c, {
+    return an(c, e.candles[s]) ? { kind: "ignore", reason: "stale-version" } : sn(e.candles[s], c) ? (e.candles[s] = c, { kind: "ignore", reason: "unchanged" }) : (e.candles[s] = c, {
       kind: "replace",
       position: s,
-      bytes: Qe(c)
+      bytes: et(c)
     });
-  const u = e.candles[e.candles.length - 1];
-  return i <= u.bucket ? { kind: "ignore", reason: "stale-gap" } : (i - u.bucket) / e.timeframeSec > r ? { kind: "ignore", reason: "gap-too-large" } : (e.candles.push(c), e.candles.length > Math.max(1, n) ? (e.candles.splice(0, e.candles.length - Math.max(1, n)), Gt(e), { kind: "reset", bytes: jt(e.candles) }) : (Me(e), {
+  const l = e.candles[e.candles.length - 1];
+  return i <= l.bucket ? { kind: "ignore", reason: "stale-gap" } : (i - l.bucket) / e.timeframeSec > r ? { kind: "ignore", reason: "gap-too-large" } : (e.candles.push(c), e.candles.length > Math.max(1, n) ? (e.candles.splice(0, e.candles.length - Math.max(1, n)), Jt(e), { kind: "reset", bytes: Yt(e.candles) }) : (He(e), {
     kind: "append",
     position: e.candles.length - 1,
-    bytes: Qe(c)
+    bytes: et(c)
   }));
 }
-function hi(e, t = []) {
+function Ai(e, t = []) {
   if (!e.length) return { minX: 0, maxX: 1, minY: 0, maxY: 1 };
   let n = 1 / 0, r = -1 / 0;
   for (const s of e)
@@ -115,54 +115,54 @@ function hi(e, t = []) {
     maxY: r + i
   };
 }
-function vi(e, t, n) {
-  const r = re(n), o = Math.floor(Date.now() / 1e3), i = ie(o, r), s = e.split("").reduce((u, l) => u + l.charCodeAt(0), 0), a = [];
+function ki(e, t, n) {
+  const r = K(n), o = Math.floor(Date.now() / 1e3), i = ae(o, r), s = e.split("").reduce((l, u) => l + u.charCodeAt(0), 0), a = [];
   let c = 40 + s % 160;
-  for (let u = Math.max(1, t) - 1; u >= 0; u--) {
-    const l = i - u * r, f = Math.sin((t - u + s) / 9) * 0.8, d = c, h = Math.max(1e-4, d + f + Math.cos((t - u) / 13) * 0.35), m = Math.max(d, h) + 0.35 + Math.abs(Math.sin(u + s)) * 0.5, v = Math.min(d, h) - 0.35 - Math.abs(Math.cos(u + s)) * 0.5, y = 50 + s % 90 + Math.abs(Math.sin((t - u + s) / 5)) * 180;
-    a.push({ ts: l, o: d, h: m, l: v, c: h, v_base: y, v_quote: y * h }), c = h;
+  for (let l = Math.max(1, t) - 1; l >= 0; l--) {
+    const u = i - l * r, f = Math.sin((t - l + s) / 9) * 0.8, d = c, m = Math.max(1e-4, d + f + Math.cos((t - l) / 13) * 0.35), h = Math.max(d, m) + 0.35 + Math.abs(Math.sin(l + s)) * 0.5, b = Math.min(d, m) - 0.35 - Math.abs(Math.cos(l + s)) * 0.5, v = 50 + s % 90 + Math.abs(Math.sin((t - l + s) / 5)) * 180;
+    a.push({ ts: u, o: d, h, l: b, c: m, v_base: v, v_quote: v * m }), c = m;
   }
-  return at(a, n, t);
+  return mt(a, n, t);
 }
-function bi(e, t) {
+function Ti(e, t) {
   const n = e.candles[e.candles.length - 1];
   if (!n) return { kind: "ignore", reason: "empty-history" };
-  const r = n.bucket + e.timeframeSec, o = Math.sin(r / 600) * 0.7, i = n.c, s = Math.max(1e-4, i + o), a = Math.max(i, s) + 0.5, c = Math.min(i, s) - 0.5, u = Math.max(1, (n.v_base ?? 100) * (0.82 + Math.abs(o) * 0.36));
-  return zt(e, { ts: r, o: i, h: a, l: c, c: s, v_base: u, v_quote: u * s }, t);
+  const r = n.bucket + e.timeframeSec, o = Math.sin(r / 600) * 0.7, i = n.c, s = Math.max(1e-4, i + o), a = Math.max(i, s) + 0.5, c = Math.min(i, s) - 0.5, l = Math.max(1, (n.v_base ?? 100) * (0.82 + Math.abs(o) * 0.36));
+  return Zt(e, { ts: r, o: i, h: a, l: c, c: s, v_base: l, v_quote: l * s }, t);
 }
-function Gt(e) {
+function Jt(e) {
   const t = e.candles[0];
   e.firstBucket = t ? t.bucket : 0;
   for (const n of e.candles)
     n.x = (n.bucket - e.firstBucket) / e.timeframeSec;
-  Me(e);
+  He(e);
 }
-function Me(e) {
+function He(e) {
   return e.positionByBucket = /* @__PURE__ */ new Map(), e.candles.forEach((t, n) => {
     e.positionByBucket.set(t.bucket, n);
   }), e;
 }
-function ct(e, t) {
-  const n = st(e);
+function ht(e, t) {
+  const n = dt(e);
   return n ? { ...n, sourceOrder: t } : null;
 }
-function Qt(e, t) {
+function en(e, t) {
   const n = /* @__PURE__ */ new Map();
   for (const r of e) {
-    const o = ie(r.ts, t), i = n.get(o);
-    (!i || lt(r, i) > 0) && n.set(o, r);
+    const o = ae(r.ts, t), i = n.get(o);
+    (!i || vt(r, i) > 0) && n.set(o, r);
   }
-  return Array.from(n.entries()).sort(([r], [o]) => r - o).map(([, r]) => Wt(r));
+  return Array.from(n.entries()).sort(([r], [o]) => r - o).map(([, r]) => tn(r));
 }
-function lt(e, t) {
+function vt(e, t) {
   const n = e.ver ?? Number.NEGATIVE_INFINITY, r = t.ver ?? Number.NEGATIVE_INFINITY;
   return n !== r ? n - r : e.ts !== t.ts ? e.ts - t.ts : e.sourceOrder - t.sourceOrder;
 }
-function Wt(e) {
+function tn(e) {
   const { sourceOrder: t, ...n } = e;
   return n;
 }
-function Xt(e) {
+function nn(e) {
   if (typeof e == "number")
     return Number.isFinite(e) ? e >= 1e12 ? Math.floor(e / 1e3) : Math.floor(e) : null;
   if (typeof e == "string") {
@@ -170,12 +170,12 @@ function Xt(e) {
     return Number.isNaN(t) ? null : Math.floor(t / 1e3);
   }
   if (Array.isArray(e)) {
-    const t = e.length >= 9 ? Kt(e) : Yt(e);
+    const t = e.length >= 9 ? rn(e) : on(e);
     return Number.isNaN(t) ? null : Math.floor(t / 1e3);
   }
   return null;
 }
-function Kt(e) {
+function rn(e) {
   const [
     t,
     n = 1,
@@ -185,19 +185,19 @@ function Kt(e) {
     s = 0,
     a = 0,
     c = 0,
-    u = 0
-  ] = e, l = Math.floor(Number(s) / 1e6);
+    l = 0
+  ] = e, u = Math.floor(Number(s) / 1e6);
   return Date.UTC(
     Number(t),
     0,
     Number(n),
     Number(r) - Number(a),
     Number(o) - Number(c),
-    Number(i) - Number(u),
-    l
+    Number(i) - Number(l),
+    u
   );
 }
-function Yt(e) {
+function on(e) {
   const [t, n = 1, r = 1, o = 0, i = 0, s = 0, a = 0] = e;
   return Date.UTC(
     Number(t),
@@ -209,20 +209,20 @@ function Yt(e) {
     Number(a)
   );
 }
-function Zt(e, t) {
+function sn(e, t) {
   return e.o === t.o && e.h === t.h && e.l === t.l && e.c === t.c && Object.is(e.v_base, t.v_base) && Object.is(e.v_quote, t.v_quote);
 }
-function Jt(e, t) {
+function an(e, t) {
   return e.ver == null || t.ver == null ? !1 : e.ver < t.ver;
 }
-function Z(e) {
+function re(e) {
   const t = typeof e == "number" ? e : typeof e == "string" ? Number(e) : NaN;
   return Number.isFinite(t) ? t : void 0;
 }
-function ut(e) {
+function yt(e) {
   if (typeof e == "string")
     try {
-      return ut(JSON.parse(e));
+      return yt(JSON.parse(e));
     } catch {
       return null;
     }
@@ -232,7 +232,7 @@ function ut(e) {
   }
   return e;
 }
-function M(e) {
+function D(e) {
   const t = /* @__PURE__ */ new Set();
   function n(o, i = !1) {
     if (o === null) return "null";
@@ -252,39 +252,39 @@ function M(e) {
     t.add(o);
     let s;
     return Array.isArray(o) ? s = `[${o.map((a) => n(a, !0) ?? "null").join(",")}]` : s = `{${Object.keys(o).sort().flatMap((c) => {
-      const u = n(o[c]);
-      return u == null ? [] : [`${JSON.stringify(c)}:${u}`];
+      const l = n(o[c]);
+      return l == null ? [] : [`${JSON.stringify(c)}:${l}`];
     }).join(",")}}`, t.delete(o), s;
   }
   const r = n(e);
   if (r == null) throw new TypeError("Canonical JSON root cannot be undefined");
   return r;
 }
-function O(e) {
-  const t = new TextEncoder().encode(M(e));
+function L(e) {
+  const t = new TextEncoder().encode(D(e));
   let n = 0xcbf29ce484222325n;
   for (const r of t)
     n ^= BigInt(r), n = BigInt.asUintN(64, n * 0x100000001b3n);
   return `fnv1a64:${n.toString(16).padStart(16, "0")}`;
 }
-function I(e) {
-  return ft(JSON.parse(M(e)));
+function M(e) {
+  return bt(JSON.parse(D(e)));
 }
-function ft(e) {
+function bt(e) {
   if (e && typeof e == "object") {
-    for (const t of Object.values(e)) ft(t);
+    for (const t of Object.values(e)) bt(t);
     Object.freeze(e);
   }
   return e;
 }
-const Q = "impulse_fade_v1", U = "impulse_fade_v1.lifecycle.1", en = "impulse_fade_v1.lifecycle-config.1", ce = Object.freeze({
+const J = "impulse_fade_v1", Q = "impulse_fade_v1.lifecycle.1", cn = "impulse_fade_v1.lifecycle-config.1", de = Object.freeze({
   returnPct: 8,
   percentile: 95,
   zScore: 2,
   atrExtension: 2,
   mode: "any"
 });
-function yi(e, t = 20) {
+function Ri(e, t = 20) {
   if (e.length < t) return new Float32Array();
   const n = [];
   let r = 0;
@@ -292,7 +292,7 @@ function yi(e, t = 20) {
     r += o.c, i >= t && (r -= e[i - t].c), i >= t - 1 && n.push(o.x, r / t);
   }), new Float32Array(n);
 }
-function gi(e, t = 20) {
+function Ei(e, t = 20) {
   if (e.length < t) return new Float32Array();
   const n = [], r = 2 / (t + 1);
   let o = 0;
@@ -303,7 +303,7 @@ function gi(e, t = 20) {
     o = (e[i].c - o) * r + o, n.push(e[i].x, o);
   return new Float32Array(n);
 }
-function pi(e, t = 20) {
+function xi(e, t = 20) {
   if (e.length < t) return new Float32Array();
   const n = [], r = t * (t + 1) / 2;
   for (let o = t - 1; o < e.length; o++) {
@@ -314,7 +314,7 @@ function pi(e, t = 20) {
   }
   return new Float32Array(n);
 }
-function Si(e, t = 20, n = 2) {
+function Pi(e, t = 20, n = 2) {
   if (e.length < t)
     return {
       basis: new Float32Array(),
@@ -323,14 +323,14 @@ function Si(e, t = 20, n = 2) {
     };
   const r = [], o = [], i = [];
   let s = 0, a = 0;
-  return e.forEach((c, u) => {
-    if (s += c.c, a += c.c * c.c, u >= t) {
-      const l = e[u - t].c;
-      s -= l, a -= l * l;
+  return e.forEach((c, l) => {
+    if (s += c.c, a += c.c * c.c, l >= t) {
+      const u = e[l - t].c;
+      s -= u, a -= u * u;
     }
-    if (u >= t - 1) {
-      const l = s / t, f = Math.max(0, a / t - l * l), d = Math.sqrt(f) * n;
-      r.push(c.x, l), o.push(c.x, l + d), i.push(c.x, l - d);
+    if (l >= t - 1) {
+      const u = s / t, f = Math.max(0, a / t - u * u), d = Math.sqrt(f) * n;
+      r.push(c.x, u), o.push(c.x, u + d), i.push(c.x, u - d);
     }
   }), {
     basis: new Float32Array(r),
@@ -338,97 +338,97 @@ function Si(e, t = 20, n = 2) {
     lower: new Float32Array(i)
   };
 }
-function wi(e, t = 14) {
-  return ee(kt(e, t));
+function Ci(e, t = 14) {
+  return oe(Ct(e, t));
 }
-function Ai(e, t = 14, n = 14, r = 3, o = 3) {
-  const i = kt(e, t), s = te(n);
+function Ii(e, t = 14, n = 14, r = 3, o = 3) {
+  const i = Ct(e, t), s = se(n);
   if (i.length < s)
     return { k: new Float32Array(), d: new Float32Array() };
   const a = [];
-  for (let l = s - 1; l < i.length; l++) {
+  for (let u = s - 1; u < i.length; u++) {
     let f = 1 / 0, d = -1 / 0;
-    for (let v = 0; v < s; v++) {
-      const y = i[l - v].value;
-      f = Math.min(f, y), d = Math.max(d, y);
+    for (let b = 0; b < s; b++) {
+      const v = i[u - b].value;
+      f = Math.min(f, v), d = Math.max(d, v);
     }
-    const h = d - f, m = h > 0 ? (i[l].value - f) / h * 100 : 50;
-    a.push({ x: i[l].x, value: m });
+    const m = d - f, h = m > 0 ? (i[u].value - f) / m * 100 : 50;
+    a.push({ x: i[u].x, value: h });
   }
-  const c = Je(a, te(r)), u = Je(c, te(o));
+  const c = st(a, se(r)), l = st(c, se(o));
   return {
-    k: ee(c),
-    d: ee(u)
+    k: oe(c),
+    d: oe(l)
   };
 }
-function ki(e, t = 12, n = 26, r = 9) {
-  const o = _e(e, t), i = _e(e, n), s = [];
-  for (let l = 0; l < e.length; l++) {
-    const f = o[l], d = i[l];
-    f == null || d == null || s.push({ x: e[l].x, value: f - d });
+function Ni(e, t = 12, n = 26, r = 9) {
+  const o = Le(e, t), i = Le(e, n), s = [];
+  for (let u = 0; u < e.length; u++) {
+    const f = o[u], d = i[u];
+    f == null || d == null || s.push({ x: e[u].x, value: f - d });
   }
-  const a = Jn(s, r), c = new Map(s.map((l) => [l.x, l.value])), u = a.map((l) => ({
-    x: l.x,
-    value: (c.get(l.x) ?? l.value) - l.value
+  const a = sr(s, r), c = new Map(s.map((u) => [u.x, u.value])), l = a.map((u) => ({
+    x: u.x,
+    value: (c.get(u.x) ?? u.value) - u.value
   }));
   return {
-    macd: ee(s),
-    signal: ee(a),
-    histogram: ee(u)
+    macd: oe(s),
+    signal: oe(a),
+    histogram: oe(l)
   };
 }
-function Ri(e, t = 14) {
-  const n = Re(e, t), r = [];
+function _i(e, t = 14) {
+  const n = Ee(e, t), r = [];
   return n.forEach((o, i) => {
     o != null && r.push({ x: e[i].x, value: o });
-  }), ee(r);
+  }), oe(r);
 }
-function Fe(e, t = {}) {
-  const n = k(t.windowSeconds, 60, 2592e3, 86400), r = k(t.historyDays, 1, 365, 180), o = k(t.minSamples, 1, 5e3, 20), i = k(t.emaPeriod, 2, 500, 20), s = k(t.atrPeriod, 2, 500, 14), a = wt(e);
+function Ve(e, t = {}) {
+  const n = k(t.windowSeconds, 60, 2592e3, 86400), r = k(t.historyDays, 1, 365, 180), o = k(t.minSamples, 1, 5e3, 20), i = k(t.emaPeriod, 2, 500, 20), s = k(t.atrPeriod, 2, 500, 14), a = xt(e);
   if (!a)
-    return Mn(n);
-  const c = e.indexOf(a), u = At(e, a.bucket - n, c), l = u && L(u.c) ? (a.c / u.c - 1) * 100 : null, f = l == null ? [] : Fn(e, {
+    return $n(n);
+  const c = e.indexOf(a), l = Pt(e, a.bucket - n, c), u = l && B(l.c) ? (a.c / l.c - 1) * 100 : null, f = u == null ? [] : qn(e, {
     windowSeconds: n,
     earliestBucket: a.bucket - r * 86400,
     excludeBucket: a.bucket
-  }), d = l != null && f.length >= o ? Ln(f, l) : null, h = l != null && f.length >= o ? Dn(f, l) : null, m = _e(e, i)[c] ?? null, v = Re(e, s)[c] ?? null, y = m != null && v != null && Number.isFinite(m) && Number.isFinite(v) && v > 0 ? (a.c - m) / v : null;
+  }), d = u != null && f.length >= o ? Un(f, u) : null, m = u != null && f.length >= o ? jn(f, u) : null, h = Le(e, i)[c] ?? null, b = Ee(e, s)[c] ?? null, v = h != null && b != null && Number.isFinite(h) && Number.isFinite(b) && b > 0 ? (a.c - h) / b : null;
   return {
     candle: a,
-    referenceCandle: u,
+    referenceCandle: l,
     windowSeconds: n,
-    returnPct: l,
+    returnPct: u,
     percentile: d,
-    zScore: h,
+    zScore: m,
     rollingReturnCount: f.length,
-    ema: m,
-    atr: v,
-    atrExtension: y
+    ema: h,
+    atr: b,
+    atrExtension: v
   };
 }
-function tn(e = {}) {
-  var K, ve, be;
-  const t = e.executionTimeframe ?? "chart", n = w(e.asOf), r = w(e.latestTs) ?? wn(e.candles ?? [], t) ?? w((K = e.structure) == null ? void 0 : K.updatedTs) ?? w((ve = e.marketStructure) == null ? void 0 : ve.summary.updatedTs) ?? null, o = n ?? r, i = o == null ? null : Ve(e.candles ?? [], o, t), s = (i == null ? void 0 : i.candle.c) ?? w(e.latestPrice), a = nn(e.marketStructure ?? null, n), c = (a == null ? void 0 : a.summary) ?? rn(e.structure, n), u = e.htfStructures ?? [], l = n == null ? e.htfStructures ?? [] : De(e.htfStructures ?? [], n), f = (e.srZones ?? []).filter(
-    (Y) => n == null || P(Y) <= n
+function ln(e = {}) {
+  var G, ne, x;
+  const t = e.executionTimeframe ?? "chart", n = w(e.asOf), r = w(e.latestTs) ?? Pn(e.candles ?? [], t) ?? w((G = e.structure) == null ? void 0 : G.updatedTs) ?? w((ne = e.marketStructure) == null ? void 0 : ne.summary.updatedTs) ?? null, o = n ?? r, i = o == null ? null : ze(e.candles ?? [], o, t), s = (i == null ? void 0 : i.candle.c) ?? w(e.latestPrice), a = un(e.marketStructure ?? null, n), c = (a == null ? void 0 : a.summary) ?? fn(e.structure, n), l = e.htfStructures ?? [], u = n == null ? e.htfStructures ?? [] : qe(e.htfStructures ?? [], n), f = (e.srZones ?? []).filter(
+    (V) => n == null || _(V) <= n
   ), d = (e.rsDivergences ?? []).filter(
-    (Y) => n == null || P(Y) <= n
-  ), h = (e.anchoredVwapSignals ?? []).filter(
-    (Y) => n == null || P(Y) <= n
-  ), m = _(e.resistanceNearPct, 0, 10, 1.5), v = _(e.retestNearPct, 0, 10, 0.8), y = Tn(e.extension ?? null), p = En(f, s, m), E = xn(d), T = Pn(c), R = Cn(
-    h,
+    (V) => n == null || _(V) <= n
+  ), m = (e.anchoredVwapSignals ?? []).filter(
+    (V) => n == null || _(V) <= n
+  ), h = F(e.resistanceNearPct, 0, 10, 1.5), b = F(e.retestNearPct, 0, 10, 0.8), v = _n(e.extension ?? null), g = On(f, s, h), E = Mn(d), R = Fn(c), T = Ln(
+    m,
     e.avwapDistancePct
-  ), x = In(c, f, s, v), S = Nn(y, p, c, s), b = [
-    y,
-    p,
+  ), P = Dn(c, f, s, b), S = Bn(v, g, c, s), y = [
+    v,
+    g,
     E,
-    T,
     R,
-    x
-  ], g = {
-    checks: b,
+    T,
+    P
+  ], p = {
+    checks: y,
     asOf: o,
     updatedTs: r,
     executionTimeframe: t,
-    lifecycleConfigHash: e.lifecycleConfigHash ?? oe({
+    lifecycleConfigHash: e.lifecycleConfigHash ?? ce({
       extensionOptions: e.extensionOptions,
       resistanceNearPct: e.resistanceNearPct,
       retestNearPct: e.retestNearPct,
@@ -437,60 +437,60 @@ function tn(e = {}) {
       invalidationBps: e.invalidationBps,
       maxCandidateAgeSeconds: e.maxCandidateAgeSeconds
     })
-  }, C = hn({
-    extension: y,
-    htfResistance: p,
-    htfStructures: l,
+  }, O = wn({
+    extension: v,
+    htfResistance: g,
+    htfStructures: u,
     rsWeakness: E,
-    structureShift: T,
-    avwapFailure: R,
-    retest: x,
+    structureShift: R,
+    avwapFailure: T,
+    retest: P,
     invalidated: S
   });
-  return (be = e.candles) != null && be.length && o != null ? an({
+  return (x = e.candles) != null && x.length && o != null ? hn({
     ...e,
     asOf: o,
     latestPrice: s,
     marketStructure: a,
     structure: c,
-    htfStructures: u,
+    htfStructures: l,
     srZones: f,
     rsDivergences: d,
-    anchoredVwapSignals: h,
-    checks: b,
+    anchoredVwapSignals: m,
+    checks: y,
     executionTimeframe: t
-  }) : yt({
-    ...g,
-    state: C,
-    reason: On(C, b),
+  }) : kt({
+    ...p,
+    state: O,
+    reason: Vn(O, y),
     dataQuality: ["Chronological setup lifecycle requires candle history"]
   });
 }
-function nn(e, t) {
+function un(e, t) {
   var i;
   if (!e || t == null) return e;
-  const n = e.swings.filter((s) => s.knownAt <= t), r = e.breaks.filter((s) => s.knownAt <= t), o = ((i = W(r)) == null ? void 0 : i.direction) ?? "neutral";
+  const n = e.swings.filter((s) => s.knownAt <= t), r = e.breaks.filter((s) => s.knownAt <= t), o = ((i = te(r)) == null ? void 0 : i.direction) ?? "neutral";
   return {
     swings: n,
     breaks: r,
     trend: o,
-    summary: qe(n, r, o)
+    summary: Qe(n, r, o)
   };
 }
-function rn(e, t) {
+function fn(e, t) {
   if (!e || t == null) return e ?? null;
   const n = w(e.updatedTs);
   return n == null || n <= t ? e : null;
 }
-function Ti(e) {
-  return on(e).records;
+function Oi(e) {
+  return dn(e).records;
 }
-function oe(e = {}) {
-  var t, n, r, o, i, s, a, c, u, l, f;
-  return O({
-    lifecycleVersion: U,
-    lifecycleConfigVersion: en,
-    candidateGate: ce,
+function ce(e = {}) {
+  var t, n, r, o, i, s, a, c, l, u, f;
+  return L({
+    lifecycleVersion: Q,
+    lifecycleConfigVersion: cn,
+    candidateGate: de,
     extension: {
       windowSeconds: k(
         (t = e.extensionOptions) == null ? void 0 : t.windowSeconds,
@@ -517,15 +517,15 @@ function oe(e = {}) {
         3
       ),
       atrPeriod: k((c = e.marketStructureOptions) == null ? void 0 : c.atrPeriod, 2, 100, 14),
-      minMoveAtr: _((u = e.marketStructureOptions) == null ? void 0 : u.minMoveAtr, 0, 10, 0.75),
-      maxSwings: k((l = e.marketStructureOptions) == null ? void 0 : l.maxSwings, 1, 500, 120),
+      minMoveAtr: F((l = e.marketStructureOptions) == null ? void 0 : l.minMoveAtr, 0, 10, 0.75),
+      maxSwings: k((u = e.marketStructureOptions) == null ? void 0 : u.maxSwings, 1, 500, 120),
       maxBreaks: k((f = e.marketStructureOptions) == null ? void 0 : f.maxBreaks, 1, 200, 24)
     },
-    resistanceNearPct: _(e.resistanceNearPct, 0, 10, 1.5),
-    retestNearPct: _(e.retestNearPct, 0, 10, 0.8),
-    retestToleranceBps: _(e.retestToleranceBps, 0, 1e3, 35),
-    retestToleranceAtr: _(e.retestToleranceAtr, 0, 10, 0.25),
-    invalidationBps: _(e.invalidationBps, 0, 1e3, 10),
+    resistanceNearPct: F(e.resistanceNearPct, 0, 10, 1.5),
+    retestNearPct: F(e.retestNearPct, 0, 10, 0.8),
+    retestToleranceBps: F(e.retestToleranceBps, 0, 1e3, 35),
+    retestToleranceAtr: F(e.retestToleranceAtr, 0, 10, 0.25),
+    invalidationBps: F(e.invalidationBps, 0, 1e3, 10),
     maxCandidateAgeSeconds: k(
       e.maxCandidateAgeSeconds,
       60,
@@ -534,92 +534,92 @@ function oe(e = {}) {
     )
   });
 }
-function Ei(e) {
+function Mi(e) {
   var a;
-  const t = ht(e), n = W(t);
+  const t = St(e), n = te(t);
   if (n == null) return null;
-  const r = mt(e, n), o = /* @__PURE__ */ new Map(), i = e.candlesByTimeframe[e.executionTimeframe] ?? [], s = new Set(
-    i.map((c) => j(c, e.executionTimeframe)).filter((c) => c <= n)
+  const r = pt(e, n), o = /* @__PURE__ */ new Map(), i = e.candlesByTimeframe[e.executionTimeframe] ?? [], s = new Set(
+    i.map((c) => X(c, e.executionTimeframe)).filter((c) => c <= n)
   );
   for (const c of e.structureEvents ?? [])
-    (!c.sourceTimeframe || c.sourceTimeframe === e.executionTimeframe) && P(c) <= n && s.add(P(c));
-  for (const c of [...s].sort((u, l) => u - l))
-    Le(
-      Ae(i, e.executionTimeframe, c),
+    (!c.sourceTimeframe || c.sourceTimeframe === e.executionTimeframe) && _(c) <= n && s.add(_(c));
+  for (const c of [...s].sort((l, u) => l - u))
+    $e(
+      Te(i, e.executionTimeframe, c),
       e.executionTimeframe,
       e.structureEvents ?? [],
       (a = e.config) == null ? void 0 : a.marketStructureOptions,
       c,
       o
     );
-  return dt(
+  return gt(
     e,
     n,
     o,
     r
   );
 }
-function on(e) {
-  const t = e.executionTimeframe, n = e.candlesByTimeframe[t] ?? [], r = e.config ?? {}, o = oe(r), i = ht(e), s = mt(
+function dn(e) {
+  const t = e.executionTimeframe, n = e.candlesByTimeframe[t] ?? [], r = e.config ?? {}, o = ce(r), i = St(e), s = pt(
     e,
-    W(i) ?? 0
-  ), a = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Set(), u = /* @__PURE__ */ new Set(), l = w(e.from) ?? -1 / 0;
+    te(i) ?? 0
+  ), a = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Set(), l = /* @__PURE__ */ new Set(), u = w(e.from) ?? -1 / 0;
   let f = null;
-  return { records: i.map((h) => {
-    var T, R, x, S, b;
-    const m = dt(
+  return { records: i.map((m) => {
+    var R, T, P, S, y;
+    const h = gt(
       e,
-      h,
+      m,
       a,
       s
-    ), v = vt(e.candidateMetrics, h), y = (v == null ? void 0 : v.metrics) ?? He(
-      Fe(
-        Ae(n, t, h),
+    ), b = wt(e.candidateMetrics, m), v = (b == null ? void 0 : b.metrics) ?? je(
+      Ve(
+        Te(n, t, m),
         r.extensionOptions
       )
     );
-    f = m;
-    const p = m.evidence.filter((g) => c.has(g.id) ? !1 : (c.add(g.id), g.knownAt >= l)), E = m.transitions.filter((g) => {
-      const C = sn(g);
-      return u.has(C) ? !1 : (u.add(C), g.knownAt >= l);
+    f = h;
+    const g = h.evidence.filter((p) => c.has(p.id) ? !1 : (c.add(p.id), p.knownAt >= u)), E = h.transitions.filter((p) => {
+      const O = mn(p);
+      return l.has(O) ? !1 : (l.add(O), p.knownAt >= u);
     });
     return {
-      asOf: h,
-      setupFamily: Q,
-      lifecycleVersion: U,
+      asOf: m,
+      setupFamily: J,
+      lifecycleVersion: Q,
       lifecycleConfigHash: o,
-      candidateGatePassed: me(y),
-      candidateId: ((T = m.candidate) == null ? void 0 : T.id) ?? null,
-      candidateDetectedAt: ((R = m.candidate) == null ? void 0 : R.detectedAt) ?? null,
-      initialMtfContext: ((x = m.candidate) == null ? void 0 : x.initialMtfContext) ?? [],
-      currentState: m.currentState,
-      stateSince: m.stateSince,
-      transition: W(E) ?? null,
+      candidateGatePassed: be(v),
+      candidateId: ((R = h.candidate) == null ? void 0 : R.id) ?? null,
+      candidateDetectedAt: ((T = h.candidate) == null ? void 0 : T.detectedAt) ?? null,
+      initialMtfContext: ((P = h.candidate) == null ? void 0 : P.initialMtfContext) ?? [],
+      currentState: h.currentState,
+      stateSince: h.stateSince,
+      transition: te(E) ?? null,
       transitions: E,
-      evidenceAdded: p,
-      pendingConditions: m.pendingConditions,
-      confluence: m.confluence,
-      episodeHigh: ((S = m.candidate) == null ? void 0 : S.episodeHigh) ?? null,
-      episodeHighTime: ((b = m.candidate) == null ? void 0 : b.episodeHighTime) ?? null,
-      activeBreakLevel: m.activeBreakLevel,
-      retestLevel: m.retestLevel,
-      terminalReason: m.invalidationReason ?? m.expiryReason,
-      dataQualityNotes: m.dataQuality
+      evidenceAdded: g,
+      pendingConditions: h.pendingConditions,
+      confluence: h.confluence,
+      episodeHigh: ((S = h.candidate) == null ? void 0 : S.episodeHigh) ?? null,
+      episodeHighTime: ((y = h.candidate) == null ? void 0 : y.episodeHighTime) ?? null,
+      activeBreakLevel: h.activeBreakLevel,
+      retestLevel: h.retestLevel,
+      terminalReason: h.invalidationReason ?? h.expiryReason,
+      dataQualityNotes: h.dataQuality
     };
   }), latestSnapshot: f };
 }
-function dt(e, t, n, r) {
-  const o = e.executionTimeframe, i = e.candlesByTimeframe[o] ?? [], s = e.config ?? {}, a = oe(s), c = Ae(i, o, t), u = Fe(c, s.extensionOptions), l = vt(e.candidateMetrics, t), f = (l == null ? void 0 : l.metrics) ?? He(u), d = Le(
+function gt(e, t, n, r) {
+  const o = e.executionTimeframe, i = e.candlesByTimeframe[o] ?? [], s = e.config ?? {}, a = ce(s), c = Te(i, o, t), l = Ve(c, s.extensionOptions), u = wt(e.candidateMetrics, t), f = (u == null ? void 0 : u.metrics) ?? je(l), d = $e(
     c,
     o,
     e.structureEvents ?? [],
     s.marketStructureOptions,
     t,
     n
-  ), h = r.filter(
-    (v) => (v.summary.updatedTs ?? 0) <= t
-  ), m = W(c) ?? null;
-  return tn({
+  ), m = r.filter(
+    (b) => (b.summary.updatedTs ?? 0) <= t
+  ), h = te(c) ?? null;
+  return ln({
     candles: i,
     symbol: e.symbol,
     source: e.source,
@@ -631,11 +631,11 @@ function dt(e, t, n, r) {
     extension: f,
     marketStructure: d,
     structure: d.summary,
-    htfStructures: h,
+    htfStructures: m,
     srZones: e.supportResistanceZones,
     rsDivergences: e.relativeStrengthEvents,
     anchoredVwapSignals: e.avwapEvents,
-    latestPrice: (m == null ? void 0 : m.c) ?? null,
+    latestPrice: (h == null ? void 0 : h.c) ?? null,
     latestTs: t,
     resistanceNearPct: s.resistanceNearPct,
     retestNearPct: s.retestNearPct,
@@ -646,17 +646,17 @@ function dt(e, t, n, r) {
     lifecycleConfigHash: a
   });
 }
-function mt(e, t) {
+function pt(e, t) {
   return Object.entries(e.candlesByTimeframe).filter(([n]) => n !== e.executionTimeframe).flatMap(([n, r]) => {
     const o = new Set(
-      r.map((i) => j(i, n)).filter((i) => i <= t)
+      r.map((i) => X(i, n)).filter((i) => i <= t)
     );
     for (const i of e.structureEvents ?? [])
-      i.sourceTimeframe === n && P(i) <= t && o.add(P(i));
+      i.sourceTimeframe === n && _(i) <= t && o.add(_(i));
     return [...o].sort((i, s) => i - s).map((i) => {
       var a;
-      const s = Le(
-        Ae(r, n, i),
+      const s = $e(
+        Te(r, n, i),
         n,
         e.structureEvents ?? [],
         (a = e.config) == null ? void 0 : a.marketStructureOptions,
@@ -669,43 +669,43 @@ function mt(e, t) {
     });
   });
 }
-const xi = "openTime";
-function j(e, t) {
-  return (w(e.bucket) ?? w(e.ts) ?? 0) + Math.max(1, re(t));
+const Fi = "openTime";
+function X(e, t) {
+  return (w(e.bucket) ?? w(e.ts) ?? 0) + Math.max(1, K(t));
 }
-function Ae(e, t, n) {
-  return e.filter((r) => j(r, t) <= n);
+function Te(e, t, n) {
+  return e.filter((r) => X(r, t) <= n);
 }
-function ht(e) {
+function St(e) {
   const t = /* @__PURE__ */ new Set();
   for (const [i, s] of Object.entries(e.candlesByTimeframe))
-    for (const a of s) t.add(j(a, i));
+    for (const a of s) t.add(X(a, i));
   for (const i of e.candidateMetrics ?? [])
     t.add(w(i.knownAt) ?? i.asOf);
-  for (const i of e.structureEvents ?? []) t.add(P(i));
-  for (const i of e.avwapEvents ?? []) t.add(P(i));
-  for (const i of e.relativeStrengthEvents ?? []) t.add(P(i));
-  for (const i of e.supportResistanceZones ?? []) t.add(P(i));
+  for (const i of e.structureEvents ?? []) t.add(_(i));
+  for (const i of e.avwapEvents ?? []) t.add(_(i));
+  for (const i of e.relativeStrengthEvents ?? []) t.add(_(i));
+  for (const i of e.supportResistanceZones ?? []) t.add(_(i));
   for (const i of e.evaluationPoints ?? []) {
     const s = w(i);
     s != null && t.add(s);
   }
-  const n = [...t].filter(Number.isFinite).sort((i, s) => i - s), r = w(e.from) ?? n[0] ?? 0, o = w(e.to) ?? W(n) ?? r;
+  const n = [...t].filter(Number.isFinite).sort((i, s) => i - s), r = w(e.from) ?? n[0] ?? 0, o = w(e.to) ?? te(n) ?? r;
   return t.add(r), t.add(o), [...t].filter((i) => Number.isFinite(i) && i >= r && i <= o).sort((i, s) => i - s);
 }
-function vt(e, t) {
-  return W([...e ?? []].filter((n) => (w(n.knownAt) ?? n.asOf) <= t).sort(
+function wt(e, t) {
+  return te([...e ?? []].filter((n) => (w(n.knownAt) ?? n.asOf) <= t).sort(
     (n, r) => (w(n.knownAt) ?? n.asOf) - (w(r.knownAt) ?? r.asOf) || n.asOf - r.asOf
   )) ?? null;
 }
-function Le(e, t, n, r, o, i) {
+function $e(e, t, n, r, o, i) {
   var f;
-  const s = ue(e, r), a = n.filter(
-    (d) => (!d.sourceTimeframe || d.sourceTimeframe === t) && P(d) <= o
+  const s = he(e, r), a = n.filter(
+    (d) => (!d.sourceTimeframe || d.sourceTimeframe === t) && _(d) <= o
   ), c = i ?? /* @__PURE__ */ new Map();
   for (const d of [...s.breaks, ...a])
     c.set(
-      G(
+      Z(
         d.kind,
         t,
         d.eventTime,
@@ -714,19 +714,19 @@ function Le(e, t, n, r, o, i) {
       ),
       d
     );
-  const u = [...c.values()].filter((d) => d.knownAt <= o).sort(
-    (d, h) => d.knownAt - h.knownAt || d.eventTime - h.eventTime
+  const l = [...c.values()].filter((d) => d.knownAt <= o).sort(
+    (d, m) => d.knownAt - m.knownAt || d.eventTime - m.eventTime
   );
-  if (!u.length) return s;
-  const l = ((f = W(u)) == null ? void 0 : f.direction) ?? s.trend;
+  if (!l.length) return s;
+  const u = ((f = te(l)) == null ? void 0 : f.direction) ?? s.trend;
   return {
     swings: s.swings,
-    breaks: u,
-    trend: l,
-    summary: qe(s.swings, u, l)
+    breaks: l,
+    trend: u,
+    summary: Qe(s.swings, l, u)
   };
 }
-function sn(e) {
+function mn(e) {
   return [
     e.from,
     e.to,
@@ -734,33 +734,33 @@ function sn(e) {
     ...e.evidenceIds
   ].join(":");
 }
-function an(e) {
-  const t = e.candles ?? [], n = e.extensionOptions ?? {}, r = cn(
+function hn(e) {
+  const t = e.candles ?? [], n = e.extensionOptions ?? {}, r = vn(
     t,
     n,
     e.asOf,
     e.executionTimeframe,
     e.candidateMetrics
-  ), o = gn(r, n);
-  let i = ln(r, e);
-  if (!i && me(e.extension ?? null)) {
-    const s = Ve(t, e.asOf, e.executionTimeframe);
+  ), o = Rn(r, n);
+  let i = yn(r, e);
+  if (!i && be(e.extension ?? null)) {
+    const s = ze(t, e.asOf, e.executionTimeframe);
     s && (i = {
       index: s.index,
       candle: s.candle,
-      eventTime: $(s.candle),
+      eventTime: j(s.candle),
       knownAt: Math.min(
         e.asOf,
-        z(t, s.index, e.executionTimeframe)
+        Y(t, s.index, e.executionTimeframe)
       ),
-      metrics: Be(e.extension ?? null),
+      metrics: Ue(e.extension ?? null),
       pass: !0,
       rollingReturnCount: 0
     }, o.push(
       "Candidate gate used latest shared metrics because chart history had no passing gate edge"
     ));
   }
-  return i ? bt(i, e, e.asOf, o) : yt({
+  return i ? At(i, e, e.asOf, o) : kt({
     checks: e.checks,
     asOf: e.asOf,
     updatedTs: e.asOf,
@@ -771,40 +771,40 @@ function an(e) {
     lifecycleConfigHash: e.lifecycleConfigHash
   });
 }
-function cn(e, t, n, r, o) {
+function vn(e, t, n, r, o) {
   if (o != null && o.length)
     return [...o].map((s) => {
-      const a = w(s.knownAt) ?? s.asOf, c = Ve(e, a, r);
+      const a = w(s.knownAt) ?? s.asOf, c = ze(e, a, r);
       if (!c || a > n) return null;
-      const u = w(s.eventTime) ?? $(c.candle), l = Be(s.metrics);
+      const l = w(s.eventTime) ?? j(c.candle), u = Ue(s.metrics);
       return {
         index: c.index,
         candle: c.candle,
-        eventTime: u,
+        eventTime: l,
         knownAt: a,
-        metrics: l,
-        pass: me(l),
+        metrics: u,
+        pass: be(u),
         rollingReturnCount: Math.max(0, Math.trunc(s.sampleCount ?? 0))
       };
     }).filter((s) => s != null).sort((s, a) => s.knownAt - a.knownAt || s.eventTime - a.eventTime);
   const i = [];
   for (let s = 0; s < e.length; s += 1) {
-    const a = e[s], c = z(e, s, r);
+    const a = e[s], c = Y(e, s, r);
     if (c > n) continue;
-    const u = Fe(e.slice(0, s + 1), t), l = He(u);
+    const l = Ve(e.slice(0, s + 1), t), u = je(l);
     i.push({
       index: s,
       candle: a,
-      eventTime: $(a),
+      eventTime: j(a),
       knownAt: c,
-      metrics: l,
-      pass: me(l),
-      rollingReturnCount: u.rollingReturnCount
+      metrics: u,
+      pass: be(u),
+      rollingReturnCount: l.rollingReturnCount
     });
   }
   return i;
 }
-function ln(e, t) {
+function yn(e, t) {
   var i;
   const n = [];
   let r = !1;
@@ -813,31 +813,31 @@ function ln(e, t) {
   if (!n.length) return null;
   let o = n[0];
   for (const s of n.slice(1)) {
-    const c = ((i = bt(o, t, s.knownAt, []).candidate) == null ? void 0 : i.terminalAt) ?? null;
-    c != null && e.some((u) => u.knownAt > c && u.knownAt < s.knownAt && !u.pass) && (o = s);
+    const c = ((i = At(o, t, s.knownAt, []).candidate) == null ? void 0 : i.terminalAt) ?? null;
+    c != null && e.some((l) => l.knownAt > c && l.knownAt < s.knownAt && !l.pass) && (o = s);
   }
   return o;
 }
-function bt(e, t, n, r) {
-  const o = (t.symbol ?? "UNKNOWN").toUpperCase(), i = t.source ?? "chart", s = t.venue ?? "", a = t.executionTimeframe, c = De(
+function At(e, t, n, r) {
+  const o = (t.symbol ?? "UNKNOWN").toUpperCase(), i = t.source ?? "chart", s = t.venue ?? "", a = t.executionTimeframe, c = qe(
     t.htfStructures ?? [],
     e.knownAt
-  ).map((b) => ({
-    timeframe: b.timeframe,
-    state: b.summary.state,
-    trend: b.summary.trend,
-    transitionDirection: b.summary.transitionDirection,
-    updatedTs: b.summary.updatedTs
-  })), u = Sn({
-    setupFamily: Q,
+  ).map((y) => ({
+    timeframe: y.timeframe,
+    state: y.summary.state,
+    trend: y.summary.trend,
+    transitionDirection: y.summary.transitionDirection,
+    updatedTs: y.summary.updatedTs
+  })), l = xn({
+    setupFamily: J,
     symbol: o,
     source: i,
     venue: s,
     executionTimeframe: a,
     detectedAt: e.knownAt
-  }), l = [
+  }), u = [
     {
-      id: G("candidate_detected", a, e.eventTime, e.knownAt),
+      id: Z("candidate_detected", a, e.eventTime, e.knownAt),
       code: "candidate_detected",
       explanation: "Impulse Fade v1 extension gate crossed from false to true",
       eventTime: e.eventTime,
@@ -851,44 +851,44 @@ function bt(e, t, n, r) {
       from: "notCandidate",
       to: "developing",
       knownAt: e.knownAt,
-      evidenceIds: [l[0].id],
-      evidenceCodes: [l[0].code],
+      evidenceIds: [u[0].id],
+      evidenceCodes: [u[0].code],
       explanation: "Candidate episode detected"
     }
-  ], d = dn(t, e, n), h = un(e, t, n);
-  let m = "developing", v = e.knownAt, y = null, p = null, E = null, T = null, R = null;
-  for (const b of h) {
-    if (y != null) break;
-    if (!(b.knownAt < e.knownAt || b.knownAt > n)) {
-      if (b.lifecycleKind === "deterioration") {
-        l.push({ ...b, contributesTo: "deteriorating" }), m === "developing" && (f.push(ae(m, "deteriorating", b)), m = "deteriorating", v = b.knownAt);
+  ], d = pn(t, e, n), m = bn(e, t, n);
+  let h = "developing", b = e.knownAt, v = null, g = null, E = null, R = null, T = null;
+  for (const y of m) {
+    if (v != null) break;
+    if (!(y.knownAt < e.knownAt || y.knownAt > n)) {
+      if (y.lifecycleKind === "deterioration") {
+        u.push({ ...y, contributesTo: "deteriorating" }), h === "developing" && (f.push(ue(h, "deteriorating", y)), h = "deteriorating", b = y.knownAt);
         continue;
       }
-      if (b.lifecycleKind === "bearishBreak") {
-        l.push({ ...b, contributesTo: "waitingForRetest" }), (m === "developing" || m === "deteriorating") && (f.push(ae(m, "waitingForRetest", b)), m = "waitingForRetest", v = b.knownAt, p = b.breakLevel ?? null);
+      if (y.lifecycleKind === "bearishBreak") {
+        u.push({ ...y, contributesTo: "waitingForRetest" }), (h === "developing" || h === "deteriorating") && (f.push(ue(h, "waitingForRetest", y)), h = "waitingForRetest", b = y.knownAt, g = y.breakLevel ?? null);
         continue;
       }
-      if (b.lifecycleKind === "retest") {
-        m === "waitingForRetest" && p && b.relatedEventId === p.evidenceId && b.knownAt > p.knownAt && (l.push({ ...b, contributesTo: "entryCandidate" }), f.push(ae(m, "entryCandidate", b)), m = "entryCandidate", v = b.knownAt, E = b.breakLevel ?? p);
+      if (y.lifecycleKind === "retest") {
+        h === "waitingForRetest" && g && y.relatedEventId === g.evidenceId && y.knownAt > g.knownAt && (u.push({ ...y, contributesTo: "entryCandidate" }), f.push(ue(h, "entryCandidate", y)), h = "entryCandidate", b = y.knownAt, E = y.breakLevel ?? g);
         continue;
       }
-      if (b.lifecycleKind === "invalidation") {
-        (m === "deteriorating" || m === "waitingForRetest" || m === "entryCandidate") && (l.push({ ...b, contributesTo: "invalidated" }), f.push(ae(m, "invalidated", b)), m = "invalidated", v = b.knownAt, y = b.knownAt, T = b.explanation);
+      if (y.lifecycleKind === "invalidation") {
+        (h === "deteriorating" || h === "waitingForRetest" || h === "entryCandidate") && (u.push({ ...y, contributesTo: "invalidated" }), f.push(ue(h, "invalidated", y)), h = "invalidated", b = y.knownAt, v = y.knownAt, R = y.explanation);
         continue;
       }
-      b.lifecycleKind === "expiry" && m !== "entryCandidate" && (l.push({ ...b, contributesTo: "expired" }), f.push(ae(m, "expired", b)), m = "expired", v = b.knownAt, y = b.knownAt, R = b.explanation);
+      y.lifecycleKind === "expiry" && h !== "entryCandidate" && (u.push({ ...y, contributesTo: "expired" }), f.push(ue(h, "expired", y)), h = "expired", b = y.knownAt, v = y.knownAt, T = y.explanation);
     }
   }
-  const x = St(
+  const P = Et(
     t.candles ?? [],
     e.eventTime,
     n,
     a
   ), S = {
-    id: u,
-    setupFamily: Q,
-    lifecycleVersion: U,
-    lifecycleConfigHash: t.lifecycleConfigHash ?? oe({
+    id: l,
+    setupFamily: J,
+    lifecycleVersion: Q,
+    lifecycleConfigHash: t.lifecycleConfigHash ?? ce({
       extensionOptions: t.extensionOptions,
       resistanceNearPct: t.resistanceNearPct,
       retestNearPct: t.retestNearPct,
@@ -905,117 +905,117 @@ function bt(e, t, n, r) {
     detectionEventTime: e.eventTime,
     detectionMetrics: e.metrics,
     initialMtfContext: c,
-    episodeHigh: (x == null ? void 0 : x.price) ?? null,
-    episodeHighTime: (x == null ? void 0 : x.eventTime) ?? null,
-    currentState: m,
-    stateSince: v,
-    terminalAt: y
+    episodeHigh: (P == null ? void 0 : P.price) ?? null,
+    episodeHighTime: (P == null ? void 0 : P.eventTime) ?? null,
+    currentState: h,
+    stateSince: b,
+    terminalAt: v
   };
   return {
     strategy: "pumpFade",
-    setupFamily: Q,
-    lifecycleVersion: U,
+    setupFamily: J,
+    lifecycleVersion: Q,
     lifecycleConfigHash: S.lifecycleConfigHash,
     asOf: n,
     executionTimeframe: a,
-    state: m,
-    currentState: m,
-    stateSince: v,
-    label: ke(m),
-    reason: pn(m, l, f, T, R),
+    state: h,
+    currentState: h,
+    stateSince: b,
+    label: Re(h),
+    reason: En(h, u, f, R, T),
     checks: t.checks,
     updatedTs: n,
     candidate: S,
-    evidence: l.sort((b, g) => b.knownAt - g.knownAt || b.eventTime - g.eventTime),
+    evidence: u.sort((y, p) => y.knownAt - p.knownAt || y.eventTime - p.eventTime),
     transitions: f,
-    pendingConditions: pt(m, p),
-    activeBreakLevel: p,
+    pendingConditions: Rt(h, g),
+    activeBreakLevel: g,
     retestLevel: E,
     confluence: d,
-    invalidationReason: T,
-    expiryReason: R,
+    invalidationReason: R,
+    expiryReason: T,
     dataQuality: r
   };
 }
-function un(e, t, n) {
+function bn(e, t, n) {
   const r = [], o = t.executionTimeframe;
-  for (const u of t.rsDivergences ?? []) {
-    if (u.direction !== "bearish") continue;
-    const l = P(u);
-    if (!le(u, e, n)) continue;
-    const f = u.signal === "break" ? "rs_break_bearish" : u.signal === "lead" ? "rs_lead_bearish" : "rs_div_bearish";
+  for (const l of t.rsDivergences ?? []) {
+    if (l.direction !== "bearish") continue;
+    const u = _(l);
+    if (!me(l, e, n)) continue;
+    const f = l.signal === "break" ? "rs_break_bearish" : l.signal === "lead" ? "rs_lead_bearish" : "rs_div_bearish";
     r.push({
-      id: G(f, o, u.eventTime, l, u.x),
+      id: Z(f, o, l.eventTime, u, l.x),
       code: f,
-      explanation: `${u.label}: bearish relative-strength deterioration`,
-      eventTime: u.eventTime,
-      knownAt: l,
+      explanation: `${l.label}: bearish relative-strength deterioration`,
+      eventTime: l.eventTime,
+      knownAt: u,
       sourceTimeframe: o,
-      price: u.price,
-      value: u.rs,
+      price: l.price,
+      value: l.rs,
       lifecycleKind: "deterioration",
       sortPriority: 10
     });
   }
-  for (const u of t.anchoredVwapSignals ?? []) {
-    const l = P(u);
-    u.kind !== "failedReclaim" || !le(u, e, n) || r.push({
-      id: G("avwap_failed_reclaim", o, u.eventTime, l, u.x),
+  for (const l of t.anchoredVwapSignals ?? []) {
+    const u = _(l);
+    l.kind !== "failedReclaim" || !me(l, e, n) || r.push({
+      id: Z("avwap_failed_reclaim", o, l.eventTime, u, l.x),
       code: "avwap_failed_reclaim",
       explanation: "AVWAP failed reclaim confirmed after candidate detection",
-      eventTime: u.eventTime,
-      knownAt: l,
+      eventTime: l.eventTime,
+      knownAt: u,
       sourceTimeframe: o,
-      price: u.price,
-      level: u.vwap,
+      price: l.price,
+      level: l.vwap,
       lifecycleKind: "deterioration",
       sortPriority: 20
     });
   }
-  const i = mn(t), s = [];
-  for (const u of i) {
-    const l = P(u);
-    if (u.direction !== "bearish" || !le(u, e, n)) continue;
-    const f = u.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break", d = G(f, o, u.eventTime, l, u.x), h = {
-      level: u.level,
+  const i = Sn(t), s = [];
+  for (const l of i) {
+    const u = _(l);
+    if (l.direction !== "bearish" || !me(l, e, n)) continue;
+    const f = l.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break", d = Z(f, o, l.eventTime, u, l.x), m = {
+      level: l.level,
       sourceTimeframe: o,
-      eventTime: u.eventTime,
-      knownAt: l,
+      eventTime: l.eventTime,
+      knownAt: u,
       evidenceId: d
-    }, m = {
+    }, h = {
       id: d,
       code: f,
-      explanation: `${u.label} down through ${q(u.level)}`,
-      eventTime: u.eventTime,
-      knownAt: l,
+      explanation: `${l.label} down through ${W(l.level)}`,
+      eventTime: l.eventTime,
+      knownAt: u,
       sourceTimeframe: o,
-      level: u.level,
+      level: l.level,
       lifecycleKind: "bearishBreak",
       sortPriority: 30,
-      breakLevel: h
+      breakLevel: m
     };
-    s.push(m), r.push(m);
+    s.push(h), r.push(h);
   }
-  for (const u of s) {
-    const l = fn(e, u, t, n);
-    l && r.push(l);
+  for (const l of s) {
+    const u = gn(e, l, t, n);
+    u && r.push(u);
   }
-  for (const u of i) {
-    const l = P(u);
-    if (u.kind !== "StructureBreak" || u.direction !== "bullish" || !le(u, e, n))
+  for (const l of i) {
+    const u = _(l);
+    if (l.kind !== "StructureBreak" || l.direction !== "bullish" || !me(l, e, n))
       continue;
-    const f = (t.candles ?? [])[u.index], d = St(
+    const f = (t.candles ?? [])[l.index], d = Et(
       t.candles ?? [],
       e.eventTime,
-      l - 1,
+      u - 1,
       o
-    ), h = _(t.invalidationBps, 0, 1e3, 10);
-    !f || (d == null ? void 0 : d.price) == null || f.c <= d.price * (1 + h / 1e4) || r.push({
-      id: G("bullish_continuation_invalidation", o, u.eventTime, l, u.x),
+    ), m = F(t.invalidationBps, 0, 1e3, 10);
+    !f || (d == null ? void 0 : d.price) == null || f.c <= d.price * (1 + m / 1e4) || r.push({
+      id: Z("bullish_continuation_invalidation", o, l.eventTime, u, l.x),
       code: "bullish_continuation_invalidation",
-      explanation: `Bullish continuation closed beyond episode high ${q(d.price)}`,
-      eventTime: u.eventTime,
-      knownAt: l,
+      explanation: `Bullish continuation closed beyond episode high ${W(d.price)}`,
+      eventTime: l.eventTime,
+      knownAt: u,
       sourceTimeframe: o,
       price: f.c,
       level: d.price,
@@ -1030,44 +1030,44 @@ function un(e, t, n) {
     4320 * 60
   ), c = e.knownAt + a;
   return c <= n && r.push({
-    id: G("candidate_expired", o, e.eventTime, c),
+    id: Z("candidate_expired", o, e.eventTime, c),
     code: "candidate_expired",
-    explanation: `Candidate did not reach entry state within ${Rn(a)}`,
+    explanation: `Candidate did not reach entry state within ${Nn(a)}`,
     eventTime: c,
     knownAt: c,
     sourceTimeframe: o,
     lifecycleKind: "expiry",
     sortPriority: 90
   }), r.sort(
-    (u, l) => u.knownAt - l.knownAt || u.eventTime - l.eventTime || u.sortPriority - l.sortPriority || u.code.localeCompare(l.code)
+    (l, u) => l.knownAt - u.knownAt || l.eventTime - u.eventTime || l.sortPriority - u.sortPriority || l.code.localeCompare(u.code)
   );
 }
-function fn(e, t, n, r) {
-  var l;
+function gn(e, t, n, r) {
+  var u;
   const o = n.candles ?? [], i = t.breakLevel;
   if (!i || !Number.isFinite(i.level)) return null;
-  const s = _(n.retestToleranceBps, 0, 1e3, 35), a = _(n.retestToleranceAtr, 0, 10, 0.25), c = k((l = n.extensionOptions) == null ? void 0 : l.atrPeriod, 2, 100, 14), u = Re(o, c);
+  const s = F(n.retestToleranceBps, 0, 1e3, 35), a = F(n.retestToleranceAtr, 0, 10, 0.25), c = k((u = n.extensionOptions) == null ? void 0 : u.atrPeriod, 2, 100, 14), l = Ee(o, c);
   for (let f = 0; f < o.length; f += 1) {
-    const d = o[f], h = z(o, f, n.executionTimeframe), m = $(d);
-    if (h <= t.knownAt || m < t.knownAt || m < e.knownAt || h > r)
+    const d = o[f], m = Y(o, f, n.executionTimeframe), h = j(d);
+    if (m <= t.knownAt || h < t.knownAt || h < e.knownAt || m > r)
       continue;
-    const v = u[f] ?? 0, y = Math.max(
+    const b = l[f] ?? 0, v = Math.max(
       i.level * (s / 1e4),
-      Number.isFinite(v) ? v * a : 0
+      Number.isFinite(b) ? b * a : 0
     );
-    if (d.h >= i.level - y && d.l <= i.level + y && d.c < i.level && d.c <= d.o)
+    if (d.h >= i.level - v && d.l <= i.level + v && d.c < i.level && d.c <= d.o)
       return {
-        id: G(
+        id: Z(
           "bearish_retest_rejection",
           i.sourceTimeframe,
-          $(d),
-          h,
+          j(d),
+          m,
           f
         ),
         code: "bearish_retest_rejection",
-        explanation: `Bearish rejection after retest of ${q(i.level)}`,
-        eventTime: m,
-        knownAt: h,
+        explanation: `Bearish rejection after retest of ${W(i.level)}`,
+        eventTime: h,
+        knownAt: m,
         sourceTimeframe: i.sourceTimeframe,
         price: d.c,
         level: i.level,
@@ -1079,25 +1079,25 @@ function fn(e, t, n, r) {
   }
   return null;
 }
-function dn(e, t, n) {
-  const r = [], o = $e(
-    e.srZones.filter((a) => P(a) <= n),
+function pn(e, t, n) {
+  const r = [], o = Ge(
+    e.srZones.filter((a) => _(a) <= n),
     e.latestPrice,
-    _(e.resistanceNearPct, 0, 10, 1.5)
+    F(e.resistanceNearPct, 0, 10, 1.5)
   );
   o && r.push({
     code: "near_htf_resistance",
     label: "HTF resistance",
-    detail: `Near R ${q(o.low)}-${q(o.high)}`,
+    detail: `Near R ${W(o.low)}-${W(o.high)}`,
     eventTime: o.eventTime,
     knownAt: o.knownAt,
     sourceTimeframe: "MTF",
     level: o.center
   });
   const i = [...e.anchoredVwapSignals ?? []].filter(
-    (a) => a.kind === "loss" && le(a, t, n)
-  ).sort((a, c) => P(c) - P(a))[0];
-  i && P(i) <= n && r.push({
+    (a) => a.kind === "loss" && me(a, t, n)
+  ).sort((a, c) => _(c) - _(a))[0];
+  i && _(i) <= n && r.push({
     code: "avwap_loss_context",
     label: "AVWAP loss",
     detail: "Weak context only",
@@ -1110,22 +1110,22 @@ function dn(e, t, n) {
   s != null && r.push({
     code: "avwap_distance",
     label: "AVWAP distance",
-    detail: `${fe(s, 1)}% from AVWAP`,
+    detail: `${ve(s, 1)}% from AVWAP`,
     value: s,
     sourceTimeframe: e.executionTimeframe
   });
-  for (const a of De(e.htfStructures, n))
+  for (const a of qe(e.htfStructures, n))
     a.summary.state !== "neutral" && r.push({
       code: "mtf_structure_context",
       label: `${a.timeframe} structure`,
-      detail: kn(a.summary),
+      detail: In(a.summary),
       eventTime: a.summary.updatedTs,
       knownAt: a.summary.updatedTs,
       sourceTimeframe: a.timeframe
     });
   return r;
 }
-function De(e, t) {
+function qe(e, t) {
   const n = /* @__PURE__ */ new Map();
   for (const r of e) {
     const o = w(r.summary.updatedTs);
@@ -1135,36 +1135,36 @@ function De(e, t) {
   }
   return [...n.values()];
 }
-function mn(e) {
+function Sn(e) {
   var r, o, i;
   const t = (o = (r = e.marketStructure) == null ? void 0 : r.breaks) != null && o.length ? e.marketStructure.breaks : (i = e.structure) != null && i.lastBreak ? [e.structure.lastBreak] : [], n = /* @__PURE__ */ new Set();
   return t.filter((s) => {
-    const a = `${s.kind}:${s.direction}:${s.x}:${s.level}:${P(s)}`;
+    const a = `${s.kind}:${s.direction}:${s.x}:${s.level}:${_(s)}`;
     return n.has(a) ? !1 : (n.add(a), !0);
   });
 }
-function hn(e) {
-  return e.extension.status !== "pass" ? "notCandidate" : e.invalidated ? "invalidated" : e.structureShift.status === "pass" && e.retest.status === "pass" && (e.rsWeakness.status === "pass" || e.avwapFailure.status === "pass") ? "entryCandidate" : e.structureShift.status === "pass" ? "waitingForRetest" : (e.rsWeakness.status === "pass" || e.avwapFailure.status === "pass") && We(e.htfResistance, e.htfStructures) ? "deteriorating" : We(e.htfResistance, e.htfStructures) ? "developing" : "notCandidate";
+function wn(e) {
+  return e.extension.status !== "pass" ? "notCandidate" : e.invalidated ? "invalidated" : e.structureShift.status === "pass" && e.retest.status === "pass" && (e.rsWeakness.status === "pass" || e.avwapFailure.status === "pass") ? "entryCandidate" : e.structureShift.status === "pass" ? "waitingForRetest" : (e.rsWeakness.status === "pass" || e.avwapFailure.status === "pass") && tt(e.htfResistance, e.htfStructures) ? "deteriorating" : tt(e.htfResistance, e.htfStructures) ? "developing" : "notCandidate";
 }
-function yt(e) {
+function kt(e) {
   return {
     strategy: "pumpFade",
-    setupFamily: Q,
-    lifecycleVersion: U,
-    lifecycleConfigHash: e.lifecycleConfigHash ?? oe(),
+    setupFamily: J,
+    lifecycleVersion: Q,
+    lifecycleConfigHash: e.lifecycleConfigHash ?? ce(),
     asOf: e.asOf,
     executionTimeframe: e.executionTimeframe,
     state: e.state,
     currentState: e.state,
     stateSince: e.asOf,
-    label: ke(e.state),
+    label: Re(e.state),
     reason: e.reason,
     checks: e.checks,
     updatedTs: e.updatedTs,
     candidate: null,
     evidence: [],
     transitions: [],
-    pendingConditions: pt(e.state, null),
+    pendingConditions: Rt(e.state, null),
     activeBreakLevel: null,
     retestLevel: null,
     confluence: [],
@@ -1173,8 +1173,8 @@ function yt(e) {
     dataQuality: e.dataQuality ?? []
   };
 }
-function gt(e, t = {}) {
-  const n = Bn(e, t);
+function Tt(e, t = {}) {
+  const n = zn(e, t);
   if (n == null) return new Float32Array();
   const r = [];
   let o = 0, i = 0;
@@ -1182,14 +1182,14 @@ function gt(e, t = {}) {
     const a = e[s];
     if (!a) continue;
     const c = (a.h + a.l + a.c) / 3;
-    if (!L(c)) continue;
-    const u = Hn(a, c);
-    u <= 0 || (o += u, i += c * u, r.push(a.x, i / o));
+    if (!B(c)) continue;
+    const l = Gn(a, c);
+    l <= 0 || (o += l, i += c * l, r.push(a.x, i / o));
   }
   return new Float32Array(r);
 }
-function Pi(e, t = {}) {
-  const n = w(t.anchorBucket), r = w(t.anchorX), o = gt(e, t);
+function Li(e, t = {}) {
+  const n = w(t.anchorBucket), r = w(t.anchorX), o = Tt(e, t);
   if (o.length < 2)
     return {
       anchorBucket: n,
@@ -1198,7 +1198,7 @@ function Pi(e, t = {}) {
       distancePct: null,
       candle: null
     };
-  const i = o[o.length - 1], s = wt(e), a = s && L(i) ? (s.c - i) / i * 100 : null;
+  const i = o[o.length - 1], s = xt(e), a = s && B(i) ? (s.c - i) / i * 100 : null;
   return {
     anchorBucket: n,
     anchorX: r,
@@ -1207,93 +1207,93 @@ function Pi(e, t = {}) {
     candle: s
   };
 }
-function Ci(e, t = {}, n = 20) {
-  const r = k(n, 1, 200, 20), o = gt(e, t);
+function Di(e, t = {}, n = 20) {
+  const r = k(n, 1, 200, 20), o = Tt(e, t);
   if (o.length < 4) return [];
-  const i = new Map(e.map((c, u) => [c.x, { candle: c, index: u }])), s = [];
+  const i = new Map(e.map((c, l) => [c.x, { candle: c, index: l }])), s = [];
   let a = null;
   for (let c = 0; c < o.length; c += 2) {
-    const u = o[c], l = o[c + 1], f = i.get(u);
-    if (!f || !L(l) || !L(f.candle.c)) continue;
-    const d = z(e, f.index), h = f.candle.c > l ? "above" : f.candle.c < l ? "below" : null;
-    h && (a === "above" && h === "below" ? s.push(Ee("loss", f.index, f.candle, l, d)) : a === "below" && h === "above" ? s.push(Ee("reclaim", f.index, f.candle, l, d)) : a === "below" && h === "below" && f.candle.h >= l && f.candle.c < l && s.push(
-      Ee("failedReclaim", f.index, f.candle, l, d)
-    ), a = h);
+    const l = o[c], u = o[c + 1], f = i.get(l);
+    if (!f || !B(u) || !B(f.candle.c)) continue;
+    const d = Y(e, f.index), m = f.candle.c > u ? "above" : f.candle.c < u ? "below" : null;
+    m && (a === "above" && m === "below" ? s.push(Pe("loss", f.index, f.candle, u, d)) : a === "below" && m === "above" ? s.push(Pe("reclaim", f.index, f.candle, u, d)) : a === "below" && m === "below" && f.candle.h >= u && f.candle.c < u && s.push(
+      Pe("failedReclaim", f.index, f.candle, u, d)
+    ), a = m);
   }
   return s.slice(-r);
 }
-function vn(e, t = {}) {
-  const n = k(t.lookback, 20, 2e3, 500), r = k(t.pivotStrength, 1, 20, 3), o = k(t.atrPeriod, 2, 100, 14), i = _(t.minMoveAtr, 0, 10, 0.75), s = k(t.maxSwings, 1, 500, 120), a = Math.max(0, e.length - n), c = e.slice(a);
+function An(e, t = {}) {
+  const n = k(t.lookback, 20, 2e3, 500), r = k(t.pivotStrength, 1, 20, 3), o = k(t.atrPeriod, 2, 100, 14), i = F(t.minMoveAtr, 0, 10, 0.75), s = k(t.maxSwings, 1, 500, 120), a = Math.max(0, e.length - n), c = e.slice(a);
   if (c.length < r * 2 + 1) return [];
-  const u = Re(e, o), l = [];
+  const l = Ee(e, o), u = [];
   for (let d = r; d < c.length - r; d += 1) {
-    const h = c[d], m = a + d, v = u[m] ?? null, y = z(e, m + r);
-    Xn(c, d, r) && l.push(Xe("SwingHigh", m, h, h.h, v, y)), Kn(c, d, r) && l.push(Xe("SwingLow", m, h, h.l, v, y));
+    const m = c[d], h = a + d, b = l[h] ?? null, v = Y(e, h + r);
+    nr(c, d, r) && u.push(nt("SwingHigh", h, m, m.h, b, v)), rr(c, d, r) && u.push(nt("SwingLow", h, m, m.l, b, v));
   }
   const f = [];
-  for (const d of l) {
-    const h = f[f.length - 1];
-    if (!h) {
+  for (const d of u) {
+    const m = f[f.length - 1];
+    if (!m) {
       f.push(d);
       continue;
     }
-    if (h.kind === d.kind) {
-      zn(d, h) && (f[f.length - 1] = d);
+    if (m.kind === d.kind) {
+      Zn(d, m) && (f[f.length - 1] = d);
       continue;
     }
-    Math.abs(d.price - h.price) >= Gn(d, h, i) && f.push(d);
+    Math.abs(d.price - m.price) >= Jn(d, m, i) && f.push(d);
   }
-  return Vn(f).slice(-s);
+  return Qn(f).slice(-s);
 }
-function ue(e, t = {}) {
-  const n = k(t.maxSwings, 1, 500, 120), r = k(t.maxBreaks, 1, 200, 24), o = vn(e, {
+function he(e, t = {}) {
+  const n = k(t.maxSwings, 1, 500, 120), r = k(t.maxBreaks, 1, 200, 24), o = An(e, {
     ...t,
     maxSwings: Math.max(n, r * 4)
   }), i = [], s = /* @__PURE__ */ new Set(), a = /* @__PURE__ */ new Set();
-  let c = 0, u = null, l = null, f = "neutral";
-  for (let m = 0; m < e.length; m += 1) {
-    const v = z(e, m);
-    for (; c < o.length && o[c].index < m && o[c].knownAt <= v; ) {
-      const p = o[c];
-      p.kind === "SwingHigh" ? u = p : l = p, c += 1;
+  let c = 0, l = null, u = null, f = "neutral";
+  for (let h = 0; h < e.length; h += 1) {
+    const b = Y(e, h);
+    for (; c < o.length && o[c].index < h && o[c].knownAt <= b; ) {
+      const g = o[c];
+      g.kind === "SwingHigh" ? l = g : u = g, c += 1;
     }
-    const y = e[m];
-    if (u && !s.has(u.x) && y.c > u.price) {
-      const p = f === "bearish" ? "StructureShift" : "StructureBreak";
-      i.push(Ke(p, "bullish", m, y, u, v)), s.add(u.x), f = "bullish";
+    const v = e[h];
+    if (l && !s.has(l.x) && v.c > l.price) {
+      const g = f === "bearish" ? "StructureShift" : "StructureBreak";
+      i.push(rt(g, "bullish", h, v, l, b)), s.add(l.x), f = "bullish";
     }
-    if (l && !a.has(l.x) && y.c < l.price) {
-      const p = f === "bullish" ? "StructureShift" : "StructureBreak";
-      i.push(Ke(p, "bearish", m, y, l, v)), a.add(l.x), f = "bearish";
+    if (u && !a.has(u.x) && v.c < u.price) {
+      const g = f === "bullish" ? "StructureShift" : "StructureBreak";
+      i.push(rt(g, "bearish", h, v, u, b)), a.add(u.x), f = "bearish";
     }
   }
-  const d = o.slice(-n), h = i.slice(-r);
+  const d = o.slice(-n), m = i.slice(-r);
   return {
     swings: d,
-    breaks: h,
+    breaks: m,
     trend: f,
-    summary: qe(d, h, f)
+    summary: Qe(d, m, f)
   };
 }
-function Ii(e) {
+function Bi(e) {
   var o;
   const { swings: t, summary: n } = e;
   if (!t.length || n.state === "neutral") return [];
   if (n.state === "range")
     return [
-      Ze(t, "SwingHigh", "rangeHigh", null, !0),
-      Ze(t, "SwingLow", "rangeLow", null, !1)
+      ot(t, "SwingHigh", "rangeHigh", null, !0),
+      ot(t, "SwingLow", "rangeLow", null, !1)
     ].filter((i) => !!i);
   const r = n.state === "transitional" ? n.transitionDirection ?? ((o = n.lastBreak) == null ? void 0 : o.direction) ?? e.trend : n.state;
   return r === "bullish" ? [
-    ge(
+    Se(
       t,
       "SwingHigh",
       ["HigherHigh", "SwingHigh"],
       "continuation",
       "bullish"
     ),
-    ge(
+    Se(
       t,
       "SwingLow",
       ["HigherLow", "SwingLow"],
@@ -1301,14 +1301,14 @@ function Ii(e) {
       "bearish"
     )
   ].filter((i) => !!i) : r === "bearish" ? [
-    ge(
+    Se(
       t,
       "SwingLow",
       ["LowerLow", "SwingLow"],
       "continuation",
       "bearish"
     ),
-    ge(
+    Se(
       t,
       "SwingHigh",
       ["LowerHigh", "SwingHigh"],
@@ -1317,9 +1317,9 @@ function Ii(e) {
     )
   ].filter((i) => !!i) : [];
 }
-function Ni(e, t = {}) {
-  var c, u;
-  const n = k(t.lookback, 20, 1e3, 240), r = k(t.pivotStrength, 1, 20, 3), o = k(t.maxZones, 1, 12, 6), i = _(t.thicknessBps, 1, 100, 10), s = ((c = e[e.length - 1]) == null ? void 0 : c.x) ?? 0, a = ue(e, {
+function Hi(e, t = {}) {
+  var c, l;
+  const n = k(t.lookback, 20, 1e3, 240), r = k(t.pivotStrength, 1, 20, 3), o = k(t.maxZones, 1, 12, 6), i = F(t.thicknessBps, 1, 100, 10), s = ((c = e[e.length - 1]) == null ? void 0 : c.x) ?? 0, a = he(e, {
     lookback: n,
     pivotStrength: r,
     atrPeriod: t.atrPeriod,
@@ -1327,162 +1327,162 @@ function Ni(e, t = {}) {
     maxSwings: Math.min(500, n),
     maxBreaks: 24
   });
-  return bn(a.swings, {
+  return kn(a.swings, {
     maxZones: o,
     thicknessBps: i,
     latestX: s,
-    referencePrice: t.referencePrice ?? ((u = e[e.length - 1]) == null ? void 0 : u.c) ?? null,
+    referencePrice: t.referencePrice ?? ((l = e[e.length - 1]) == null ? void 0 : l.c) ?? null,
     zonesPerSide: t.zonesPerSide
   });
 }
-function bn(e, t = {}) {
-  var u;
-  const n = k(t.maxZones, 1, 12, 6), r = _(t.thicknessBps, 1, 100, 10), o = t.latestX ?? ((u = e[e.length - 1]) == null ? void 0 : u.x) ?? 0, i = w(t.referencePrice), s = t.zonesPerSide == null ? null : k(t.zonesPerSide, 1, 12, 3), a = [];
-  for (const l of e)
-    Qn(
+function kn(e, t = {}) {
+  var l;
+  const n = k(t.maxZones, 1, 12, 6), r = F(t.thicknessBps, 1, 100, 10), o = t.latestX ?? ((l = e[e.length - 1]) == null ? void 0 : l.x) ?? 0, i = w(t.referencePrice), s = t.zonesPerSide == null ? null : k(t.zonesPerSide, 1, 12, 3), a = [];
+  for (const u of e)
+    er(
       a,
-      l.kind === "SwingHigh" ? "resistance" : "support",
-      l,
-      o - l.x + 1,
+      u.kind === "SwingHigh" ? "resistance" : "support",
+      u,
+      o - u.x + 1,
       r
     );
-  const c = a.filter((l) => Number.isFinite(l.center) && l.high > l.low).sort((l, f) => f.score - l.score || f.touches - l.touches || f.lastX - l.lastX).slice(0, Math.max(n * 2, n));
-  return Wn(c, n, i, s);
+  const c = a.filter((u) => Number.isFinite(u.center) && u.high > u.low).sort((u, f) => f.score - u.score || f.touches - u.touches || f.lastX - u.lastX).slice(0, Math.max(n * 2, n));
+  return tr(c, n, i, s);
 }
-function yn(e, t) {
+function Tn(e, t) {
   const n = new Map(
-    t.filter((s) => L(s.c)).map((s) => [s.bucket, s])
+    t.filter((s) => B(s.c)).map((s) => [s.bucket, s])
   );
   let r = null, o = null;
   const i = [];
   for (const s of e) {
-    if (!L(s.c)) continue;
+    if (!B(s.c)) continue;
     const a = n.get(s.bucket);
-    if (!a || !L(a.c)) continue;
+    if (!a || !B(a.c)) continue;
     (r == null || o == null) && (r = s.c, o = a.c);
     const c = s.c / r / (a.c / o);
     i.push(s.x, (c - 1) * 100);
   }
   return new Float32Array(i);
 }
-function _i(e, t, n = {}) {
-  var x;
-  const r = k(n.maxDivergences, 1, 100, 16), o = _(n.minDeltaPct, 0, 50, 0.5), i = k(
+function Vi(e, t, n = {}) {
+  var P;
+  const r = k(n.maxDivergences, 1, 100, 16), o = F(n.minDeltaPct, 0, 50, 0.5), i = k(
     n.maxAgeBars,
     1,
     2e3,
     n.lookback ?? 240
-  ), s = n.includeDivergences ?? !0, a = n.includeLeads ?? !0, c = n.includeBreaks ?? !0, u = yn(e, t), l = Zn(u);
-  if (!e.length || l.size < 2) return [];
-  const d = (((x = e[e.length - 1]) == null ? void 0 : x.x) ?? 0) - i, h = {
+  ), s = n.includeDivergences ?? !0, a = n.includeLeads ?? !0, c = n.includeBreaks ?? !0, l = Tn(e, t), u = or(l);
+  if (!e.length || u.size < 2) return [];
+  const d = (((P = e[e.length - 1]) == null ? void 0 : P.x) ?? 0) - i, m = {
     ...n,
     maxSwings: Math.max(n.maxSwings ?? 120, r * 4),
     maxBreaks: Math.max(n.maxBreaks ?? 24, r * 2)
-  }, m = ue(e, {
-    ...h
-  }), v = qn(e, u), y = ue(v, {
-    ...h
-  }), p = new Map(e.map((S, b) => [S.x, { candle: S, index: b }])), E = [];
-  let T = null, R = null;
-  for (const S of m.swings) {
-    const b = l.get(S.x);
-    if (!(b == null || !Number.isFinite(b))) {
+  }, h = he(e, {
+    ...m
+  }), b = Xn(e, l), v = he(b, {
+    ...m
+  }), g = new Map(e.map((S, y) => [S.x, { candle: S, index: y }])), E = [];
+  let R = null, T = null;
+  for (const S of h.swings) {
+    const y = u.get(S.x);
+    if (!(y == null || !Number.isFinite(y))) {
       if (S.kind === "SwingHigh") {
-        if (T) {
-          const g = l.get(T.x);
-          g != null && Number.isFinite(g) && (S.price > T.price && b <= g - o ? s && E.push(
-            ye(
+        if (R) {
+          const p = u.get(R.x);
+          p != null && Number.isFinite(p) && (S.price > R.price && y <= p - o ? s && E.push(
+            pe(
               "bearishHigh",
               "divergence",
               "bearish",
               "RS DIV ↓",
               S,
-              T,
-              b,
-              g,
-              m.summary.state,
-              y.summary.state
+              R,
+              y,
+              p,
+              h.summary.state,
+              v.summary.state
             )
-          ) : S.price < T.price && b >= g + o && a && E.push(
-            ye(
+          ) : S.price < R.price && y >= p + o && a && E.push(
+            pe(
               "bullishHigh",
               "lead",
               "bullish",
               "RS LEAD ↑",
               S,
-              T,
-              b,
-              g,
-              m.summary.state,
-              y.summary.state
+              R,
+              y,
+              p,
+              h.summary.state,
+              v.summary.state
             )
           ));
         }
-        T = S;
+        R = S;
         continue;
       }
-      if (R) {
-        const g = l.get(R.x);
-        g != null && Number.isFinite(g) && (S.price > R.price && b <= g - o ? a && E.push(
-          ye(
+      if (T) {
+        const p = u.get(T.x);
+        p != null && Number.isFinite(p) && (S.price > T.price && y <= p - o ? a && E.push(
+          pe(
             "bearishLow",
             "lead",
             "bearish",
             "RS LEAD ↓",
             S,
-            R,
-            b,
-            g,
-            m.summary.state,
-            y.summary.state
+            T,
+            y,
+            p,
+            h.summary.state,
+            v.summary.state
           )
-        ) : S.price < R.price && b >= g + o && s && E.push(
-          ye(
+        ) : S.price < T.price && y >= p + o && s && E.push(
+          pe(
             "bullishLow",
             "divergence",
             "bullish",
             "RS DIV ↑",
             S,
-            R,
-            b,
-            g,
-            m.summary.state,
-            y.summary.state
+            T,
+            y,
+            p,
+            h.summary.state,
+            v.summary.state
           )
         ));
       }
-      R = S;
+      T = S;
     }
   }
   if (c)
-    for (const S of y.breaks) {
+    for (const S of v.breaks) {
       if (S.x < d) continue;
-      const b = p.get(S.x), g = l.get(S.x);
-      if (!b || g == null || !Number.isFinite(g)) continue;
-      const C = ue(e.slice(0, b.index + 1), {
-        ...h,
+      const y = g.get(S.x), p = u.get(S.x);
+      if (!y || p == null || !Number.isFinite(p)) continue;
+      const O = he(e.slice(0, y.index + 1), {
+        ...m,
         maxBreaks: Math.max(8, n.maxBreaks ?? 24)
       });
-      Un(S.direction, C.summary.state) && E.push(
-        $n(
+      Kn(S.direction, O.summary.state) && E.push(
+        Wn(
           S.direction === "bearish" ? "bearishBreak" : "bullishBreak",
           S.direction,
           S.direction === "bearish" ? "RS BREAK ↓" : "RS BREAK ↑",
-          b.index,
-          b.candle,
-          g,
+          y.index,
+          y.candle,
+          p,
           S,
-          C.summary.state,
-          y.summary.state
+          O.summary.state,
+          v.summary.state
         )
       );
     }
-  return E.filter((S) => S.x >= d).sort((S, b) => S.x - b.x || Ye(S.signal) - Ye(b.signal)).slice(-r);
+  return E.filter((S) => S.x >= d).sort((S, y) => S.x - y.x || it(S.signal) - it(y.signal)).slice(-r);
 }
-function Oi(e) {
+function $i(e) {
   return new Uint8Array(e.buffer);
 }
-function Be(e) {
+function Ue(e) {
   return {
     returnPct: w(e == null ? void 0 : e.returnPct),
     percentile: w(e == null ? void 0 : e.percentile),
@@ -1490,7 +1490,7 @@ function Be(e) {
     atrExtension: w(e == null ? void 0 : e.atrExtension)
   };
 }
-function He(e) {
+function je(e) {
   return {
     returnPct: w(e.returnPct),
     percentile: w(e.percentile),
@@ -1498,17 +1498,17 @@ function He(e) {
     atrExtension: w(e.atrExtension)
   };
 }
-function me(e) {
-  const t = Be(e);
-  return t.returnPct != null && t.returnPct >= ce.returnPct || t.percentile != null && t.percentile >= ce.percentile || t.zScore != null && t.zScore >= ce.zScore || t.atrExtension != null && t.atrExtension >= ce.atrExtension;
+function be(e) {
+  const t = Ue(e);
+  return t.returnPct != null && t.returnPct >= de.returnPct || t.percentile != null && t.percentile >= de.percentile || t.zScore != null && t.zScore >= de.zScore || t.atrExtension != null && t.atrExtension >= de.atrExtension;
 }
-function gn(e, t) {
+function Rn(e, t) {
   const n = [], r = k(t.minSamples, 1, 1e4, 20), o = e[e.length - 1] ?? null;
   return o ? o.rollingReturnCount < r && n.push(
     `Rolling-return history has ${o.rollingReturnCount}/${r} samples for percentile and Z-score`
   ) : n.push("No candle history was available at the requested asOf time"), n;
 }
-function ae(e, t, n) {
+function ue(e, t, n) {
   return {
     from: e,
     to: t,
@@ -1518,16 +1518,16 @@ function ae(e, t, n) {
     explanation: n.explanation
   };
 }
-function pn(e, t, n, r, o) {
+function En(e, t, n, r, o) {
   if (e === "notCandidate") return "No active Impulse Fade v1 candidate";
   if (e === "invalidated") return r ?? "Continuation invalidated the fade setup";
   if (e === "expired") return o ?? "Candidate expired before progressing";
   const i = n[n.length - 1];
   if (i && i.to === e) return i.explanation;
   const s = t.filter((c) => c.contributesTo === e), a = s[s.length - 1];
-  return (a == null ? void 0 : a.explanation) ?? ke(e);
+  return (a == null ? void 0 : a.explanation) ?? Re(e);
 }
-function pt(e, t) {
+function Rt(e, t) {
   switch (e) {
     case "developing":
       return [
@@ -1537,7 +1537,7 @@ function pt(e, t) {
       return ["Confirmed bearish structure break on the execution timeframe"];
     case "waitingForRetest":
       return [
-        t ? `Retest ${q(t.level)} and confirm bearish rejection` : "Retest the broken structure level and confirm bearish rejection"
+        t ? `Retest ${W(t.level)} and confirm bearish rejection` : "Retest the broken structure level and confirm bearish rejection"
       ];
     case "entryCandidate":
       return ["Discretionary review; no simulated trade is generated yet"];
@@ -1548,7 +1548,7 @@ function pt(e, t) {
       return [];
   }
 }
-function Sn(e) {
+function xn(e) {
   return [
     e.setupFamily,
     e.symbol,
@@ -1558,79 +1558,79 @@ function Sn(e) {
     String(e.detectedAt)
   ].map((t) => String(t || "na").toLowerCase().replace(/[^a-z0-9_.-]+/g, "-")).join(":");
 }
-function G(e, t, n, r, o) {
+function Z(e, t, n, r, o) {
   return [e, t, n, r, o ?? ""].map((i) => String(i).toLowerCase().replace(/[^a-z0-9_.-]+/g, "-")).join(":");
 }
-function St(e, t, n, r) {
+function Et(e, t, n, r) {
   let o = null;
   for (let i = 0; i < e.length; i += 1) {
-    const s = e[i], a = $(s);
-    a < t || z(e, i, r) > n || Number.isFinite(s.h) && (!o || s.h > o.price) && (o = { price: s.h, eventTime: a });
+    const s = e[i], a = j(s);
+    a < t || Y(e, i, r) > n || Number.isFinite(s.h) && (!o || s.h > o.price) && (o = { price: s.h, eventTime: a });
   }
   return o;
 }
-function wn(e, t) {
-  return e.length ? z(e, e.length - 1, t) : null;
+function Pn(e, t) {
+  return e.length ? Y(e, e.length - 1, t) : null;
 }
-function Ve(e, t, n) {
+function ze(e, t, n) {
   for (let r = e.length - 1; r >= 0; r -= 1)
-    if (z(e, r, n) <= t)
+    if (Y(e, r, n) <= t)
       return { candle: e[r], index: r };
   return null;
 }
-function $(e) {
+function j(e) {
   const t = w(e.ts);
   return t ?? w(e.bucket) ?? 0;
 }
-function z(e, t, n) {
+function Y(e, t, n) {
   const r = e[t];
-  return r ? n != null && String(n).trim() !== "chart" ? j(r, n) : (w(r.bucket) ?? $(r)) + An(e, t) : 0;
+  return r ? n != null && String(n).trim() !== "chart" ? X(r, n) : (w(r.bucket) ?? j(r)) + Cn(e, t) : 0;
 }
-function An(e, t) {
+function Cn(e, t) {
   var i, s, a;
-  const n = w((i = e[t]) == null ? void 0 : i.bucket) ?? $(e[t]), r = w((s = e[t + 1]) == null ? void 0 : s.bucket);
+  const n = w((i = e[t]) == null ? void 0 : i.bucket) ?? j(e[t]), r = w((s = e[t + 1]) == null ? void 0 : s.bucket);
   if (r != null && r > n) return r - n;
   const o = w((a = e[t - 1]) == null ? void 0 : a.bucket);
   return o != null && n > o ? n - o : 1;
 }
-function P(e) {
+function _(e) {
   return w(e.knownAt) ?? w(e.eventTime) ?? w(e.ts) ?? w(e.bucket) ?? 0;
 }
-function le(e, t, n) {
-  const r = P(e), o = w(e.eventTime) ?? w(e.ts) ?? w(e.bucket) ?? r;
+function me(e, t, n) {
+  const r = _(e), o = w(e.eventTime) ?? w(e.ts) ?? w(e.bucket) ?? r;
   return r > t.knownAt && r <= n && o >= t.knownAt;
 }
-function kn(e) {
+function In(e) {
   return e.state === "transitional" && e.transitionDirection ? `Transitional ${e.transitionDirection}` : e.state;
 }
-function Rn(e) {
+function Nn(e) {
   const t = Math.max(0, Math.round(e));
   return t >= 86400 ? `${Math.round(t / 86400)}d` : t >= 3600 ? `${Math.round(t / 3600)}h` : t >= 60 ? `${Math.round(t / 60)}m` : `${t}s`;
 }
-function L(e) {
+function B(e) {
   return Number.isFinite(e) && e > 0;
 }
-function Tn(e) {
+function _n(e) {
   const t = w(e == null ? void 0 : e.returnPct), n = w(e == null ? void 0 : e.percentile), r = w(e == null ? void 0 : e.zScore), o = w(e == null ? void 0 : e.atrExtension), i = [
-    t == null ? null : `24h ${fe(t, 1)}%`,
-    o == null ? null : `Ext ${fe(o, 1)} ATR`,
-    r == null ? null : `Z ${fe(r, 1)}`,
+    t == null ? null : `24h ${ve(t, 1)}%`,
+    o == null ? null : `Ext ${ve(o, 1)} ATR`,
+    r == null ? null : `Z ${ve(r, 1)}`,
     n == null ? null : `Pctl ${Math.round(n)}`
   ].filter((a) => !!a);
   return {
     key: "extension",
     label: "Extension",
-    status: me({ returnPct: t, percentile: n, zScore: r, atrExtension: o }) ? "pass" : "pending",
+    status: be({ returnPct: t, percentile: n, zScore: r, atrExtension: o }) ? "pass" : "pending",
     detail: i.join(" | ") || "No extension context yet"
   };
 }
-function En(e, t, n) {
-  const r = $e(e, t, n);
+function On(e, t, n) {
+  const r = Ge(e, t, n);
   return r ? {
     key: "htfResistance",
     label: "HTF resistance",
     status: "pass",
-    detail: `R ${q(r.low)}-${q(r.high)} strength ${r.strength.toFixed(1)}`
+    detail: `R ${W(r.low)}-${W(r.high)} strength ${r.strength.toFixed(1)}`
   } : {
     key: "htfResistance",
     label: "HTF resistance",
@@ -1638,7 +1638,7 @@ function En(e, t, n) {
     detail: "No nearby resistance zone"
   };
 }
-function xn(e) {
+function Mn(e) {
   const t = [...e].reverse().find((n) => n.direction === "bearish");
   return t ? {
     key: "rsWeakness",
@@ -1652,7 +1652,7 @@ function xn(e) {
     detail: "No bearish RS event"
   };
 }
-function Pn(e) {
+function Fn(e) {
   const t = (e == null ? void 0 : e.state) === "bearish" || (e == null ? void 0 : e.state) === "transitional" && e.transitionDirection === "bearish";
   return {
     key: "structureShift",
@@ -1661,44 +1661,44 @@ function Pn(e) {
     detail: t ? e.state === "bearish" ? "Bearish structure" : "Bearish transition" : "No bearish structure shift"
   };
 }
-function Cn(e, t) {
+function Ln(e, t) {
   const n = [...e].reverse().find((i) => i.kind === "loss" || i.kind === "failedReclaim"), r = w(t);
   return {
     key: "avwapFailure",
     label: "AVWAP failure",
     status: !!n || r != null && r <= -0.2 ? "pass" : "pending",
-    detail: (n == null ? void 0 : n.label) ?? (r == null ? "No AVWAP failure" : `AVWAP ${fe(r, 1)}%`)
+    detail: (n == null ? void 0 : n.label) ?? (r == null ? "No AVWAP failure" : `AVWAP ${ve(r, 1)}%`)
   };
 }
-function In(e, t, n, r) {
+function Dn(e, t, n, r) {
   var c;
-  const o = w((c = e == null ? void 0 : e.lastBreak) == null ? void 0 : c.level), i = o != null && n != null && _n(n, o) <= r, s = $e(t, n, r);
+  const o = w((c = e == null ? void 0 : e.lastBreak) == null ? void 0 : c.level), i = o != null && n != null && Hn(n, o) <= r, s = Ge(t, n, r);
   return {
     key: "retest",
     label: "Retest",
     status: !!(i || s) ? "pass" : "pending",
-    detail: i ? `Retesting ${q(o)}` : s ? `Near R ${q(s.center)}` : "No retest yet"
+    detail: i ? `Retesting ${W(o)}` : s ? `Near R ${W(s.center)}` : "No retest yet"
   };
 }
-function Nn(e, t, n, r) {
+function Bn(e, t, n, r) {
   var i;
   if (e.status !== "pass" || t.status !== "pass" || (n == null ? void 0 : n.state) !== "bullish" || r == null) return !1;
   const o = w((i = n.lastSwingHigh) == null ? void 0 : i.price);
   return o != null && r > o * 1.01;
 }
-function We(e, t) {
+function tt(e, t) {
   return e.status === "pass" || t.some((n) => n.summary.state !== "neutral");
 }
-function $e(e, t, n) {
-  return t == null || !L(t) ? null : e.filter((r) => r.kind === "resistance").map((r) => ({
+function Ge(e, t, n) {
+  return t == null || !B(t) ? null : e.filter((r) => r.kind === "resistance").map((r) => ({
     zone: r,
     distance: t >= r.low && t <= r.high ? 0 : t < r.low ? (r.low - t) / t * 100 : (t - r.high) / t * 100
   })).filter((r) => r.distance <= n).sort((r, o) => r.distance - o.distance || o.zone.strength - r.zone.strength).map((r) => r.zone)[0] ?? null;
 }
-function _n(e, t) {
-  return !L(e) || !L(t) ? 1 / 0 : Math.abs((e / t - 1) * 100);
+function Hn(e, t) {
+  return !B(e) || !B(t) ? 1 / 0 : Math.abs((e / t - 1) * 100);
 }
-function ke(e) {
+function Re(e) {
   switch (e) {
     case "developing":
       return "Developing";
@@ -1716,34 +1716,34 @@ function ke(e) {
       return "Not Candidate";
   }
 }
-function On(e, t) {
+function Vn(e, t) {
   if (e === "notCandidate") return "Waiting for extension context";
   if (e === "invalidated") return "Continuation invalidated the fade setup";
   if (e === "expired") return "Candidate expired before progressing";
   const n = t.filter((r) => r.status === "pass").map((r) => r.label);
-  return n.length ? n.join(" + ") : ke(e);
+  return n.length ? n.join(" + ") : Re(e);
 }
-function fe(e, t = 1) {
+function ve(e, t = 1) {
   return `${e > 0 ? "+" : ""}${e.toFixed(t)}`;
 }
-function q(e) {
+function W(e) {
   const t = Math.abs(e);
   return t >= 1e3 ? e.toFixed(0) : t >= 1 ? e.toFixed(3).replace(/\.?0+$/, "") : e.toFixed(6).replace(/\.?0+$/, "");
 }
 function w(e) {
   return e == null || !Number.isFinite(e) ? null : Number(e);
 }
-function W(e) {
+function te(e) {
   return e[e.length - 1];
 }
-function wt(e) {
+function xt(e) {
   for (let t = e.length - 1; t >= 0; t -= 1) {
     const n = e[t];
-    if (L(n.c)) return n;
+    if (B(n.c)) return n;
   }
   return null;
 }
-function Mn(e) {
+function $n(e) {
   return {
     candle: null,
     referenceCandle: null,
@@ -1757,42 +1757,42 @@ function Mn(e) {
     atrExtension: null
   };
 }
-function At(e, t, n) {
+function Pt(e, t, n) {
   const r = Math.min(e.length - 1, Math.max(0, n - 1));
   let o = null;
   for (let i = r; i >= 0; i -= 1) {
     const s = e[i];
-    if (s.bucket <= t && L(s.c)) {
+    if (s.bucket <= t && B(s.c)) {
       o = s;
       break;
     }
   }
   return o;
 }
-function Fn(e, t) {
+function qn(e, t) {
   const n = [];
   for (let r = 1; r < e.length; r += 1) {
     const o = e[r];
-    if (o.bucket < t.earliestBucket || o.bucket >= t.excludeBucket || !L(o.c)) continue;
-    const i = At(e, o.bucket - t.windowSeconds, r);
-    !i || !L(i.c) || n.push((o.c / i.c - 1) * 100);
+    if (o.bucket < t.earliestBucket || o.bucket >= t.excludeBucket || !B(o.c)) continue;
+    const i = Pt(e, o.bucket - t.windowSeconds, r);
+    !i || !B(i.c) || n.push((o.c / i.c - 1) * 100);
   }
   return n;
 }
-function Ln(e, t) {
+function Un(e, t) {
   if (!e.length || !Number.isFinite(t)) return null;
   const n = e.filter(Number.isFinite);
   if (!n.length) return null;
   const r = n.filter((i) => i < t).length, o = n.filter((i) => i === t).length;
   return (r + o * 0.5) / n.length * 100;
 }
-function Dn(e, t) {
+function jn(e, t) {
   const n = e.filter(Number.isFinite);
   if (n.length < 2 || !Number.isFinite(t)) return null;
   const r = n.reduce((s, a) => s + a, 0) / n.length, o = n.reduce((s, a) => s + (a - r) ** 2, 0) / (n.length - 1), i = Math.sqrt(o);
   return i > 0 ? (t - r) / i : null;
 }
-function Ee(e, t, n, r, o) {
+function Pe(e, t, n, r, o) {
   return {
     kind: e,
     label: e === "loss" ? "AVWAP loss" : e === "reclaim" ? "AVWAP reclaim" : "Failed AVWAP reclaim",
@@ -1802,11 +1802,11 @@ function Ee(e, t, n, r, o) {
     bucket: n.bucket,
     price: n.c,
     vwap: r,
-    eventTime: $(n),
+    eventTime: j(n),
     knownAt: o
   };
 }
-function Bn(e, t) {
+function zn(e, t) {
   const n = t.anchorBucket == null ? null : Number(t.anchorBucket);
   if (n != null && Number.isFinite(n)) {
     const o = e.findIndex((i) => i.bucket >= n);
@@ -1819,13 +1819,13 @@ function Bn(e, t) {
   }
   return null;
 }
-function Hn(e, t) {
+function Gn(e, t) {
   const n = Number(e.v_base);
   if (Number.isFinite(n) && n > 0) return n;
   const r = Number(e.v_quote);
   return Number.isFinite(r) && r > 0 && t > 0 ? r / t : 0;
 }
-function Xe(e, t, n, r, o, i) {
+function nt(e, t, n, r, o, i) {
   return {
     kind: e,
     structure: e,
@@ -1836,22 +1836,22 @@ function Xe(e, t, n, r, o, i) {
     bucket: n.bucket,
     price: r,
     atr: o,
-    eventTime: $(n),
+    eventTime: j(n),
     knownAt: i
   };
 }
-function Vn(e) {
+function Qn(e) {
   let t = null, n = null;
   return e.map((r) => {
     if (r.kind === "SwingHigh") {
-      const a = t == null ? "SwingHigh" : r.price > t.price ? "HigherHigh" : "LowerHigh", u = { ...r, structure: a, label: a === "SwingHigh" ? "SH" : a === "HigherHigh" ? "HH" : "LH" };
-      return t = u, u;
+      const a = t == null ? "SwingHigh" : r.price > t.price ? "HigherHigh" : "LowerHigh", l = { ...r, structure: a, label: a === "SwingHigh" ? "SH" : a === "HigherHigh" ? "HH" : "LH" };
+      return t = l, l;
     }
     const o = n == null ? "SwingLow" : r.price > n.price ? "HigherLow" : "LowerLow", s = { ...r, structure: o, label: o === "SwingLow" ? "SL" : o === "HigherLow" ? "HL" : "LL" };
     return n = s, s;
   });
 }
-function Ke(e, t, n, r, o, i) {
+function rt(e, t, n, r, o, i) {
   return {
     kind: e,
     direction: t,
@@ -1863,11 +1863,11 @@ function Ke(e, t, n, r, o, i) {
     level: o.price,
     sourceSwingX: o.x,
     sourceSwingPrice: o.price,
-    eventTime: $(r),
+    eventTime: j(r),
     knownAt: i
   };
 }
-function ye(e, t, n, r, o, i, s, a, c, u) {
+function pe(e, t, n, r, o, i, s, a, c, l) {
   return {
     kind: e,
     signal: t,
@@ -1884,12 +1884,12 @@ function ye(e, t, n, r, o, i, s, a, c, u) {
     priceLabel: o.label,
     sourceBreak: null,
     priceStructureState: c,
-    rsStructureState: u,
+    rsStructureState: l,
     eventTime: o.eventTime,
     knownAt: Math.max(o.knownAt, i.knownAt)
   };
 }
-function $n(e, t, n, r, o, i, s, a, c) {
+function Wn(e, t, n, r, o, i, s, a, c) {
   return {
     kind: e,
     signal: "break",
@@ -1911,16 +1911,16 @@ function $n(e, t, n, r, o, i, s, a, c) {
     knownAt: s.knownAt
   };
 }
-function qn(e, t) {
+function Xn(e, t) {
   const n = new Map(e.map((i) => [i.x, i])), r = [];
   let o = null;
   for (let i = 0; i < t.length; i += 2) {
     const s = t[i], a = t[i + 1], c = n.get(s);
     if (!c || !Number.isFinite(a)) continue;
-    const u = o ?? a;
+    const l = o ?? a;
     r.push({
       ...c,
-      o: u,
+      o: l,
       h: a,
       l: a,
       c: a,
@@ -1930,10 +1930,10 @@ function qn(e, t) {
   }
   return r;
 }
-function Un(e, t) {
+function Kn(e, t) {
   return e === "bearish" ? t === "bullish" || t === "transitional" : t === "bearish" || t === "transitional";
 }
-function Ye(e) {
+function it(e) {
   switch (e) {
     case "break":
       return 2;
@@ -1943,12 +1943,12 @@ function Ye(e) {
       return 0;
   }
 }
-function qe(e, t, n) {
-  const r = t[t.length - 1] ?? null, o = Ne(e, "SwingHigh"), i = Ne(e, "SwingLow"), s = e[e.length - 1] ?? null, a = jn(t), c = e.length === 0 ? "neutral" : r == null || a ? "range" : r.kind === "StructureShift" ? "transitional" : r.direction, u = c === "transitional" ? (r == null ? void 0 : r.direction) ?? null : null;
+function Qe(e, t, n) {
+  const r = t[t.length - 1] ?? null, o = Fe(e, "SwingHigh"), i = Fe(e, "SwingLow"), s = e[e.length - 1] ?? null, a = Yn(t), c = e.length === 0 ? "neutral" : r == null || a ? "range" : r.kind === "StructureShift" ? "transitional" : r.direction, l = c === "transitional" ? (r == null ? void 0 : r.direction) ?? null : null;
   return {
     state: c,
     trend: n,
-    transitionDirection: u,
+    transitionDirection: l,
     lastBreak: r,
     lastSwingHigh: o,
     lastSwingLow: i,
@@ -1956,22 +1956,22 @@ function qe(e, t, n) {
     updatedTs: (r == null ? void 0 : r.knownAt) ?? (s == null ? void 0 : s.knownAt) ?? null
   };
 }
-function ge(e, t, n, r, o) {
+function Se(e, t, n, r, o) {
   for (let s = e.length - 1; s >= 0; s -= 1) {
     const a = e[s];
     if (a.kind === t && n.includes(a.structure))
-      return Ie(r, o, a);
+      return Me(r, o, a);
   }
-  const i = Ne(e, t);
-  return i ? Ie(r, o, i) : null;
+  const i = Fe(e, t);
+  return i ? Me(r, o, i) : null;
 }
-function Ze(e, t, n, r, o) {
+function ot(e, t, n, r, o) {
   let i = null;
   for (const s of e)
     s.kind === t && (!i || (o ? s.price > i.price : s.price < i.price)) && (i = s);
-  return i ? Ie(n, r, i) : null;
+  return i ? Me(n, r, i) : null;
 }
-function Ie(e, t, n) {
+function Me(e, t, n) {
   return {
     role: e,
     direction: t,
@@ -1984,7 +1984,7 @@ function Ie(e, t, n) {
     sourceSwing: n
   };
 }
-function jn(e) {
+function Yn(e) {
   const t = e.slice(-5).filter((n) => n.kind === "StructureShift");
   if (t.length < 3) return !1;
   for (let n = 1; n < t.length; n += 1)
@@ -1992,22 +1992,22 @@ function jn(e) {
       return !1;
   return !0;
 }
-function Ne(e, t) {
+function Fe(e, t) {
   for (let n = e.length - 1; n >= 0; n -= 1) {
     const r = e[n];
     if (r.kind === t) return r;
   }
   return null;
 }
-function zn(e, t) {
+function Zn(e, t) {
   return e.kind === "SwingHigh" ? e.price > t.price : e.price < t.price;
 }
-function Gn(e, t, n) {
+function Jn(e, t, n) {
   const r = e.atr != null && Number.isFinite(e.atr) ? e.atr : t.atr != null && Number.isFinite(t.atr) ? t.atr : 0;
   return Math.max(0, r * n);
 }
-function Re(e, t) {
-  const n = te(t), r = Array(e.length).fill(null);
+function Ee(e, t) {
+  const n = se(t), r = Array(e.length).fill(null);
   if (e.length < n) return r;
   const o = e.map((s, a) => {
     if (a === 0) return s.h - s.l;
@@ -2025,21 +2025,21 @@ function Re(e, t) {
     i = (i * (n - 1) + o[s]) / n, r[s] = i;
   return r;
 }
-function Qn(e, t, n, r, o) {
+function er(e, t, n, r, o) {
   const i = n.price;
   if (!Number.isFinite(i) || i <= 0) return;
-  const s = Math.max(i * (o / 1e4), Number.EPSILON), a = i - s, c = i + s, u = 1 / Math.max(1, r), l = e.find(
-    (h) => h.kind === t && Yn(h.low, h.high, a, c)
+  const s = Math.max(i * (o / 1e4), Number.EPSILON), a = i - s, c = i + s, l = 1 / Math.max(1, r), u = e.find(
+    (m) => m.kind === t && ir(m.low, m.high, a, c)
   );
-  if (!l) {
+  if (!u) {
     e.push({
       kind: t,
       low: a,
       high: c,
       center: i,
       touches: 1,
-      score: 1 + u,
-      strength: 1 + u,
+      score: 1 + l,
+      strength: 1 + l,
       lastX: n.x,
       eventTime: n.eventTime,
       knownAt: n.knownAt,
@@ -2048,12 +2048,12 @@ function Qn(e, t, n, r, o) {
     });
     return;
   }
-  const f = l.touches + 1;
-  l.center = (l.center * l.touches + i) / f, l.touches = f, l.score += 1 + u, l.strength = l.score, l.lastX = Math.max(l.lastX, n.x), l.eventTime = Math.max(l.eventTime, n.eventTime), l.knownAt = Math.max(l.knownAt, n.knownAt), l.structures.push(n.structure);
-  const d = Math.max(l.center * (o / 1e4), Number.EPSILON);
-  l.low = Math.min(l.low, l.center - d, a), l.high = Math.max(l.high, l.center + d, c);
+  const f = u.touches + 1;
+  u.center = (u.center * u.touches + i) / f, u.touches = f, u.score += 1 + l, u.strength = u.score, u.lastX = Math.max(u.lastX, n.x), u.eventTime = Math.max(u.eventTime, n.eventTime), u.knownAt = Math.max(u.knownAt, n.knownAt), u.structures.push(n.structure);
+  const d = Math.max(u.center * (o / 1e4), Number.EPSILON);
+  u.low = Math.min(u.low, u.center - d, a), u.high = Math.max(u.high, u.center + d, c);
 }
-function Wn(e, t, n, r) {
+function tr(e, t, n, r) {
   if (!n || !r) return e.slice(0, t);
   const o = /* @__PURE__ */ new Set(), i = e.filter((a) => a.center <= n).sort((a, c) => n - a.center - (n - c.center) || c.score - a.score).slice(0, r), s = e.filter((a) => a.center > n).sort((a, c) => a.center - n - (c.center - n) || c.score - a.score).slice(0, r);
   for (const a of [...i, ...s])
@@ -2064,24 +2064,24 @@ function Wn(e, t, n, r) {
   }
   return Array.from(o).sort((a, c) => c.score - a.score || c.touches - a.touches || c.lastX - a.lastX).slice(0, t);
 }
-function Xn(e, t, n) {
+function nr(e, t, n) {
   const r = e[t].h;
   if (!Number.isFinite(r)) return !1;
   for (let o = 1; o <= n; o += 1)
     if (e[t - o].h >= r || e[t + o].h > r) return !1;
   return !0;
 }
-function Kn(e, t, n) {
+function rr(e, t, n) {
   const r = e[t].l;
   if (!Number.isFinite(r)) return !1;
   for (let o = 1; o <= n; o += 1)
     if (e[t - o].l <= r || e[t + o].l < r) return !1;
   return !0;
 }
-function Yn(e, t, n, r) {
+function ir(e, t, n, r) {
   return e <= r && n <= t;
 }
-function Zn(e) {
+function or(e) {
   const t = /* @__PURE__ */ new Map();
   for (let n = 0; n < e.length; n += 2) {
     const r = e[n], o = e[n + 1];
@@ -2089,8 +2089,8 @@ function Zn(e) {
   }
   return t;
 }
-function _e(e, t) {
-  const n = te(t), r = Array(e.length).fill(null);
+function Le(e, t) {
+  const n = se(t), r = Array(e.length).fill(null);
   if (e.length < n) return r;
   const o = 2 / (n + 1);
   let i = 0;
@@ -2100,8 +2100,8 @@ function _e(e, t) {
     i = (e[s].c - i) * o + i, r[s] = i;
   return r;
 }
-function Jn(e, t) {
-  const n = te(t);
+function sr(e, t) {
+  const n = se(t);
   if (e.length < n) return [];
   const r = [], o = 2 / (n + 1);
   let i = 0;
@@ -2111,8 +2111,8 @@ function Jn(e, t) {
     i = (e[s].value - i) * o + i, r.push({ x: e[s].x, value: i });
   return r;
 }
-function kt(e, t) {
-  const n = te(t);
+function Ct(e, t) {
+  const n = se(t);
   if (e.length <= n) return [];
   let r = 0, o = 0;
   for (let s = 1; s <= n; s++) {
@@ -2121,15 +2121,15 @@ function kt(e, t) {
   }
   r /= n, o /= n;
   const i = [
-    { x: e[n].x, value: et(r, o) }
+    { x: e[n].x, value: at(r, o) }
   ];
   for (let s = n + 1; s < e.length; s++) {
-    const a = e[s].c - e[s - 1].c, c = Math.max(0, a), u = Math.max(0, -a);
-    r = (r * (n - 1) + c) / n, o = (o * (n - 1) + u) / n, i.push({ x: e[s].x, value: et(r, o) });
+    const a = e[s].c - e[s - 1].c, c = Math.max(0, a), l = Math.max(0, -a);
+    r = (r * (n - 1) + c) / n, o = (o * (n - 1) + l) / n, i.push({ x: e[s].x, value: at(r, o) });
   }
   return i;
 }
-function Je(e, t) {
+function st(e, t) {
   if (e.length < t) return [];
   const n = [];
   let r = 0;
@@ -2137,40 +2137,40 @@ function Je(e, t) {
     r += o.value, i >= t && (r -= e[i - t].value), i >= t - 1 && n.push({ x: o.x, value: r / t });
   }), n;
 }
-function ee(e) {
+function oe(e) {
   const t = [];
   for (const n of e)
     t.push(n.x, n.value);
   return new Float32Array(t);
 }
-function et(e, t) {
+function at(e, t) {
   return t === 0 ? e === 0 ? 50 : 100 : e === 0 ? 0 : 100 - 100 / (1 + e / t);
 }
-function te(e) {
+function se(e) {
   const t = Math.floor(Number(e));
   return Number.isFinite(t) ? Math.max(1, t) : 1;
 }
 function k(e, t, n, r) {
-  return Math.floor(_(e, t, n, r));
+  return Math.floor(F(e, t, n, r));
 }
-function _(e, t, n, r) {
+function F(e, t, n, r) {
   const o = Number(e);
   return Number.isFinite(o) ? Math.max(t, Math.min(n, o)) : r;
 }
-const er = "strategy-profile.1", Rt = "decision-snapshot.1", tr = "impulse_fade_v1.research.default", nr = "1";
-function rr(e) {
-  return `decision-reference-observation:${O({
+const ar = "strategy-profile.1", It = "decision-snapshot.1", cr = "impulse_fade_v1.research.default", lr = "1";
+function ur(e) {
+  return `decision-reference-observation:${L({
     objectType: e.objectType,
     objectId: e.objectId,
     snapshot: e.snapshot
   }).slice(8)}`;
 }
-function Tt(e) {
+function We(e) {
   const { profileHash: t, ...n } = e;
-  return O(n);
+  return L(n);
 }
-function ir(e) {
-  if (he(e.createdAt, "createdAt"), e.setupFamily !== Q || e.lifecycleVersion !== U || e.side !== "short")
+function Nt(e) {
+  if (ge(e.createdAt, "createdAt"), e.setupFamily !== J || e.lifecycleVersion !== Q || e.side !== "short")
     throw new RangeError("This core currently supports only the short Impulse Fade v1 profile");
   if (!e.id.trim() || !e.version.trim() || !e.lifecycleConfigHash.trim())
     throw new TypeError("Profile id, version, and lifecycleConfigHash are required");
@@ -2180,7 +2180,7 @@ function ir(e) {
         throw new TypeError("Context timeframes cannot contain blank values");
     } else if (i != null && !i.trim())
       throw new TypeError(`${o} cannot be blank`);
-  if (tt(e.riskPolicy.maximumAccountRiskFraction, "maximum account risk"), tt(
+  if (ct(e.riskPolicy.maximumAccountRiskFraction, "maximum account risk"), ct(
     e.riskPolicy.maximumMarginAllocationFraction,
     "maximum margin allocation"
   ), !Number.isInteger(e.targetPolicy.maximumTargets) || e.targetPolicy.maximumTargets < 1 || !Number.isFinite(e.targetPolicy.fractionTolerance) || e.targetPolicy.fractionTolerance < 0)
@@ -2207,13 +2207,13 @@ function ir(e) {
     throw new RangeError("Execution assumptions must be non-negative finite numbers");
   if (e.executionAssumptions.adverseEntrySlippageBps >= 1e4 || e.executionAssumptions.adverseStopSlippageBps >= 1e4 || e.executionAssumptions.adverseTargetSlippageBps >= 1e4)
     throw new RangeError("Adverse-slippage allowances must be below 10,000 basis points");
-  const r = I(e);
-  return I({
+  const r = M(e);
+  return M({
     ...r,
-    profileHash: Tt(r)
+    profileHash: We(r)
   });
 }
-function or(e = {}) {
+function fr(e = {}) {
   var i, s;
   const t = {
     candidateTimeframe: "1h",
@@ -2257,14 +2257,14 @@ function or(e = {}) {
     requiredDataQuality: n,
     factors: r
   };
-  return ir({
-    schemaVersion: er,
-    id: e.id ?? tr,
-    version: e.version ?? nr,
+  return Nt({
+    schemaVersion: ar,
+    id: e.id ?? cr,
+    version: e.version ?? lr,
     name: e.name ?? "Impulse Fade v1 research default",
-    setupFamily: Q,
-    lifecycleVersion: U,
-    lifecycleConfigHash: e.lifecycleConfigHash ?? oe(),
+    setupFamily: J,
+    lifecycleVersion: Q,
+    lifecycleConfigHash: e.lifecycleConfigHash ?? ce(),
     side: "short",
     timeframeRoles: t,
     entryPolicy: o,
@@ -2309,15 +2309,15 @@ function or(e = {}) {
     createdAt: e.createdAt ?? 1788393600
   });
 }
-const sr = or();
-function Mi(e) {
+const dr = fr();
+function qi(e) {
   if (!e.id.trim()) throw new TypeError("Decision reference id is required");
-  if (dr(e.price, "reference price"), he(e.eventTime, "reference eventTime"), he(e.knownAt, "reference knownAt"), e.knownAt < e.eventTime)
+  if (gr(e.price, "reference price"), ge(e.eventTime, "reference eventTime"), ge(e.knownAt, "reference knownAt"), e.knownAt < e.eventTime)
     throw new RangeError("Reference knownAt cannot precede eventTime");
-  const t = rr(e.sourceObject);
+  const t = ur(e.sourceObject);
   if (e.sourceObject.observationId != null && e.sourceObject.observationId !== t)
     throw new Error("Decision reference source observation failed deterministic verification");
-  return I({
+  return M({
     id: e.id,
     kind: e.kind,
     price: e.price,
@@ -2332,9 +2332,9 @@ function Mi(e) {
     }
   });
 }
-function Fi(e) {
+function Ui(e) {
   var i, s, a, c;
-  if (he(e.decisionTime, "decisionTime"), he(e.effectiveAsOf, "effectiveAsOf"), e.effectiveAsOf > e.decisionTime)
+  if (ge(e.decisionTime, "decisionTime"), ge(e.effectiveAsOf, "effectiveAsOf"), e.effectiveAsOf > e.decisionTime)
     throw new RangeError("effectiveAsOf cannot be later than decisionTime");
   if (e.lifecycle.asOf !== e.effectiveAsOf)
     throw new RangeError("Lifecycle snapshot must be evaluated at effectiveAsOf");
@@ -2345,19 +2345,19 @@ function Fi(e) {
   if (e.lifecycle.candidate && (e.lifecycle.candidate.lifecycleVersion !== e.lifecycle.lifecycleVersion || e.lifecycle.candidate.lifecycleConfigHash !== e.lifecycle.lifecycleConfigHash || e.lifecycle.candidate.symbol.toUpperCase() !== e.symbol.toUpperCase() || e.lifecycle.candidate.source !== e.source))
     throw new RangeError("Candidate episode provenance does not match the lifecycle snapshot");
   const t = [...e.dataQualityNotes];
-  fr([
+  br([
     ...e.activeStructureLevels,
     ...e.supportResistanceZones,
     ...e.visibleOrSelectedReferenceLevels,
     ...e.avwapState ? [e.avwapState.reference] : []
   ]);
-  for (const u of e.lifecycle.dataQuality)
+  for (const l of e.lifecycle.dataQuality)
     t.push({
       code: "LIFECYCLE_DATA_QUALITY_NOTE",
       severity: "warning",
-      message: u
+      message: l
     });
-  const n = cr(
+  const n = hr(
     e.candidateMetrics,
     e.effectiveAsOf,
     e.symbol,
@@ -2368,14 +2368,14 @@ function Fi(e) {
     severity: "error",
     message: "Candidate metrics were not valid for the symbol, venue, or decision cutoff"
   });
-  for (const u of (n == null ? void 0 : n.insufficientDataReasons) ?? [])
+  for (const l of (n == null ? void 0 : n.insufficientDataReasons) ?? [])
     t.push({
-      code: `CANDIDATE_METRICS_${u.code}`,
+      code: `CANDIDATE_METRICS_${l.code}`,
       severity: "error",
-      message: u.message
+      message: l.message
     });
   const r = {
-    snapshotSchemaVersion: Rt,
+    snapshotSchemaVersion: It,
     symbol: e.symbol.toUpperCase(),
     source: e.source,
     decisionTime: e.decisionTime,
@@ -2390,35 +2390,35 @@ function Fi(e) {
     activeCandidateId: ((s = e.lifecycle.candidate) == null ? void 0 : s.detectedAt) != null && e.lifecycle.candidate.detectedAt <= e.effectiveAsOf ? e.lifecycle.candidate.id : null,
     lifecycleState: e.lifecycle.currentState,
     lifecycleStateSince: e.lifecycle.stateSince,
-    lifecycleEvidence: Pe(e.lifecycle.evidence, e.effectiveAsOf),
+    lifecycleEvidence: Ie(e.lifecycle.evidence, e.effectiveAsOf),
     pendingConditions: [...e.lifecycle.pendingConditions],
     candidateMetrics: n,
-    structureByTimeframe: lr(e.structureByTimeframe, e.effectiveAsOf),
-    activeStructureLevels: xe(e.activeStructureLevels, e.effectiveAsOf),
-    supportResistanceZones: xe(
+    structureByTimeframe: vr(e.structureByTimeframe, e.effectiveAsOf),
+    activeStructureLevels: Ce(e.activeStructureLevels, e.effectiveAsOf),
+    supportResistanceZones: Ce(
       e.supportResistanceZones,
       e.effectiveAsOf
     ),
     avwapState: ((a = e.avwapState) == null ? void 0 : a.knownAt) != null && e.avwapState.knownAt <= e.effectiveAsOf && e.avwapState.reference.knownAt <= e.effectiveAsOf ? e.avwapState : null,
-    avwapEvents: Pe(e.avwapEvents, e.effectiveAsOf),
+    avwapEvents: Ie(e.avwapEvents, e.effectiveAsOf),
     relativeStrengthState: ((c = e.relativeStrengthState) == null ? void 0 : c.knownAt) != null && e.relativeStrengthState.knownAt <= e.effectiveAsOf ? e.relativeStrengthState : null,
-    relativeStrengthEvents: Pe(
+    relativeStrengthEvents: Ie(
       e.relativeStrengthEvents,
       e.effectiveAsOf
     ),
-    visibleOrSelectedReferenceLevels: xe(
+    visibleOrSelectedReferenceLevels: Ce(
       e.visibleOrSelectedReferenceLevels,
       e.effectiveAsOf
     ),
     dataQualityNotes: t
-  }, o = Et(r);
-  return I({ ...r, id: o });
+  }, o = _t(r);
+  return M({ ...r, id: o });
 }
-function Et(e) {
+function _t(e) {
   const { id: t, ...n } = e;
-  return `decision-snapshot:${O(n).slice(8)}`;
+  return `decision-snapshot:${L(n).slice(8)}`;
 }
-function ar(e) {
+function mr(e) {
   const t = [
     ...e.activeStructureLevels,
     ...e.supportResistanceZones,
@@ -2427,32 +2427,32 @@ function ar(e) {
   ], n = /* @__PURE__ */ new Map();
   for (const r of t) {
     const o = n.get(r.id);
-    if (o && M(o) !== M(r))
+    if (o && D(o) !== D(r))
       throw new RangeError(`Conflicting decision reference id ${r.id}`);
     n.set(r.id, r);
   }
   return [...n.values()];
 }
-function cr(e, t, n, r) {
+function hr(e, t, n, r) {
   return !e || e.effectiveAsOf == null || e.effectiveAsOf > t || e.symbol.toUpperCase() !== n.toUpperCase() || e.marketType.toLowerCase() !== "perp" || r != null && e.source !== r.source || r != null && r.venue && e.exchange.toLowerCase() !== r.venue.toLowerCase() ? null : e;
 }
-function lr(e, t) {
+function vr(e, t) {
   return Object.fromEntries(
     Object.entries(e).sort(([n], [r]) => n.localeCompare(r)).map(([n, r]) => [
       n,
-      ur(r) <= t ? r : null
+      yr(r) <= t ? r : null
     ])
   );
 }
-function xe(e, t) {
+function Ce(e, t) {
   return e.filter((n) => n.knownAt <= t).sort((n, r) => n.knownAt - r.knownAt || n.id.localeCompare(r.id));
 }
-function Pe(e, t) {
+function Ie(e, t) {
   return e.filter((n) => n.knownAt <= t).sort(
-    (n, r) => n.knownAt - r.knownAt || n.eventTime - r.eventTime || O(n).localeCompare(O(r))
+    (n, r) => n.knownAt - r.knownAt || n.eventTime - r.eventTime || L(n).localeCompare(L(r))
   );
 }
-function ur(e) {
+function yr(e) {
   var t, n, r;
   return e ? Math.max(
     e.updatedTs ?? -1 / 0,
@@ -2461,91 +2461,91 @@ function ur(e) {
     ((r = e.lastSwingLow) == null ? void 0 : r.knownAt) ?? -1 / 0
   ) : -1 / 0;
 }
-function fr(e) {
+function br(e) {
   const t = /* @__PURE__ */ new Map();
   for (const n of e) {
     const r = t.get(n.id);
-    if (r && M(r) !== M(n))
+    if (r && D(r) !== D(n))
       throw new RangeError(`Conflicting decision reference id ${n.id}`);
     t.set(n.id, n);
   }
 }
-function he(e, t) {
+function ge(e, t) {
   if (!Number.isFinite(e) || e < 0)
     throw new RangeError(`${t} must be a non-negative finite Unix timestamp`);
 }
-function dr(e, t) {
+function gr(e, t) {
   if (!Number.isFinite(e) || e <= 0)
     throw new RangeError(`${t} must be a positive finite number`);
 }
-function tt(e, t) {
+function ct(e, t) {
   if (!Number.isFinite(e) || e <= 0 || e > 1)
     throw new RangeError(`${t} must be in (0, 1]`);
 }
-const xt = "radar-selection-profile.1", mr = "radar-episode.1", hr = "replay-case-manifest.1", vr = "radar-metric-observation.1", br = "radar-scan-result.1", yr = "radar-episode-status.1", gr = "execution-venue-eligibility.1", pr = "radar-structure-observation.1", Sr = "radar-universe-membership.1";
-function Pt(e) {
+const Ot = "radar-selection-profile.1", pr = "radar-episode.1", Sr = "replay-case-manifest.1", Mt = "radar-metric-observation.1", wr = "radar-scan-result.1", Ar = "radar-episode-status.1", kr = "execution-venue-eligibility.1", Tr = "radar-structure-observation.1", Rr = "radar-universe-membership.1";
+function Ft(e) {
   const { canonicalConfigHash: t, ...n } = e;
-  return O(n);
+  return L(n);
 }
-function wr(e) {
-  return zr(e), I({
+function Er(e) {
+  return jt(e), M({
     ...e,
-    canonicalConfigHash: Pt(e)
+    canonicalConfigHash: Ft(e)
   });
 }
-function Ar(e) {
+function xr(e) {
   if (!e.symbol.trim() || !e.marketDataSource.trim() || !e.executionVenue.trim() || !e.evidenceSource.trim() || !Number.isFinite(e.effectiveFrom) || !Number.isFinite(e.knownAt) || e.effectiveTo != null && (!Number.isFinite(e.effectiveTo) || e.effectiveTo < e.effectiveFrom))
     throw new RangeError("Execution-venue eligibility observation is invalid");
   const t = {
-    schemaVersion: gr,
+    schemaVersion: kr,
     logicalObjectId: `execution-venue:${e.executionVenue.toLowerCase()}:${e.symbol.toUpperCase()}`,
     ...e
   };
-  return I({
+  return M({
     ...t,
-    observationId: Nt(t)
+    observationId: Bt(t)
   });
 }
-function Li(e) {
+function ji(e) {
   if (!e.logicalObjectId.trim() || !e.symbol.trim() || !e.source.trim() || !e.timeframe.trim() || !e.state.trim() || !Number.isFinite(e.eventTime) || !Number.isFinite(e.knownAt) || e.knownAt < e.eventTime)
     throw new RangeError("Radar structure observation is invalid");
   const t = {
-    schemaVersion: pr,
+    schemaVersion: Tr,
     ...e
   };
-  return I({
+  return M({
     ...t,
-    observationId: It(t)
+    observationId: Dt(t)
   });
 }
-function Di(e) {
+function zi(e) {
   if (!e.symbol.trim() || !e.source.trim() || !Number.isFinite(e.effectiveFrom) || !Number.isFinite(e.knownAt) || e.effectiveTo != null && (!Number.isFinite(e.effectiveTo) || e.effectiveTo < e.effectiveFrom))
     throw new RangeError("Universe membership observation is invalid");
   const t = {
-    schemaVersion: Sr,
+    schemaVersion: Rr,
     logicalObjectId: `radar-universe:${e.source}:${e.symbol.toUpperCase()}`,
     ...e
   };
-  return I({
+  return M({
     ...t,
-    observationId: Ct(t)
+    observationId: Lt(t)
   });
 }
-function Ct(e) {
+function Lt(e) {
   const { observationId: t, ...n } = e;
-  return `radar-universe-observation:${B(n)}`;
+  return `radar-universe-observation:${H(n)}`;
 }
-function It(e) {
+function Dt(e) {
   const { observationId: t, ...n } = e;
-  return `radar-structure-observation:${B(n)}`;
+  return `radar-structure-observation:${H(n)}`;
 }
-function Oe(e) {
+function De(e) {
   if (!e.logicalObjectId.trim() || !e.objectType.trim() || !Number.isFinite(e.knownAt) || e.eventTime != null && (!Number.isFinite(e.eventTime) || e.eventTime > e.knownAt))
     throw new RangeError("Durable object reference is invalid");
-  const t = JSON.parse(M(e.snapshot));
-  return I({
+  const t = JSON.parse(D(e.snapshot));
+  return M({
     logicalObjectId: e.logicalObjectId,
-    observationId: `${e.objectType.toLowerCase()}-observation:${B({
+    observationId: `${e.objectType.toLowerCase()}-observation:${H({
       logicalObjectId: e.logicalObjectId,
       eventTime: e.eventTime,
       knownAt: e.knownAt,
@@ -2557,12 +2557,12 @@ function Oe(e) {
     snapshot: t
   });
 }
-function Nt(e) {
+function Bt(e) {
   const { observationId: t, ...n } = e;
-  return `execution-venue-observation:${B(n)}`;
+  return `execution-venue-observation:${H(n)}`;
 }
-const Bi = wr({
-  schemaVersion: xt,
+const Gi = Er({
+  schemaVersion: Ot,
   id: "impulse_fade_v1.radar.experimental",
   version: "1",
   name: "Impulse Fade radar experimental default (unoptimized)",
@@ -2616,106 +2616,123 @@ const Bi = wr({
   },
   createdAt: 17e8
 });
-function Hi(e) {
-  var c;
-  Qr(e);
-  const t = e.strategyProfile ?? sr, n = /* @__PURE__ */ new Map(), r = [], o = [], i = [], s = [], a = /* @__PURE__ */ new Set();
-  for (const [u, l] of Object.entries(e.candlesBySymbolAndTimeframe).sort(
-    ([f], [d]) => f.localeCompare(d)
+function Qi(e) {
+  var c, l;
+  ei(e);
+  const t = e.strategyProfile ?? dr, n = /* @__PURE__ */ new Map(), r = [], o = [], i = [], s = [], a = /* @__PURE__ */ new Set();
+  for (const [u, f] of Object.entries(e.candlesBySymbolAndTimeframe).sort(
+    ([d], [m]) => d.localeCompare(m)
   )) {
-    const f = `${l.symbol.toUpperCase()}\0${l.source.toLowerCase()}`;
-    if (a.has(f))
-      throw new Error(`Duplicate radar series identity for ${l.symbol} from ${l.source}`);
-    a.add(f);
-    const h = Ft(l.candlesByTimeframe[e.selectionProfile.scanTimeframe] ?? []).map((v) => j(v, e.selectionProfile.scanTimeframe)).filter((v) => v <= e.to).filter((v) => jr(v, e.selectionProfile)), m = {
-      previousGate: !1,
+    const d = Vr(f, e.to), m = `${d.symbol.toUpperCase()}\0${d.source.toLowerCase()}`;
+    if (a.has(m))
+      throw new Error(`Duplicate radar series identity for ${d.symbol} from ${d.source}`);
+    a.add(m);
+    const b = z(
+      d.candlesByTimeframe[e.selectionProfile.scanTimeframe] ?? [],
+      e.selectionProfile.scanTimeframe,
+      e.to
+    ).map((g) => X(g, e.selectionProfile.scanTimeframe)).filter((g) => g <= e.to).filter((g) => Zr(g, e.selectionProfile)), v = {
+      previousGate: null,
       activeEpisode: null,
       blockedEpisode: null,
       falseSince: null,
       armed: !0
     };
-    for (const v of h) {
-      const y = v >= e.from, p = e.selectionProfile.moveDetectors.map(
-        (g) => kr(g, l, v, e.selectionProfile.scanTimeframe)
+    for (const g of b) {
+      const E = g >= e.from, R = e.selectionProfile.moveDetectors.map(
+        (x) => Pr(x, d, g, e.selectionProfile.scanTimeframe)
       );
-      if (y)
-        for (const g of p)
-          for (const C of g.observations)
-            n.set(C.observationId, C);
-      const E = qr(
-        p.map((g) => g.result.passed),
+      if (E)
+        for (const x of R)
+          for (const V of x.observations)
+            n.set(V.observationId, V);
+      const T = Kr(
+        R.map((x) => x.result),
         e.selectionProfile.detectorCombination
-      ), T = Nr(
-        l,
-        v,
+      ), P = Lr(
+        d,
+        g,
         e.selectionProfile,
         e.venueEligibilityHistory ?? []
-      ), R = Ir(
-        l,
-        v,
+      ), S = Fr(
+        d,
+        g,
         e.selectionProfile,
-        p,
-        T,
-        e.universeHistory ?? []
-      ), x = R.every((g) => g.passed), S = E && x, b = Or(
-        l,
-        v,
-        p.map((g) => g.result),
         R,
-        E,
-        x,
-        S
+        P,
+        e.universeHistory ?? []
+      ), y = S.results, p = y.every((x) => x.passed), O = T.passed && p, G = !p || T.evaluable;
+      if (E)
+        for (const x of S.evidence)
+          x.schemaVersion === Mt && n.set(x.observationId, x);
+      const ne = Br(
+        d,
+        g,
+        R.map((x) => x.result),
+        y,
+        S.evidence,
+        T.passed,
+        p,
+        O,
+        G
       );
-      if (y && r.push(b), m.activeEpisode && v >= m.activeEpisode.activeUntil && (y && i.push(
-        Ce(m.activeEpisode, v, "expired", "maximumAgeElapsed", "blockedUntilReset")
-      ), m.activeEpisode = null), S ? m.falseSince = null : (m.falseSince ?? (m.falseSince = v), !m.armed && v - m.falseSince >= e.selectionProfile.resetPolicy.minimumFalseDurationSeconds && (y && m.blockedEpisode && i.push(
-        Ce(m.blockedEpisode, v, "reset", "radarGateReset", "armed")
-      ), m.activeEpisode = null, m.blockedEpisode = null, m.armed = !0)), S && !m.previousGate && m.armed) {
-        const g = xr({
-          series: l,
-          asOf: v,
+      if (E && r.push(ne), v.activeEpisode && g >= v.activeEpisode.activeUntil && (v.activeEpisode.detectedAt >= e.from && v.activeEpisode.activeUntil <= e.to && i.push(
+        Ne(
+          v.activeEpisode,
+          v.activeEpisode.activeUntil,
+          "expired",
+          "maximumAgeElapsed",
+          "blockedUntilReset"
+        )
+      ), v.activeEpisode = null), G && !O ? (v.falseSince ?? (v.falseSince = g), !v.armed && g - v.falseSince >= e.selectionProfile.resetPolicy.minimumFalseDurationSeconds && (E && ((c = v.blockedEpisode) == null ? void 0 : c.detectedAt) != null && v.blockedEpisode.detectedAt >= e.from && i.push(
+        Ne(v.blockedEpisode, g, "reset", "radarGateReset", "armed")
+      ), v.activeEpisode = null, v.blockedEpisode = null, v.armed = !0)) : v.falseSince = null, G && O && v.previousGate === !1 && v.armed) {
+        const x = _r({
+          series: d,
+          asOf: g,
           profile: e.selectionProfile,
-          detectorEvaluations: p,
-          selectionEvaluation: b,
-          venueEligibility: T,
-          lifecycleHistory: ((c = e.lifecycleHistory) == null ? void 0 : c[u]) ?? [],
+          detectorEvaluations: R,
+          selectionEvaluation: ne,
+          hardGateEvidence: S.evidence,
+          venueEligibility: P,
+          lifecycleHistory: ((l = e.lifecycleHistory) == null ? void 0 : l[u]) ?? [],
           structureHistory: e.structureHistory ?? []
         });
-        if (y) {
-          o.push(g), i.push(
-            Ce(g, v, "active", "detected", "blockedUntilReset")
+        if (E) {
+          o.push(x), i.push(
+            Ne(x, g, "active", "detected", "blockedUntilReset")
           );
-          const C = Pr(g, l, e.selectionProfile, t);
-          s.push(C);
-          for (const K of g.contextObservations)
-            n.set(K.observationId, K);
+          const V = Or(x, d, e.selectionProfile, t);
+          s.push(V);
+          for (const N of x.contextObservations)
+            n.set(N.observationId, N);
         }
-        m.activeEpisode = g, m.blockedEpisode = g, m.armed = !1;
+        v.activeEpisode = x, v.blockedEpisode = x, v.armed = !1;
       }
-      m.previousGate = S;
+      v.previousGate = G ? O : null;
     }
   }
-  return I({
-    schemaVersion: br,
-    selectionProfileRef: Ht(e.selectionProfile),
+  return M({
+    schemaVersion: wr,
+    selectionProfileRef: Gt(e.selectionProfile),
     from: e.from,
     to: e.to,
-    observations: [...n.values()].sort(Bt),
-    gateEvaluations: r.sort(Xr),
-    episodes: o.sort(Kr),
-    episodeStatusObservations: i.sort(Yr),
-    replayCaseManifests: s.sort((u, l) => u.id.localeCompare(l.id))
+    observations: [...n.values()].sort(zt),
+    gateEvaluations: r.sort(ri),
+    episodes: o.sort(ii),
+    episodeStatusObservations: i.sort(oi),
+    replayCaseManifests: s.sort((u, f) => u.id.localeCompare(f.id))
   });
 }
-function kr(e, t, n, r) {
-  return e.type === "rollingTroughRunup" ? Rr(e, t, n, r) : e.type === "elapsedWindowReturn" ? Tr(e, t, n, r) : e.type === "maximumWindowReturn" ? Er(e, t, n, r) : _t(e, t, n);
+function Pr(e, t, n, r) {
+  return e.type === "rollingTroughRunup" ? Cr(e, t, n, r) : e.type === "elapsedWindowReturn" ? Ir(e, t, n, r) : e.type === "maximumWindowReturn" ? Nr(e, t, n, r) : Ht(e, t, n);
 }
-function Rr(e, t, n, r) {
-  const o = X(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, a = (i ? o.filter(
-    (y) => y.bucket >= i.bucket - e.lookbackSeconds && y.bucket <= i.bucket && i.bucket - y.bucket <= e.maximumTroughAgeSeconds
-  ) : []).reduce((y, p) => F(p.c) && (!y || p.c < y.c || p.c === y.c && p.bucket < y.bucket) ? p : y, null), c = i && a && F(a.c) ? (i.c / a.c - 1) * 100 : null, u = Lr(o, i, e), l = Lt(u, c, e.minimumSampleCount), f = [];
-  i || f.push(H("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), a || f.push(H("NO_ELIGIBLE_TROUGH", "error", "No eligible completed-close trough exists"));
-  const d = O(e), h = se({
+function Cr(e, t, n, r) {
+  const o = z(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, a = (i ? o.filter(
+    (v) => v.bucket >= i.bucket - e.lookbackSeconds && v.bucket <= i.bucket && i.bucket - v.bucket <= e.maximumTroughAgeSeconds
+  ) : []).reduce((v, g) => I(g.c) && (!v || g.c < v.c || g.c === v.c && g.bucket < v.bucket) ? g : v, null), c = i && a && I(a.c) ? (i.c / a.c - 1) * 100 : null, l = Ur(o, i, e), u = qt(l, c, e.minimumSampleCount), f = [];
+  i || f.push(q("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), a || f.push(q("NO_ELIGIBLE_TROUGH", "error", "No eligible completed-close trough exists"));
+  const d = L(e), m = le({
     series: t,
     asOf: n,
     timeframe: r,
@@ -2726,55 +2743,55 @@ function Rr(e, t, n, r) {
     referenceValue: (a == null ? void 0 : a.c) ?? null,
     value: c,
     unit: "percent",
-    percentile: l.percentile,
-    zScore: l.zScore,
-    sampleCount: u.length,
-    historyCandles: je(o, i, e.historyLookbackSeconds + e.lookbackSeconds),
+    percentile: u.percentile,
+    zScore: u.zScore,
+    sampleCount: l.length,
+    historyCandles: Ke(o, i, e.historyLookbackSeconds + e.lookbackSeconds),
     configHash: d,
-    notes: [...f, ...l.notes]
-  }), m = c != null && c + 1e-12 >= e.minimumRunupPct && de(h.percentile, e.minimumPercentile) && de(h.zScore, e.minimumZScore) && h.sampleCount >= e.minimumSampleCount, v = a ? _r(t, n, a, h) : null;
+    notes: [...f, ...u.notes]
+  }), h = c != null && c + 1e-12 >= e.minimumRunupPct && ye(m.percentile, e.minimumPercentile) && ye(m.zScore, e.minimumZScore) && m.sampleCount >= e.minimumSampleCount, b = a ? Dr(t, n, a, m) : null;
   return {
-    result: Te(
+    result: xe(
       e,
-      m,
-      [h],
-      m ? h.observationId : null,
-      c == null ? "Run-up unavailable" : `Completed-close run-up ${we(c)} versus ${we(e.minimumRunupPct)} minimum`
+      h,
+      [m],
+      h ? m.observationId : null,
+      c == null ? "Run-up unavailable" : `Completed-close run-up ${ke(c)} versus ${ke(e.minimumRunupPct)} minimum`
     ),
-    observations: [h],
-    anchor: v
+    observations: [m],
+    anchor: b
   };
 }
-function Tr(e, t, n, r) {
-  const o = Ot(e, t, n, r), i = Dt(o, e);
+function Ir(e, t, n, r) {
+  const o = Vt(e, t, n, r), i = Ut(o, e);
   return {
-    result: Te(
+    result: xe(
       e,
       i,
       [o],
       i ? o.observationId : null,
-      o.value == null ? "Elapsed return unavailable" : `${Vt(e.windowSeconds)} return ${we(o.value)}`
+      o.value == null ? "Elapsed return unavailable" : `${Qt(e.windowSeconds)} return ${ke(o.value)}`
     ),
     observations: [o],
     anchor: null
   };
 }
-function Er(e, t, n, r) {
-  const o = [...new Set(e.windowsSeconds)].sort((l, f) => l - f).map(
-    (l) => Ot(
+function Nr(e, t, n, r) {
+  const o = [...new Set(e.windowsSeconds)].sort((u, f) => u - f).map(
+    (u) => Vt(
       {
         ...e,
-        id: `${e.id}:${l}`,
+        id: `${e.id}:${u}`,
         type: "elapsedWindowReturn",
-        windowSeconds: l
+        windowSeconds: u
       },
       t,
       n,
       r
     )
-  ), i = o.filter((l) => l.value != null).sort(
-    (l, f) => (f.value ?? -1 / 0) - (l.value ?? -1 / 0) || (l.window ?? 1 / 0) - (f.window ?? 1 / 0)
-  )[0] ?? null, s = X(t.candlesByTimeframe[r] ?? [], r, n), a = se({
+  ), i = o.filter((u) => u.value != null).sort(
+    (u, f) => (f.value ?? -1 / 0) - (u.value ?? -1 / 0) || (u.window ?? 1 / 0) - (f.window ?? 1 / 0)
+  )[0] ?? null, s = z(t.candlesByTimeframe[r] ?? [], r, n), a = le({
     series: t,
     asOf: n,
     timeframe: r,
@@ -2788,36 +2805,36 @@ function Er(e, t, n, r) {
     percentile: (i == null ? void 0 : i.percentile) ?? null,
     zScore: (i == null ? void 0 : i.zScore) ?? null,
     sampleCount: (i == null ? void 0 : i.sampleCount) ?? 0,
-    historyCandles: je(
+    historyCandles: Ke(
       s,
       s.at(-1) ?? null,
       e.historyLookbackSeconds + Math.max(...e.windowsSeconds)
     ),
-    configHash: O(e),
-    notes: i ? i.dataQualityNotes : [H("NO_WINDOW_RETURN_AVAILABLE", "error", "No configured elapsed window has a reference")]
-  }), c = Dt(a, e), u = [...o, a];
+    configHash: L(e),
+    notes: i ? i.dataQualityNotes : [q("NO_WINDOW_RETURN_AVAILABLE", "error", "No configured elapsed window has a reference")]
+  }), c = Ut(a, e), l = [...o, a];
   return {
-    result: Te(
+    result: xe(
       e,
       c,
-      u,
+      l,
       c ? (i == null ? void 0 : i.observationId) ?? null : null,
-      (i == null ? void 0 : i.value) == null ? "Maximum elapsed return unavailable" : `Winning ${Vt(i.window ?? 0)} return ${we(i.value)}`
+      (i == null ? void 0 : i.value) == null ? "Maximum elapsed return unavailable" : `Winning ${Qt(i.window ?? 0)} return ${ke(i.value)}`
     ),
-    observations: u,
+    observations: l,
     anchor: null
   };
 }
-function _t(e, t, n) {
-  const r = e.analysisTimeframe, o = X(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, s = Dr(o, e.emaPeriod).at(-1) ?? null, a = Br(o, e.atrPeriod).at(-1) ?? null, c = i && s != null && a != null && a > 0 ? (i.c - s) / a : null, u = Math.max(e.minimumSampleCount, e.emaPeriod, e.atrPeriod), l = [];
-  i || l.push(H("NO_COMPLETED_CANDLE", "error", `No completed ${r} candle exists at cutoff`)), (o.length < u || c == null) && l.push(
-    H(
+function Ht(e, t, n) {
+  const r = e.analysisTimeframe, o = z(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, s = jr(o, e.emaPeriod).at(-1) ?? null, a = zr(o, e.atrPeriod).at(-1) ?? null, c = i && s != null && a != null && a > 0 ? (i.c - s) / a : null, l = Math.max(e.minimumSampleCount, e.emaPeriod, e.atrPeriod), u = [];
+  i || u.push(q("NO_COMPLETED_CANDLE", "error", `No completed ${r} candle exists at cutoff`)), (o.length < l || c == null) && u.push(
+    q(
       "INSUFFICIENT_METRIC_HISTORY",
       "error",
-      `EMA/ATR displacement requires ${u} completed ${r} candles`
+      `EMA/ATR displacement requires ${l} completed ${r} candles`
     )
   );
-  const f = se({
+  const f = le({
     series: t,
     asOf: n,
     timeframe: r,
@@ -2831,12 +2848,12 @@ function _t(e, t, n) {
     percentile: null,
     zScore: null,
     sampleCount: o.length,
-    historyCandles: o.slice(-u),
-    configHash: O(e),
-    notes: ze(l)
-  }), d = c != null && o.length >= u && c + 1e-12 >= e.minimumAtrDisplacement;
+    historyCandles: o.slice(-l),
+    configHash: L(e),
+    notes: Ye(u)
+  }), d = c != null && o.length >= l && c + 1e-12 >= e.minimumAtrDisplacement;
   return {
-    result: Te(
+    result: xe(
       e,
       d,
       [f],
@@ -2847,9 +2864,9 @@ function _t(e, t, n) {
     anchor: null
   };
 }
-function Ot(e, t, n, r) {
-  const o = X(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, s = i ? Ue(o, i.bucket - e.windowSeconds) : null, a = i && s ? i.bucket - e.windowSeconds - s.bucket : null, c = a != null && e.maximumReferenceStalenessSeconds != null && a > e.maximumReferenceStalenessSeconds, u = i && s && !c && F(s.c) ? (i.c / s.c - 1) * 100 : null, l = Fr(o, i, e), f = Lt(l, u, e.minimumSampleCount), d = [...f.notes];
-  return i || d.push(H("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), s ? c && d.push(H("ELAPSED_REFERENCE_STALE", "error", "Elapsed-window reference exceeds allowed staleness")) : d.push(H("ELAPSED_REFERENCE_UNAVAILABLE", "error", "No completed elapsed-window reference exists")), se({
+function Vt(e, t, n, r) {
+  const o = z(t.candlesByTimeframe[r] ?? [], r, n), i = o.at(-1) ?? null, s = i ? Xe(o, i.bucket - e.windowSeconds) : null, a = i && s ? i.bucket - e.windowSeconds - s.bucket : null, c = a != null && e.maximumReferenceStalenessSeconds != null && a > e.maximumReferenceStalenessSeconds, l = i && s && !c && I(s.c) ? (i.c / s.c - 1) * 100 : null, u = qr(o, i, e), f = qt(u, l, e.minimumSampleCount), d = [...f.notes];
+  return i || d.push(q("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), s ? c && d.push(q("ELAPSED_REFERENCE_STALE", "error", "Elapsed-window reference exceeds allowed staleness")) : d.push(q("ELAPSED_REFERENCE_UNAVAILABLE", "error", "No completed elapsed-window reference exists")), le({
     series: t,
     asOf: n,
     timeframe: r,
@@ -2858,33 +2875,33 @@ function Ot(e, t, n, r) {
     window: e.windowSeconds,
     referenceTime: (s == null ? void 0 : s.bucket) ?? null,
     referenceValue: (s == null ? void 0 : s.c) ?? null,
-    value: u,
+    value: l,
     unit: "percent",
     percentile: f.percentile,
     zScore: f.zScore,
-    sampleCount: l.length,
-    historyCandles: je(
+    sampleCount: u.length,
+    historyCandles: Ke(
       o,
       i,
       e.historyLookbackSeconds + e.windowSeconds
     ),
-    configHash: O(e),
-    notes: ze(d)
+    configHash: L(e),
+    notes: Ye(d)
   });
 }
-function xr(e) {
-  var b;
-  const t = e.detectorEvaluations.filter((g) => g.result.passed), n = it(
+function _r(e) {
+  var y;
+  const t = e.detectorEvaluations.filter((p) => p.result.passed), n = Be(
     t.flatMap(
-      (g) => g.observations.filter(
-        (C) => C.observationId === g.result.winningObservationId
+      (p) => p.observations.filter(
+        (O) => O.observationId === p.result.winningObservationId
       )
     )
-  ), r = ((b = t.find((g) => g.anchor)) == null ? void 0 : b.anchor) ?? null, o = X(
+  ), r = ((y = t.find((p) => p.anchor)) == null ? void 0 : y.anchor) ?? null, o = z(
     e.series.candlesByTimeframe[e.profile.scanTimeframe] ?? [],
     e.profile.scanTimeframe,
     e.asOf
-  ), i = nt(e.series, e.asOf, e.profile.scanTimeframe, 86400), s = nt(e.series, e.asOf, e.profile.scanTimeframe, 172800), a = Mt(e.series, e.asOf, e.profile), u = e.detectorEvaluations.flatMap((g) => g.observations).find((g) => g.metricCode === "ema_atr_displacement") ?? null ?? _t(
+  ), i = lt(e.series, e.asOf, e.profile.scanTimeframe, 86400), s = lt(e.series, e.asOf, e.profile.scanTimeframe, 172800), a = $t(e.series, e.asOf, e.profile), l = e.detectorEvaluations.flatMap((p) => p.observations).find((p) => p.metricCode === "ema_atr_displacement") ?? null ?? Ht(
     {
       id: "context-ema-atr-displacement",
       type: "emaAtrDisplacement",
@@ -2896,42 +2913,46 @@ function xr(e) {
     },
     e.series,
     e.asOf
-  ).observations[0], l = Mr(
+  ).observations[0], u = $r(
     e.structureHistory,
     e.series,
     e.asOf
-  ), f = it([
+  ), f = Be([
     ...n,
     i,
     s,
     a,
-    u
-  ]), d = t[0], h = d ? n.find(
-    (g) => g.observationId === d.result.winningObservationId
-  ) ?? n[0] ?? null : null, m = Cr(
+    l
+  ]), d = t[0], m = d ? n.find(
+    (p) => p.observationId === d.result.winningObservationId
+  ) ?? n[0] ?? null : null, h = Mr(
     o,
     r,
     (d == null ? void 0 : d.result.detectorId) ?? "unknown",
-    h,
+    m,
     i,
     s,
     a,
-    u,
-    l
-  ), v = Hr(e.lifecycleHistory, e.asOf), y = (v == null ? void 0 : v.candidate) ?? null, p = (v == null ? void 0 : v.asOf) ?? null, E = v && p != null ? Oe({
-    logicalObjectId: (y == null ? void 0 : y.id) ?? `impulse-fade-lifecycle:${e.series.source}:${e.series.symbol}`,
+    l,
+    u
+  ), b = Gr(
+    e.lifecycleHistory,
+    e.series,
+    e.asOf
+  ), v = (b == null ? void 0 : b.candidate) ?? null, g = (b == null ? void 0 : b.asOf) ?? null, E = b && g != null ? De({
+    logicalObjectId: (v == null ? void 0 : v.id) ?? `impulse-fade-lifecycle:${e.series.source}:${e.series.symbol}`,
     objectType: "SetupStateSnapshot",
-    eventTime: v.updatedTs,
-    knownAt: p,
-    snapshot: v
-  }) : null, T = y ? Oe({
-    logicalObjectId: y.id,
+    eventTime: b.updatedTs,
+    knownAt: g,
+    snapshot: b
+  }) : null, R = v ? De({
+    logicalObjectId: v.id,
     objectType: "SetupCandidateEpisode",
-    eventTime: y.detectionEventTime,
-    knownAt: p ?? y.detectedAt,
-    snapshot: y
-  }) : null, R = {
-    schemaVersion: mr,
+    eventTime: v.detectionEventTime,
+    knownAt: g ?? v.detectedAt,
+    snapshot: v
+  }) : null, T = {
+    schemaVersion: pr,
     symbol: e.series.symbol,
     source: e.series.source,
     setupFamily: e.profile.setupFamily,
@@ -2941,88 +2962,92 @@ function xr(e) {
     detectedAt: e.asOf,
     effectiveAsOf: e.asOf,
     scanTimeframe: e.profile.scanTimeframe,
-    triggeringDetectorIds: t.map((g) => g.result.detectorId),
+    triggeringDetectorIds: t.map((p) => p.result.detectorId),
     triggeringObservations: n,
     selectionGateEvaluationId: e.selectionEvaluation.id,
     hardGateResults: e.selectionEvaluation.hardGateResults,
+    hardGateEvidence: e.hardGateEvidence,
     contextObservations: f,
     selectionAnchor: r,
-    pathContext: m,
-    initialLifecycleCandidateId: (y == null ? void 0 : y.id) ?? null,
-    initialLifecycleCandidateRef: T,
-    initialLifecycleState: (v == null ? void 0 : v.state) ?? null,
+    pathContext: h,
+    initialLifecycleCandidateId: (v == null ? void 0 : v.id) ?? null,
+    initialLifecycleCandidateRef: R,
+    initialLifecycleState: (b == null ? void 0 : b.state) ?? null,
     initialLifecycleStateRef: E,
-    initialMtfStructure: l,
+    initialMtfStructure: u,
     activeUntil: e.asOf + e.profile.episodeExpiry.maximumAgeSeconds,
     terminalAt: null,
     terminalReason: null,
     rearmState: "blockedUntilReset",
     executionVenueEligibility: e.venueEligibility,
-    dataQualityNotes: ze([
-      ...f.flatMap((g) => g.dataQualityNotes),
+    dataQualityNotes: Ye([
+      ...f.flatMap((p) => p.dataQualityNotes),
       ...e.venueEligibility.dataQualityNotes
     ])
-  }, x = `radar-episode:${B({
-    symbol: R.symbol,
-    source: R.source,
-    profileHash: R.selectionProfileHash,
-    detectedAt: R.detectedAt,
-    triggeringObservationIds: n.map((g) => g.observationId)
-  })}`, S = { ...R, id: x, logicalObjectId: x };
-  return I({
+  }, P = `radar-episode:${H({
+    symbol: T.symbol,
+    source: T.source,
+    profileHash: T.selectionProfileHash,
+    detectedAt: T.detectedAt,
+    triggeringObservationIds: n.map((p) => p.observationId)
+  })}`, S = { ...T, id: P, logicalObjectId: P };
+  return M({
     ...S,
-    observationId: `radar-episode-observation:${B(S)}`
+    observationId: `radar-episode-observation:${H(S)}`
   });
 }
-function Pr(e, t, n, r) {
-  const o = Object.keys(t.candlesByTimeframe).sort(Ge), i = Object.fromEntries(
+function Or(e, t, n, r) {
+  const o = Object.keys(t.candlesByTimeframe).filter(
+    (c) => z(t.candlesByTimeframe[c] ?? [], c, e.detectedAt).length > 0
+  ).sort(Je), i = Object.fromEntries(
     o.map((c) => {
-      var l, f;
-      const u = X(t.candlesByTimeframe[c] ?? [], c, e.detectedAt);
+      var u, f;
+      const l = z(t.candlesByTimeframe[c] ?? [], c, e.detectedAt);
       return [
         c,
         {
-          availableStart: ((l = u[0]) == null ? void 0 : l.bucket) ?? null,
-          availableEnd: ((f = u.at(-1)) == null ? void 0 : f.bucket) ?? null,
-          completedThrough: u.at(-1) ? j(u.at(-1), c) : null,
-          completedCandleCount: u.length
+          availableStart: ((u = l[0]) == null ? void 0 : u.bucket) ?? null,
+          availableEnd: ((f = l.at(-1)) == null ? void 0 : f.bucket) ?? null,
+          completedThrough: l.at(-1) ? X(l.at(-1), c) : null,
+          completedCandleCount: l.length
         }
       ];
     })
   ), s = o.filter(
     (c) => i[c].completedCandleCount > 0
   ), a = {
-    schemaVersion: hr,
+    schemaVersion: Sr,
     radarEpisodeId: e.id,
     radarEpisodeObservationId: e.observationId,
     symbol: e.symbol,
     source: e.source,
     detectedAt: e.detectedAt,
     startAsOf: e.detectedAt,
-    selectionProfileRef: Ht(n),
-    lifecycleVersion: U,
+    selectionProfileRef: Gt(n),
+    lifecycleVersion: Q,
     strategyProfileRef: {
       id: r.id,
       version: r.version,
       profileHash: r.profileHash
     },
     availableTimeframes: s,
-    preRollRequirements: $r(n),
+    preRollRequirements: Xr(n),
     dataCoverageByTimeframe: i,
     initialRadarObservations: e.contextObservations,
     initialHardGateResults: e.hardGateResults,
+    initialHardGateEvidence: e.hardGateEvidence,
     initialLifecycleState: e.initialLifecycleState,
     initialLifecycleStateRef: e.initialLifecycleStateRef,
     executionVenueEligibility: e.executionVenueEligibility,
     dataQualityNotes: e.dataQualityNotes,
     futureOutcomeRef: null
   };
-  return I({
+  return M({
     ...a,
-    id: `replay-case:${B(a)}`
+    id: `replay-case:${H(a)}`
   });
 }
-function nt(e, t, n, r) {
+function lt(e, t, n, r) {
   const o = {
     id: `context-return-${r}`,
     type: "elapsedWindowReturn",
@@ -3033,8 +3058,8 @@ function nt(e, t, n, r) {
     minimumSampleCount: 0,
     historyLookbackSeconds: r,
     maximumReferenceStalenessSeconds: null
-  }, i = X(e.candlesByTimeframe[n] ?? [], n, t), s = i.at(-1) ?? null, a = s ? Ue(i, s.bucket - r) : null, c = s && a && F(a.c) ? (s.c / a.c - 1) * 100 : null, u = c == null ? [H("ELAPSED_REFERENCE_UNAVAILABLE", "warning", `No completed ${r}-second reference exists`)] : [];
-  return se({
+  }, i = z(e.candlesByTimeframe[n] ?? [], n, t), s = i.at(-1) ?? null, a = s ? Xe(i, s.bucket - r) : null, c = s && a && I(a.c) ? (s.c / a.c - 1) * 100 : null, l = c == null ? [q("ELAPSED_REFERENCE_UNAVAILABLE", "warning", `No completed ${r}-second reference exists`)] : [];
+  return le({
     series: e,
     asOf: t,
     timeframe: n,
@@ -3049,20 +3074,20 @@ function nt(e, t, n, r) {
     zScore: null,
     sampleCount: 0,
     historyCandles: i,
-    configHash: O(o),
-    notes: u
+    configHash: L(o),
+    notes: l
   });
 }
-function Mt(e, t, n) {
+function $t(e, t, n) {
   var f;
-  const r = n.scanTimeframe, o = X(e.candlesByTimeframe[r] ?? [], r, t), i = o.at(-1) ?? null, s = i ? o.filter((d) => d.bucket > i.bucket - n.liquidityPolicy.windowSeconds) : [], a = s.map(
-    (d) => ne(d.v_quote) ? d.v_quote : ne(d.v_base) ? d.v_base * d.c : null
-  ), c = a.length > 0 && a.every((d) => d != null), u = c ? a.reduce((d, h) => d + (h ?? 0), 0) : null, l = {
+  const r = n.scanTimeframe, o = z(e.candlesByTimeframe[r] ?? [], r, t), i = o.at(-1) ?? null, s = i ? o.filter((d) => d.bucket > i.bucket - n.liquidityPolicy.windowSeconds) : [], a = s.map(
+    (d) => ee(d.v_quote) ? d.v_quote : ee(d.v_base) ? d.v_base * d.c : null
+  ), c = a.length > 0 && a.every((d) => d != null), l = c ? a.reduce((d, m) => d + (m ?? 0), 0) : null, u = {
     metric: "quote_notional",
     timeframe: r,
     windowSeconds: n.liquidityPolicy.windowSeconds
   };
-  return se({
+  return le({
     series: e,
     asOf: t,
     timeframe: r,
@@ -3071,29 +3096,31 @@ function Mt(e, t, n) {
     window: n.liquidityPolicy.windowSeconds,
     referenceTime: ((f = s[0]) == null ? void 0 : f.bucket) ?? null,
     referenceValue: null,
-    value: u,
+    value: l,
     unit: "quoteNotional",
     percentile: null,
     zScore: null,
     sampleCount: s.length,
     historyCandles: s,
-    configHash: O(l),
-    notes: c ? [] : [H("QUOTE_NOTIONAL_UNAVAILABLE", "warning", "Quote-notional history is incomplete")]
+    configHash: L(u),
+    notes: c ? [] : [q("QUOTE_NOTIONAL_UNAVAILABLE", "warning", "Quote-notional history is incomplete")]
   });
 }
-function se(e) {
-  var s, a;
-  const t = ((s = e.historyCandles[0]) == null ? void 0 : s.bucket) ?? null, n = ((a = e.historyCandles.at(-1)) == null ? void 0 : a.bucket) ?? null, r = O(
-    e.historyCandles.map((c) => ({
-      bucket: c.bucket,
-      o: c.o,
-      h: c.h,
-      l: c.l,
-      c: c.c,
-      vBase: ne(c.v_base) ? c.v_base : null,
-      vQuote: ne(c.v_quote) ? c.v_quote : null
+function le(e) {
+  var l, u;
+  const t = ((l = e.historyCandles[0]) == null ? void 0 : l.bucket) ?? null, n = ((u = e.historyCandles.at(-1)) == null ? void 0 : u.bucket) ?? null, r = e.timeframe && e.historyCandles.at(-1) ? X(e.historyCandles.at(-1), e.timeframe) : e.asOf, o = L(
+    e.historyCandles.map((f) => ({
+      bucket: f.bucket,
+      ts: f.ts,
+      o: f.o,
+      h: f.h,
+      l: f.l,
+      c: f.c,
+      vBase: ee(f.v_base) ? f.v_base : null,
+      vQuote: ee(f.v_quote) ? f.v_quote : null,
+      ver: ee(f.ver) ? f.ver : null
     }))
-  ), o = `radar-metric:${B({
+  ), i = `radar-metric:${H({
     metricCode: e.metricCode,
     symbol: e.series.symbol,
     source: e.series.source,
@@ -3101,9 +3128,9 @@ function se(e) {
     timeframe: e.timeframe,
     window: e.window,
     configHash: e.configHash
-  })}`, i = {
-    schemaVersion: vr,
-    logicalObjectId: o,
+  })}`, s = {
+    schemaVersion: Mt,
+    logicalObjectId: i,
     metricCode: e.metricCode,
     metricVersion: e.metricVersion,
     symbol: e.series.symbol,
@@ -3111,8 +3138,8 @@ function se(e) {
     dataOrigin: e.series.dataOrigin ?? null,
     timeframe: e.timeframe,
     requestedAsOf: e.asOf,
-    effectiveAsOf: e.asOf,
-    knownAt: e.asOf,
+    effectiveAsOf: r,
+    knownAt: r,
     window: e.window,
     referenceTime: e.referenceTime,
     referenceValue: e.referenceValue,
@@ -3124,16 +3151,16 @@ function se(e) {
     historyStart: t,
     historyEnd: n,
     configHash: e.configHash,
-    inputHash: r,
+    inputHash: o,
     dataQualityNotes: e.notes
-  };
-  return I({
-    ...i,
-    observationId: `radar-observation:${B(i)}`
+  }, { requestedAsOf: a, ...c } = s;
+  return M({
+    ...s,
+    observationId: `radar-observation:${H(c)}`
   });
 }
-function Cr(e, t, n, r, o, i, s, a, c) {
-  const u = t ? e.find((y) => y.bucket === t.timestamp) ?? null : null, f = (u ? e.filter((y) => y.bucket <= u.bucket) : []).reduce((y, p) => F(p.c) && (!y || p.c > y.c || p.c === y.c && p.bucket < y.bucket) ? p : y, null), d = e.at(-1) ?? null, h = t && f && F(f.c) ? (t.price / f.c - 1) * 100 : null, m = t && f && d && f.c > t.price ? (d.c - t.price) / (f.c - t.price) : null, v = t && h != null && h < -5 ? ["rebound_after_drawdown"] : ["unknown"];
+function Mr(e, t, n, r, o, i, s, a, c) {
+  const l = t ? e.find((v) => v.bucket === t.timestamp) ?? null : null, f = (l ? e.filter((v) => v.bucket <= l.bucket) : []).reduce((v, g) => I(g.c) && (!v || g.c > v.c || g.c === v.c && g.bucket < v.bucket) ? g : v, null), d = e.at(-1) ?? null, m = t && f && I(f.c) ? (t.price / f.c - 1) * 100 : null, h = t && f && d && f.c > t.price ? (d.c - t.price) / (f.c - t.price) : null, b = t && m != null && m < -5 ? ["rebound_after_drawdown"] : ["unknown"];
   return {
     net24hReturnPct: o.value,
     net48hReturnPct: i.value,
@@ -3145,65 +3172,97 @@ function Cr(e, t, n, r, o, i, s, a, c) {
     selectionAnchorAgeSeconds: (t == null ? void 0 : t.ageSeconds) ?? null,
     priorPeakPrice: (f == null ? void 0 : f.c) ?? null,
     priorPeakTime: (f == null ? void 0 : f.bucket) ?? null,
-    priorDrawdownPct: h,
-    recoveryFraction: m,
+    priorDrawdownPct: m,
+    recoveryFraction: h,
     currentAtrDisplacement: a.value,
     triggeringPercentile: (r == null ? void 0 : r.percentile) ?? null,
     triggeringZScore: (r == null ? void 0 : r.zScore) ?? null,
     quoteNotional: s.value,
     mtfStructureStates: Object.fromEntries(
-      Object.entries(c).map(([y, p]) => [
-        y,
-        typeof p.snapshot == "object" && p.snapshot != null && !Array.isArray(p.snapshot) && typeof p.snapshot.state == "string" ? p.snapshot.state : "unknown"
+      Object.entries(c).map(([v, g]) => [
+        v,
+        typeof g.snapshot == "object" && g.snapshot != null && !Array.isArray(g.snapshot) && typeof g.snapshot.state == "string" ? g.snapshot.state : "unknown"
       ])
     ),
-    contextTags: v
+    contextTags: b
   };
 }
-function Ir(e, t, n, r, o, i) {
-  return n.hardGates.map((s) => {
-    if (s === "sourcePolicy") {
-      const l = n.sourcePolicy.allowedSources == null || n.sourcePolicy.allowedSources.includes(e.source);
-      return { code: s, passed: l, explanation: l ? "Source allowed" : "Source excluded" };
-    }
-    if (s === "dataQuality") {
-      const l = !r.some(
-        (f) => f.observations.some(
-          (d) => d.dataQualityNotes.some((h) => h.severity === "error")
-        )
+function Fr(e, t, n, r, o, i) {
+  const s = [];
+  return {
+    results: n.hardGates.map((c) => {
+      if (c === "sourcePolicy") {
+        const d = n.sourcePolicy.allowedSources == null || n.sourcePolicy.allowedSources.includes(e.source);
+        return fe(c, d, d ? "Source allowed" : "Source excluded", []);
+      }
+      if (c === "dataQuality") {
+        const d = Be(r.flatMap((h) => h.observations));
+        s.push(...d);
+        const m = !r.some(
+          (h) => h.observations.some(
+            (b) => b.dataQualityNotes.some((v) => v.severity === "error")
+          )
+        );
+        return fe(
+          c,
+          m,
+          m ? "Required metrics available" : "Required metric data unavailable",
+          d
+        );
+      }
+      if (c === "executionVenueEligibility") {
+        s.push(o);
+        const d = Yr(o.status, n.executionVenuePolicy.mode);
+        return fe(
+          c,
+          d,
+          `Execution venue ${o.status}`,
+          [o]
+        );
+      }
+      if (c === "selectedUniverse") {
+        const d = Wr(i, e, t);
+        return d && s.push(d), fe(
+          c,
+          (d == null ? void 0 : d.included) === !0,
+          d ? d.included ? "Symbol included" : "Symbol excluded" : "Historical universe membership unknown",
+          d ? [d] : []
+        );
+      }
+      const l = $t(e, t, n);
+      s.push(l);
+      const u = n.liquidityPolicy.minimumQuoteNotional, f = u == null || l.value == null ? u == null || n.liquidityPolicy.missingData === "warn" : l.value >= u;
+      return fe(
+        c,
+        f,
+        u == null ? "No minimum liquidity configured" : l.value == null ? "Quote-notional history unavailable" : `Quote notional ${l.value} versus ${u} minimum`,
+        [l]
       );
-      return { code: s, passed: l, explanation: l ? "Required metrics available" : "Required metric data unavailable" };
-    }
-    if (s === "executionVenueEligibility") {
-      const l = Ur(o.status, n.executionVenuePolicy.mode);
-      return { code: s, passed: l, explanation: `Execution venue ${o.status}` };
-    }
-    if (s === "selectedUniverse") {
-      const l = Vr(i, e, t);
-      return {
-        code: s,
-        passed: (l == null ? void 0 : l.included) === !0,
-        explanation: l ? l.included ? "Symbol included" : "Symbol excluded" : "Historical universe membership unknown"
-      };
-    }
-    const a = Mt(e, t, n), c = n.liquidityPolicy.minimumQuoteNotional, u = c == null || a.value == null ? c == null || n.liquidityPolicy.missingData === "warn" : a.value >= c;
-    return {
-      code: s,
-      passed: u,
-      explanation: c == null ? "No minimum liquidity configured" : a.value == null ? "Quote-notional history unavailable" : `Quote notional ${a.value} versus ${c} minimum`
-    };
-  });
+    }),
+    evidence: ni(s)
+  };
 }
-function Nr(e, t, n, r) {
+function fe(e, t, n, r) {
+  return {
+    code: e,
+    passed: t,
+    explanation: n,
+    evidenceObservationIds: [...new Set(r.map((o) => o.observationId))].sort()
+  };
+}
+function Lr(e, t, n, r) {
   const o = n.executionVenuePolicy.intendedVenue ?? "ignored", i = [...r].filter(
-    (s) => s.symbol.toUpperCase() === e.symbol.toUpperCase() && s.marketDataSource === e.source && s.executionVenue.toLowerCase() === o.toLowerCase() && s.knownAt <= t && s.effectiveFrom <= t && (s.effectiveTo == null || s.effectiveTo >= t)
-  ).sort((s, a) => s.effectiveFrom - a.effectiveFrom || s.knownAt - a.knownAt).at(-1);
-  if (i) {
-    if (Nt(i) !== i.observationId)
+    (a) => a.symbol.toUpperCase() === e.symbol.toUpperCase() && a.executionVenue.toLowerCase() === o.toLowerCase() && a.knownAt <= t && a.effectiveFrom <= t && (a.effectiveTo == null || a.effectiveTo >= t)
+  );
+  for (const a of i)
+    if (Bt(a) !== a.observationId)
       throw new Error("Execution-venue eligibility observation failed deterministic verification");
-    return i;
-  }
-  return Ar({
+  const s = Ze(
+    i,
+    (a) => [a.effectiveFrom, a.knownAt],
+    "execution-venue eligibility"
+  );
+  return s || xr({
     symbol: e.symbol,
     marketDataSource: e.source,
     executionVenue: o,
@@ -3213,7 +3272,7 @@ function Nr(e, t, n, r) {
     knownAt: t,
     evidenceSource: "missingHistoricalObservation",
     dataQualityNotes: [
-      H(
+      q(
         "EXECUTION_VENUE_HISTORY_UNAVAILABLE",
         "warning",
         "No point-in-time execution-venue eligibility observation was supplied"
@@ -3221,9 +3280,9 @@ function Nr(e, t, n, r) {
     ]
   });
 }
-function _r(e, t, n, r) {
+function Dr(e, t, n, r) {
   const o = {
-    logicalObjectId: `selection-anchor:${B({
+    logicalObjectId: `selection-anchor:${H({
       symbol: e.symbol,
       source: e.source,
       timestamp: n.bucket,
@@ -3232,18 +3291,18 @@ function _r(e, t, n, r) {
     })}`,
     timestamp: n.bucket,
     price: n.c,
-    ageSeconds: Math.max(0, t - j(n, r.timeframe ?? "1h")),
+    ageSeconds: Math.max(0, t - X(n, r.timeframe ?? "1h")),
     referenceField: "close",
     sourceObservationId: r.observationId
   };
-  return I({
+  return M({
     ...o,
-    observationId: `selection-anchor-observation:${B(o)}`
+    observationId: `selection-anchor-observation:${H(o)}`
   });
 }
-function Ce(e, t, n, r, o) {
+function Ne(e, t, n, r, o) {
   const i = {
-    schemaVersion: yr,
+    schemaVersion: Ar,
     logicalObjectId: e.id,
     episodeId: e.id,
     asOf: t,
@@ -3251,46 +3310,58 @@ function Ce(e, t, n, r, o) {
     reason: r,
     rearmState: o
   };
-  return I({
+  return M({
     ...i,
-    observationId: `radar-status:${B(i)}`
+    observationId: `radar-status:${H(i)}`
   });
 }
-function Or(e, t, n, r, o, i, s) {
-  const a = {
+function Br(e, t, n, r, o, i, s, a, c) {
+  const l = {
     symbol: e.symbol,
     source: e.source,
     asOf: t,
     detectorResults: n,
     hardGateResults: r,
-    detectorGatePassed: o,
-    hardGatesPassed: i,
-    compositePassed: s
+    hardGateEvidence: o,
+    evaluable: c,
+    detectorGatePassed: i,
+    hardGatesPassed: s,
+    compositePassed: a
   };
-  return I({
-    ...a,
-    id: `radar-gate:${B(a)}`
+  return M({
+    ...l,
+    id: `radar-gate:${H(l)}`
   });
 }
-function Te(e, t, n, r, o) {
+function xe(e, t, n, r, o) {
+  const i = t || n.every(
+    (s) => s.dataQualityNotes.every((a) => a.severity !== "error")
+  );
   return {
     detectorId: e.id,
     detectorType: e.type,
+    evaluable: i,
     passed: t,
-    observationIds: n.map((i) => i.observationId),
+    observationIds: n.map((s) => s.observationId),
     winningObservationId: r,
     explanation: o
   };
 }
-function X(e, t, n) {
-  return Ft(e).filter((r) => j(r, t) <= n);
+function z(e, t, n) {
+  const r = e.filter((o) => {
+    if (!Number.isFinite(o.bucket))
+      throw new RangeError("Candle bucket must be finite");
+    return X(o, t) <= n;
+  });
+  return Hr(r);
 }
-function Ft(e) {
+function Hr(e) {
   const t = /* @__PURE__ */ new Map();
   for (const n of [...e].sort((r, o) => r.bucket - o.bucket || r.ts - o.ts)) {
-    if (!Wr(n)) continue;
+    if (!ti(n))
+      throw new RangeError(`Invalid candle for bucket ${n.bucket}`);
     const r = t.get(n.bucket);
-    if (r && rt(r) !== rt(n))
+    if (r && ut(r) !== ut(n))
       throw new Error(
         `Conflicting candle revisions for bucket ${n.bucket}; supply cutoff-resolved history`
       );
@@ -3298,92 +3369,116 @@ function Ft(e) {
   }
   return [...t.values()].sort((n, r) => n.bucket - r.bucket);
 }
-function Mr(e, t, n) {
-  const r = /* @__PURE__ */ new Map();
-  for (const o of e.filter(
+function Vr(e, t) {
+  if (!e.symbol.trim() || !e.source.trim())
+    throw new RangeError("Radar symbol and market-data source are required");
+  const n = Object.fromEntries(
+    Object.entries(e.candlesByTimeframe).map(([r, o]) => {
+      if (!I(K(r)))
+        throw new RangeError(`Invalid radar timeframe ${r}`);
+      return [r, z(o, r, t)];
+    })
+  );
+  return {
+    symbol: e.symbol,
+    source: e.source,
+    dataOrigin: e.dataOrigin ?? null,
+    candlesByTimeframe: n
+  };
+}
+function $r(e, t, n) {
+  const r = e.filter(
     (i) => i.symbol.toUpperCase() === t.symbol.toUpperCase() && i.source === t.source && i.knownAt <= n
-  ).sort((i, s) => i.knownAt - s.knownAt || i.observationId.localeCompare(s.observationId))) {
-    if (It(o) !== o.observationId)
+  );
+  for (const i of r)
+    if (Dt(i) !== i.observationId)
       throw new Error("Radar structure observation failed deterministic verification");
-    r.set(o.timeframe, o);
+  const o = /* @__PURE__ */ new Map();
+  for (const i of new Set(r.map((s) => s.timeframe))) {
+    const s = Ze(
+      r.filter((a) => a.timeframe === i),
+      (a) => [a.knownAt, a.eventTime],
+      `market-structure ${i}`
+    );
+    s && o.set(i, s);
   }
   return Object.fromEntries(
-    [...r.entries()].sort(([o], [i]) => Ge(o, i)).map(
-      ([o, i]) => [
-        o,
-        Oe({
-          logicalObjectId: i.logicalObjectId,
+    [...o.entries()].sort(([i], [s]) => Je(i, s)).map(
+      ([i, s]) => [
+        i,
+        De({
+          logicalObjectId: s.logicalObjectId,
           objectType: "MarketStructure",
-          eventTime: i.eventTime,
-          knownAt: i.knownAt,
-          snapshot: { state: i.state, detail: i.snapshot }
+          eventTime: s.eventTime,
+          knownAt: s.knownAt,
+          snapshot: { state: s.state, detail: s.snapshot }
         })
       ]
     )
   );
 }
-function rt(e) {
-  return M({
+function ut(e) {
+  return D({
     bucket: e.bucket,
     ts: e.ts,
     o: e.o,
     h: e.h,
     l: e.l,
     c: e.c,
-    vBase: ne(e.v_base) ? e.v_base : null,
-    vQuote: ne(e.v_quote) ? e.v_quote : null,
-    ver: ne(e.ver) ? e.ver : null
+    vBase: ee(e.v_base) ? e.v_base : null,
+    vQuote: ee(e.v_quote) ? e.v_quote : null,
+    ver: ee(e.ver) ? e.ver : null
   });
 }
-function Ue(e, t) {
+function Xe(e, t) {
   for (let n = e.length - 1; n >= 0; n -= 1)
     if (e[n].bucket <= t) return e[n];
   return null;
 }
-function Fr(e, t, n) {
+function qr(e, t, n) {
   if (!t) return [];
   const r = t.bucket - n.historyLookbackSeconds, o = [];
   for (const i of e) {
     if (i.bucket < r || i.bucket >= t.bucket) continue;
-    const s = Ue(e, i.bucket - n.windowSeconds);
-    if (!s || !F(s.c)) continue;
+    const s = Xe(e, i.bucket - n.windowSeconds);
+    if (!s || !I(s.c)) continue;
     const a = i.bucket - n.windowSeconds - s.bucket;
     n.maximumReferenceStalenessSeconds != null && a > n.maximumReferenceStalenessSeconds || o.push((i.c / s.c - 1) * 100);
   }
   return o;
 }
-function Lr(e, t, n) {
+function Ur(e, t, n) {
   if (!t) return [];
   const r = t.bucket - n.historyLookbackSeconds, o = [];
   for (const i of e) {
     if (i.bucket < r || i.bucket >= t.bucket) continue;
     const s = e.filter(
-      (a) => a.bucket <= i.bucket && a.bucket >= i.bucket - n.lookbackSeconds && i.bucket - a.bucket <= n.maximumTroughAgeSeconds && F(a.c)
+      (a) => a.bucket <= i.bucket && a.bucket >= i.bucket - n.lookbackSeconds && i.bucket - a.bucket <= n.maximumTroughAgeSeconds && I(a.c)
     ).sort((a, c) => a.c - c.c || a.bucket - c.bucket)[0];
     s && o.push((i.c / s.c - 1) * 100);
   }
   return o;
 }
-function Lt(e, t, n) {
+function qt(e, t, n) {
   const r = [];
   if (e.length < n && r.push(
-    H(
+    q(
       "INSUFFICIENT_METRIC_HISTORY",
       "error",
       `Metric requires ${n} historical samples but has ${e.length}`
     )
   ), t == null || e.length === 0 || e.length < n)
     return { percentile: null, zScore: null, notes: r };
-  const o = e.filter((u) => u <= t).length / e.length * 100, i = e.reduce((u, l) => u + l, 0) / e.length, s = e.reduce((u, l) => u + (l - i) ** 2, 0) / e.length, a = Math.sqrt(s), c = a > 0 ? (t - i) / a : null;
+  const o = e.filter((l) => l <= t).length / e.length * 100, i = e.reduce((l, u) => l + u, 0) / e.length, s = e.reduce((l, u) => l + (u - i) ** 2, 0) / e.length, a = Math.sqrt(s), c = a > 0 ? (t - i) / a : null;
   return { percentile: o, zScore: c, notes: r };
 }
-function je(e, t, n) {
+function Ke(e, t, n) {
   return t ? e.filter((r) => r.bucket >= t.bucket - n) : [];
 }
-function Dt(e, t) {
-  return e.value != null && de(e.value, t.minimumReturnPct) && de(e.percentile, t.minimumPercentile) && de(e.zScore, t.minimumZScore) && e.sampleCount >= t.minimumSampleCount;
+function Ut(e, t) {
+  return e.value != null && ye(e.value, t.minimumReturnPct) && ye(e.percentile, t.minimumPercentile) && ye(e.zScore, t.minimumZScore) && e.sampleCount >= t.minimumSampleCount;
 }
-function Dr(e, t) {
+function jr(e, t) {
   const n = new Array(e.length).fill(null);
   if (e.length < t) return n;
   let r = e.slice(0, t).reduce((i, s) => i + s.c, 0) / t;
@@ -3393,7 +3488,7 @@ function Dr(e, t) {
     r = e[i].c * o + r * (1 - o), n[i] = r;
   return n;
 }
-function Br(e, t) {
+function zr(e, t) {
   const n = new Array(e.length).fill(null);
   if (e.length < t) return n;
   const r = e.map((i, s) => {
@@ -3407,18 +3502,66 @@ function Br(e, t) {
     o = (o * (t - 1) + r[i]) / t, n[i] = o;
   return n;
 }
-function Hr(e, t) {
-  return [...e].filter((n) => n.asOf != null && n.asOf <= t).sort((n, r) => (n.asOf ?? 0) - (r.asOf ?? 0)).at(-1) ?? null;
+function Gr(e, t, n) {
+  const r = e.filter((s) => s.asOf != null && s.asOf <= n);
+  for (const s of r) Qr(s, t, n);
+  const o = Math.max(...r.map((s) => s.asOf ?? -1 / 0)), i = r.filter((s) => s.asOf === o);
+  if (new Set(i.map((s) => D(s))).size > 1)
+    throw new Error(`Conflicting lifecycle snapshots at ${o}`);
+  return i[0] ?? null;
 }
-function Vr(e, t, n) {
+function Qr(e, t, n) {
+  if (e.setupFamily !== "impulse_fade_v1" || e.lifecycleVersion !== Q || !e.lifecycleConfigHash.trim())
+    throw new Error("Lifecycle snapshot is incompatible with the radar profile");
+  $(e.asOf, n, "lifecycle asOf"), $(e.updatedTs, n, "lifecycle updatedTs"), $(e.stateSince, n, "lifecycle stateSince");
+  const r = e.candidate;
+  if (r) {
+    if (r.symbol.toUpperCase() !== t.symbol.toUpperCase() || r.source.toLowerCase() !== t.source.toLowerCase() || r.setupFamily !== e.setupFamily || r.lifecycleVersion !== e.lifecycleVersion || r.lifecycleConfigHash !== e.lifecycleConfigHash)
+      throw new Error("Lifecycle candidate does not match the radar series and lifecycle identity");
+    for (const [o, i] of [
+      ["candidate detectedAt", r.detectedAt],
+      ["candidate detectionEventTime", r.detectionEventTime],
+      ["candidate episodeHighTime", r.episodeHighTime],
+      ["candidate stateSince", r.stateSince],
+      ["candidate terminalAt", r.terminalAt]
+    ])
+      $(i, n, o);
+    for (const o of r.initialMtfContext)
+      $(o.updatedTs, n, "candidate MTF context updatedTs");
+  }
+  for (const o of e.evidence)
+    if ($(o.eventTime, n, "lifecycle evidence eventTime"), $(o.knownAt, n, "lifecycle evidence knownAt"), o.knownAt < o.eventTime)
+      throw new Error("Lifecycle evidence knownAt precedes eventTime");
+  for (const o of e.transitions)
+    $(o.knownAt, n, "lifecycle transition knownAt");
+  for (const [o, i] of [
+    ["active break", e.activeBreakLevel],
+    ["retest", e.retestLevel]
+  ])
+    if (i && ($(i.eventTime, n, `${o} eventTime`), $(i.knownAt, n, `${o} knownAt`), i.knownAt < i.eventTime))
+      throw new Error(`${o} knownAt precedes eventTime`);
+  for (const o of e.confluence)
+    if ($(o.eventTime, n, "lifecycle confluence eventTime"), $(o.knownAt, n, "lifecycle confluence knownAt"), o.eventTime != null && o.knownAt != null && o.knownAt < o.eventTime)
+      throw new Error("Lifecycle confluence knownAt precedes eventTime");
+}
+function $(e, t, n) {
+  if (e != null && (!Number.isFinite(e) || e > t))
+    throw new Error(`${n} exceeds the radar cutoff`);
+}
+function Wr(e, t, n) {
   const r = [...e].filter(
     (o) => o.symbol.toUpperCase() === t.symbol.toUpperCase() && o.source === t.source && o.knownAt <= n && o.effectiveFrom <= n && (o.effectiveTo == null || o.effectiveTo >= n)
-  ).sort((o, i) => o.effectiveFrom - i.effectiveFrom || o.knownAt - i.knownAt).at(-1) ?? null;
-  if (r && Ct(r) !== r.observationId)
-    throw new Error("Universe membership observation failed deterministic verification");
-  return r;
+  );
+  for (const o of r)
+    if (Lt(o) !== o.observationId)
+      throw new Error("Universe membership observation failed deterministic verification");
+  return Ze(
+    r,
+    (o) => [o.effectiveFrom, o.knownAt],
+    "universe membership"
+  );
 }
-function $r(e) {
+function Xr(e) {
   const t = /* @__PURE__ */ new Map();
   function n(r, o, i, s) {
     const a = t.get(r) ?? { duration: 0, bars: 0, purposes: /* @__PURE__ */ new Set() };
@@ -3437,103 +3580,167 @@ function $r(e) {
       Math.max(r.emaPeriod, r.atrPeriod) + 1,
       r.id
     );
-  return [...t.entries()].sort(([r], [o]) => Ge(r, o)).map(([r, o]) => ({
+  return [...t.entries()].sort(([r], [o]) => Je(r, o)).map(([r, o]) => ({
     timeframe: r,
     minimumDurationSeconds: o.duration,
     minimumBars: o.bars,
     purposes: [...o.purposes].sort()
   }));
 }
-function qr(e, t) {
-  return t.mode === "all" ? e.every(Boolean) : t.mode === "atLeast" ? e.filter(Boolean).length >= t.count : e.some(Boolean);
-}
-function Ur(e, t) {
-  return t === "ignore" ? !0 : t === "requireKnownAvailable" ? e === "Available" : e !== "Unavailable";
-}
-function jr(e, t) {
-  const n = re(t.scanTimeframe);
-  return Math.floor(e / n) % t.evaluationCadence.everyBars === 0;
-}
-function D(e) {
-  throw new RangeError(e);
-}
-function zr(e) {
-  e.schemaVersion !== xt && D("Unsupported radar selection profile schema"), (!e.id.trim() || !e.version.trim() || !e.name.trim()) && D("Radar profile identity fields are required"), e.setupFamily !== "impulse_fade_v1" && D("Only impulse_fade_v1 radar profiles are supported"), F(re(e.scanTimeframe)) || D("scanTimeframe must be valid"), (!Number.isInteger(e.evaluationCadence.everyBars) || e.evaluationCadence.everyBars < 1) && D("evaluation cadence must contain a positive integer bar count"), e.moveDetectors.length || D("At least one move detector is required"), new Set(e.moveDetectors.map((t) => t.id)).size !== e.moveDetectors.length && D("Move detector IDs must be unique"), new Set(e.hardGates).size !== e.hardGates.length && D("Hard gates must be unique"), e.detectorCombination.mode === "atLeast" && (!Number.isInteger(e.detectorCombination.count) || e.detectorCombination.count < 1 || e.detectorCombination.count > e.moveDetectors.length) && D("atLeast detector count must be between one and the detector count"), (!F(e.episodeExpiry.maximumAgeSeconds) || !F(e.resetPolicy.minimumFalseDurationSeconds) || !Number.isFinite(e.createdAt)) && D("Episode expiry, reset duration, and createdAt must be valid");
-  for (const t of e.moveDetectors) Gr(t);
-}
-function Gr(e) {
-  e.id.trim() || D("Detector ID is required"), Object.entries(e).filter(([n, r]) => n !== "minimumReturnPct" && n !== "minimumPercentile" && n !== "minimumZScore" && typeof r == "number").map(([, n]) => n).some((n) => !Number.isFinite(n) || n < 0) && D(`Detector ${e.id} contains invalid numeric settings`), e.type === "maximumWindowReturn" && !e.windowsSeconds.length && D(`Detector ${e.id} requires at least one window`);
-}
-function Qr(e) {
-  if (!Number.isFinite(e.from) || !Number.isFinite(e.to) || e.to < e.from)
-    throw new RangeError("Radar scan range must be finite and ordered");
-  if (Pt(e.selectionProfile) !== e.selectionProfile.canonicalConfigHash)
-    throw new Error("Radar selection profile failed deterministic hash verification");
-}
-function de(e, t) {
-  return t == null || e != null && e + 1e-12 >= t;
-}
-function Wr(e) {
-  return Number.isFinite(e.bucket) && F(e.o) && F(e.h) && F(e.l) && F(e.c);
-}
-function F(e) {
-  return Number.isFinite(e) && e > 0;
-}
-function ne(e) {
-  return e != null && Number.isFinite(e);
-}
-function H(e, t, n) {
-  return { code: e, severity: t, message: n };
-}
-function ze(e) {
-  return [...new Map(e.map((t) => [`${t.code}:${t.severity}:${t.message}`, t])).values()].sort((t, n) => t.code.localeCompare(n.code));
-}
-function it(e) {
-  return [...new Map(e.map((t) => [t.observationId, t])).values()].sort(Bt);
-}
-function Bt(e, t) {
-  return e.knownAt - t.knownAt || e.observationId.localeCompare(t.observationId);
-}
-function Xr(e, t) {
-  return e.asOf - t.asOf || e.symbol.localeCompare(t.symbol) || e.source.localeCompare(t.source);
-}
 function Kr(e, t) {
-  return e.detectedAt - t.detectedAt || e.id.localeCompare(t.id);
+  const n = e.filter((o) => o.passed).length, r = e.filter((o) => !o.evaluable).length;
+  return t.mode === "all" ? {
+    passed: n === e.length,
+    evaluable: e.some((o) => o.evaluable && !o.passed) || r === 0
+  } : t.mode === "atLeast" ? {
+    passed: n >= t.count,
+    evaluable: n >= t.count || n + r < t.count
+  } : {
+    passed: n > 0,
+    evaluable: n > 0 || r === 0
+  };
 }
 function Yr(e, t) {
+  return t === "ignore" ? !0 : t === "requireKnownAvailable" ? e === "Available" : e !== "Unavailable";
+}
+function Zr(e, t) {
+  const n = K(t.scanTimeframe);
+  return Math.floor(e / n) % t.evaluationCadence.everyBars === 0;
+}
+function C(e) {
+  throw new RangeError(e);
+}
+function jt(e) {
+  var n;
+  e.schemaVersion !== Ot && C("Unsupported radar selection profile schema"), (!e.id.trim() || !e.version.trim() || !e.name.trim()) && C("Radar profile identity fields are required"), e.setupFamily !== "impulse_fade_v1" && C("Only impulse_fade_v1 radar profiles are supported"), I(K(e.scanTimeframe)) || C("scanTimeframe must be valid"), e.evaluationCadence.mode !== "completedScanCandle" && C("Only completed-scan-candle evaluation is supported"), (!Number.isInteger(e.evaluationCadence.everyBars) || e.evaluationCadence.everyBars < 1) && C("evaluation cadence must contain a positive integer bar count"), e.moveDetectors.length || C("At least one move detector is required"), new Set(e.moveDetectors.map((r) => r.id)).size !== e.moveDetectors.length && C("Move detector IDs must be unique"), new Set(e.hardGates).size !== e.hardGates.length && C("Hard gates must be unique");
+  const t = /* @__PURE__ */ new Set([
+    "dataQuality",
+    "liquidity",
+    "selectedUniverse",
+    "sourcePolicy",
+    "executionVenueEligibility"
+  ]);
+  e.hardGates.some((r) => !t.has(r)) && C("Radar profile contains an unsupported hard gate"), ["any", "all", "atLeast"].includes(e.detectorCombination.mode) || C("Radar profile contains an unsupported detector combination"), e.detectorCombination.mode === "atLeast" && (!Number.isInteger(e.detectorCombination.count) || e.detectorCombination.count < 1 || e.detectorCombination.count > e.moveDetectors.length) && C("atLeast detector count must be between one and the detector count"), (!I(e.episodeExpiry.maximumAgeSeconds) || !I(e.resetPolicy.minimumFalseDurationSeconds) || !Number.isFinite(e.createdAt)) && C("Episode expiry, reset duration, and createdAt must be valid"), (e.sourcePolicy.allowedSources != null && (e.sourcePolicy.allowedSources.some((r) => !r.trim()) || new Set(e.sourcePolicy.allowedSources).size !== e.sourcePolicy.allowedSources.length) || !["requireKnownAvailable", "allowUnknown", "ignore", "rejectKnownUnavailable"].includes(
+    e.executionVenuePolicy.mode
+  ) || e.executionVenuePolicy.mode !== "ignore" && !((n = e.executionVenuePolicy.intendedVenue) != null && n.trim()) || e.liquidityPolicy.minimumQuoteNotional != null && (!Number.isFinite(e.liquidityPolicy.minimumQuoteNotional) || e.liquidityPolicy.minimumQuoteNotional < 0) || !I(e.liquidityPolicy.windowSeconds) || !["fail", "warn"].includes(e.liquidityPolicy.missingData)) && C("Radar profile policies are invalid");
+  for (const r of e.moveDetectors) Jr(r);
+}
+function Jr(e) {
+  if (e.id.trim() || C("Detector ID is required"), ["elapsedWindowReturn", "rollingTroughRunup", "emaAtrDisplacement", "maximumWindowReturn"].includes(e.type) || C(`Detector ${e.id} has an unsupported type`), (!Number.isInteger(e.minimumSampleCount) || e.minimumSampleCount < 0) && C(`Detector ${e.id} has an invalid sample count`), e.type === "emaAtrDisplacement") {
+    (!I(K(e.analysisTimeframe)) || !Number.isInteger(e.emaPeriod) || e.emaPeriod < 1 || !Number.isInteger(e.atrPeriod) || e.atrPeriod < 1 || !Number.isFinite(e.minimumAtrDisplacement)) && C(`Detector ${e.id} has invalid EMA/ATR settings`);
+    return;
+  }
+  if ((!I(e.historyLookbackSeconds) || !_e(e.minimumPercentile, 0, 100) || !_e(e.minimumZScore)) && C(`Detector ${e.id} contains invalid statistical settings`), e.type === "rollingTroughRunup") {
+    (!I(e.lookbackSeconds) || !Number.isFinite(e.minimumRunupPct) || e.minimumRunupPct < 0 || !I(e.maximumTroughAgeSeconds) || e.referenceField !== "close") && C(`Detector ${e.id} has invalid rolling-trough settings`);
+    return;
+  }
+  (!_e(e.minimumReturnPct) || e.maximumReferenceStalenessSeconds != null && (!Number.isFinite(e.maximumReferenceStalenessSeconds) || e.maximumReferenceStalenessSeconds < 0)) && C(`Detector ${e.id} has invalid return settings`), e.type === "elapsedWindowReturn" && !I(e.windowSeconds) && C(`Detector ${e.id} requires a positive window`), e.type === "maximumWindowReturn" && (!e.windowsSeconds.length || e.windowsSeconds.some((t) => !I(t)) || new Set(e.windowsSeconds).size !== e.windowsSeconds.length) && C(`Detector ${e.id} requires unique positive windows`);
+}
+function ei(e) {
+  if (!Number.isFinite(e.from) || !Number.isFinite(e.to) || e.to < e.from)
+    throw new RangeError("Radar scan range must be finite and ordered");
+  if (Ft(e.selectionProfile) !== e.selectionProfile.canonicalConfigHash)
+    throw new Error("Radar selection profile failed deterministic hash verification");
+  const { canonicalConfigHash: t, ...n } = e.selectionProfile;
+  if (jt(n), e.strategyProfile) {
+    if (We(e.strategyProfile) !== e.strategyProfile.profileHash)
+      throw new Error("Strategy profile failed deterministic hash verification");
+    const { profileHash: r, ...o } = e.strategyProfile;
+    Nt(o);
+  }
+}
+function _e(e, t = -1 / 0, n = 1 / 0) {
+  return e == null || Number.isFinite(e) && e >= t && e <= n;
+}
+function ye(e, t) {
+  return t == null || e != null && e + 1e-12 >= t;
+}
+function ti(e) {
+  return Number.isFinite(e.bucket) && Number.isFinite(e.ts) && I(e.o) && I(e.h) && I(e.l) && I(e.c) && e.h >= Math.max(e.o, e.c, e.l) && e.l <= Math.min(e.o, e.c, e.h) && Oe(e.v_base) && Oe(e.v_quote) && Oe(e.ver);
+}
+function Oe(e) {
+  return e == null || Number.isFinite(e) && e >= 0;
+}
+function I(e) {
+  return Number.isFinite(e) && e > 0;
+}
+function ee(e) {
+  return e != null && Number.isFinite(e);
+}
+function q(e, t, n) {
+  return { code: e, severity: t, message: n };
+}
+function Ye(e) {
+  return [...new Map(e.map((t) => [`${t.code}:${t.severity}:${t.message}`, t])).values()].sort((t, n) => t.code.localeCompare(n.code));
+}
+function Be(e) {
+  return [...new Map(e.map((t) => [t.observationId, t])).values()].sort(zt);
+}
+function ni(e) {
+  return [...new Map(e.map((t) => [t.observationId, t])).values()].sort(
+    (t, n) => t.observationId.localeCompare(n.observationId)
+  );
+}
+function Ze(e, t, n) {
+  if (!e.length) return null;
+  const r = [...e].sort((a, c) => {
+    const l = t(a), u = t(c);
+    for (let f = 0; f < Math.max(l.length, u.length); f += 1) {
+      const d = (l[f] ?? -1 / 0) - (u[f] ?? -1 / 0);
+      if (d !== 0) return d;
+    }
+    return a.observationId.localeCompare(c.observationId);
+  }), o = r.at(-1), i = t(o), s = r.filter((a) => {
+    const c = t(a);
+    return c.length === i.length && c.every((l, u) => l === i[u]);
+  });
+  if (new Set(s.map((a) => a.observationId)).size > 1)
+    throw new Error(`Conflicting ${n} observations at the same precedence`);
+  return o;
+}
+function zt(e, t) {
+  return e.knownAt - t.knownAt || e.observationId.localeCompare(t.observationId);
+}
+function ri(e, t) {
+  return e.asOf - t.asOf || e.symbol.localeCompare(t.symbol) || e.source.localeCompare(t.source);
+}
+function ii(e, t) {
+  return e.detectedAt - t.detectedAt || e.id.localeCompare(t.id);
+}
+function oi(e, t) {
   return e.asOf - t.asOf || e.observationId.localeCompare(t.observationId);
 }
-function Ge(e, t) {
-  return re(e) - re(t) || e.localeCompare(t);
+function Je(e, t) {
+  return K(e) - K(t) || e.localeCompare(t);
 }
-function Ht(e) {
+function Gt(e) {
   return {
     id: e.id,
     version: e.version,
     canonicalConfigHash: e.canonicalConfigHash
   };
 }
-function we(e) {
+function ke(e) {
   return `${e >= 0 ? "+" : ""}${e.toFixed(2)}%`;
 }
-function Vt(e) {
+function Qt(e) {
   return e % 86400 === 0 ? `${e / 86400}d` : e % 3600 === 0 ? `${e / 3600}h` : e % 60 === 0 ? `${e / 60}m` : `${e}s`;
 }
-function B(e) {
-  return O(e).slice(8);
+function H(e) {
+  return L(e).slice(8);
 }
-function Vi(e) {
-  return M(e);
+function Wi(e) {
+  return D(e);
 }
-const Zr = "linear-quote-perpetual-risk.1", Jr = "sizing-result.1", ei = "trade-plan.1", ti = "decision-record.1";
-function $t(e) {
+const si = "linear-quote-perpetual-risk.1", ai = "sizing-result.1", ci = "trade-plan.1", li = "decision-record.1";
+function Wt(e) {
   const t = [], n = [
-    J(
+    ie(
       "EXACT_LIQUIDATION_MODEL_UNAVAILABLE",
       "Exact liquidation is unavailable without a verified venue calculator"
     )
   ];
-  e.side !== "short" && t.push(J("UNSUPPORTED_SIDE", "Only short Impulse Fade plans are supported")), [
+  e.side !== "short" && t.push(ie("UNSUPPORTED_SIDE", "Only short Impulse Fade plans are supported")), [
     e.intendedEntryPrice,
     e.stopPrice,
     e.accountState.equity,
@@ -3544,33 +3751,33 @@ function $t(e) {
     e.venueRules.leverageStep,
     e.venueRules.minQuantity,
     e.venueRules.minNotional
-  ].some((N) => !Number.isFinite(N) || N <= 0) && t.push(J("INVALID_NUMERIC_INPUT", "Sizing inputs must be positive finite numbers")), e.stopPrice <= e.intendedEntryPrice && t.push(J("STOP_NOT_ABOVE_ENTRY", "A short stop must be above entry")), (e.accountState.availableBalance != null && e.accountState.availableBalance < 0 || e.riskRequest.maximumNotional != null && e.riskRequest.maximumNotional <= 0 || e.venueRules.feeSchedule.makerRate < 0 || e.venueRules.feeSchedule.takerRate < 0) && A(
+  ].some((N) => !Number.isFinite(N) || N <= 0) && t.push(ie("INVALID_NUMERIC_INPUT", "Sizing inputs must be positive finite numbers")), e.stopPrice <= e.intendedEntryPrice && t.push(ie("STOP_NOT_ABOVE_ENTRY", "A short stop must be above entry")), (e.accountState.availableBalance != null && e.accountState.availableBalance < 0 || e.riskRequest.maximumNotional != null && e.riskRequest.maximumNotional <= 0 || e.venueRules.feeSchedule.makerRate < 0 || e.venueRules.feeSchedule.takerRate < 0) && A(
     t,
     "INVALID_NUMERIC_INPUT",
     "Balances, notional limits, and venue fee rates must be valid non-negative values"
-  ), (!pe(e.intendedEntryPrice, e.venueRules.priceTick) || !pe(e.stopPrice, e.venueRules.priceTick) || e.targets.some(
-    (N) => !pe(N.targetPrice, e.venueRules.priceTick)
+  ), (!we(e.intendedEntryPrice, e.venueRules.priceTick) || !we(e.stopPrice, e.venueRules.priceTick) || e.targets.some(
+    (N) => !we(N.targetPrice, e.venueRules.priceTick)
   )) && A(
     t,
     "PRICE_TICK_MISMATCH",
     `Entry, stop, and targets must align to price tick ${e.venueRules.priceTick}`
-  ), e.leveragePolicy.mode === "manual" && !pe(e.leveragePolicy.leverage, e.venueRules.leverageStep) && A(
+  ), e.leveragePolicy.mode === "manual" && !we(e.leveragePolicy.leverage, e.venueRules.leverageStep) && A(
     t,
     "LEVERAGE_STEP_MISMATCH",
     `Manual leverage must align to venue step ${e.venueRules.leverageStep}`
   ), (e.executionAssumptions.entryFeeRate < e.venueRules.feeSchedule.makerRate || e.executionAssumptions.stopExitFeeRate < e.venueRules.feeSchedule.takerRate || e.executionAssumptions.targetExitFeeRate < e.venueRules.feeSchedule.makerRate) && n.push(
-    J(
+    ie(
       "FEE_ASSUMPTION_BELOW_VENUE_SCHEDULE",
       "One or more fee assumptions are below the supplied venue schedule"
     )
   );
   const o = e.riskRequest.accountRiskFraction != null, i = e.riskRequest.fixedRiskAmount != null;
   o === i && t.push(
-    J(
+    ie(
       "RISK_REQUEST_INVALID",
       "Specify exactly one of accountRiskFraction or fixedRiskAmount"
     )
-  ), (o && (!V(e.riskRequest.accountRiskFraction ?? 0) || (e.riskRequest.accountRiskFraction ?? 0) > 1) || i && (!V(e.riskRequest.fixedRiskAmount ?? 0) || (e.riskRequest.fixedRiskAmount ?? 0) > e.accountState.equity) || e.riskRequest.maximumMarginAllocationFraction > 1) && A(
+  ), (o && (!U(e.riskRequest.accountRiskFraction ?? 0) || (e.riskRequest.accountRiskFraction ?? 0) > 1) || i && (!U(e.riskRequest.fixedRiskAmount ?? 0) || (e.riskRequest.fixedRiskAmount ?? 0) > e.accountState.equity) || e.riskRequest.maximumMarginAllocationFraction > 1) && A(
     t,
     "RISK_REQUEST_INVALID",
     "Risk and margin fractions must be in (0, 1], and fixed risk cannot exceed equity"
@@ -3586,41 +3793,41 @@ function $t(e) {
     "Adverse-slippage allowances must be below 10,000 basis points"
   );
   const s = i ? e.riskRequest.fixedRiskAmount : o ? e.accountState.equity * (e.riskRequest.accountRiskFraction ?? 0) : null;
-  (s == null || !Number.isFinite(s) || s <= 0) && A(t, "RISK_REQUEST_INVALID", "Risk budget must be positive and finite"), ri(
+  (s == null || !Number.isFinite(s) || s <= 0) && A(t, "RISK_REQUEST_INVALID", "Risk budget must be positive and finite"), fi(
     e.targets,
     e.intendedEntryPrice,
     e.targetFractionTolerance ?? 1e-8,
     t
   );
-  const a = e.intendedEntryPrice * (1 - e.executionAssumptions.adverseEntrySlippageBps / 1e4), c = V(a) ? a : null, u = V(e.stopPrice) ? e.stopPrice * (1 + e.executionAssumptions.adverseStopSlippageBps / 1e4) : null, l = c != null && u != null ? u - c + c * e.executionAssumptions.entryFeeRate + u * e.executionAssumptions.stopExitFeeRate : null;
-  (l == null || !Number.isFinite(l) || l <= 0) && A(t, "INVALID_NUMERIC_INPUT", "Per-unit stop risk must be positive");
-  const f = s != null && l != null && l > 0 ? s / l : null;
-  let d = f == null ? null : ot(f, e.venueRules.quantityStep);
-  if (d != null && s != null && l != null)
-    for (; d > 0 && d * l > s + Math.max(1e-10, s * 1e-12); )
-      d = ot(
+  const a = e.intendedEntryPrice * (1 - e.executionAssumptions.adverseEntrySlippageBps / 1e4), c = U(a) ? a : null, l = U(e.stopPrice) ? e.stopPrice * (1 + e.executionAssumptions.adverseStopSlippageBps / 1e4) : null, u = c != null && l != null ? l - c + c * e.executionAssumptions.entryFeeRate + l * e.executionAssumptions.stopExitFeeRate : null;
+  (u == null || !Number.isFinite(u) || u <= 0) && A(t, "INVALID_NUMERIC_INPUT", "Per-unit stop risk must be positive");
+  const f = s != null && u != null && u > 0 ? s / u : null;
+  let d = f == null ? null : ft(f, e.venueRules.quantityStep);
+  if (d != null && s != null && u != null)
+    for (; d > 0 && d * u > s + Math.max(1e-10, s * 1e-12); )
+      d = ft(
         d - e.venueRules.quantityStep,
         e.venueRules.quantityStep
       );
-  const h = d != null && d > 0 ? d : null, m = h == null ? null : h * e.intendedEntryPrice, v = h == null || c == null ? null : h * c * e.executionAssumptions.entryFeeRate, y = h == null || u == null ? null : h * u * e.executionAssumptions.stopExitFeeRate, p = h == null || l == null ? null : h * l;
-  (h == null || h < e.venueRules.minQuantity) && A(
+  const m = d != null && d > 0 ? d : null, h = m == null ? null : m * e.intendedEntryPrice, b = m == null || c == null ? null : m * c * e.executionAssumptions.entryFeeRate, v = m == null || l == null ? null : m * l * e.executionAssumptions.stopExitFeeRate, g = m == null || u == null ? null : m * u;
+  (m == null || m < e.venueRules.minQuantity) && A(
     t,
     "MINIMUM_QUANTITY_NOT_MET",
     `Rounded quantity is below venue minimum ${e.venueRules.minQuantity}`
-  ), (m == null || m < e.venueRules.minNotional) && A(
+  ), (h == null || h < e.venueRules.minNotional) && A(
     t,
     "MINIMUM_NOTIONAL_NOT_MET",
     `Notional is below venue minimum ${e.venueRules.minNotional}`
   );
   const E = e.riskRequest.maximumNotional;
-  E != null && m != null && m > E && A(
+  E != null && h != null && h > E && A(
     t,
     "MAXIMUM_NOTIONAL_EXCEEDED",
     `Notional exceeds configured maximum ${E}`
   );
-  const T = e.accountState.equity * e.riskRequest.maximumMarginAllocationFraction, R = e.accountState.availableBalance == null ? T : Math.min(T, e.accountState.availableBalance), x = m != null && R > 0 ? m / R : null, S = li(
+  const R = e.accountState.equity * e.riskRequest.maximumMarginAllocationFraction, T = e.accountState.availableBalance == null ? R : Math.min(R, e.accountState.availableBalance), P = h != null && T > 0 ? h / T : null, S = bi(
     e.leveragePolicy,
-    x,
+    P,
     e.venueRules.leverageStep
   );
   S != null && S > e.venueRules.maxLeverage && A(
@@ -3628,63 +3835,63 @@ function $t(e) {
     "MAX_LEVERAGE_EXCEEDED",
     `Required leverage ${S} exceeds venue maximum ${e.venueRules.maxLeverage}`
   );
-  const b = m != null && S != null && S > 0 ? m / S : null;
-  b != null && b > T + 1e-10 && A(
+  const y = h != null && S != null && S > 0 ? h / S : null;
+  y != null && y > R + 1e-10 && A(
     t,
     "MARGIN_ALLOCATION_EXCEEDED",
     "Initial margin exceeds the configured account-equity allocation"
-  ), b != null && e.accountState.availableBalance != null && b > e.accountState.availableBalance + 1e-10 && A(
+  ), y != null && e.accountState.availableBalance != null && y > e.accountState.availableBalance + 1e-10 && A(
     t,
     "AVAILABLE_BALANCE_EXCEEDED",
     "Initial margin exceeds available balance"
   );
-  const g = h != null && c != null && u != null ? h * (u - c) : null, C = ii(
+  const p = m != null && c != null && l != null ? m * (l - c) : null, O = di(
     e.targets,
-    h,
+    m,
     c,
-    g,
     p,
+    g,
     e.executionAssumptions
-  ), K = Se(
-    C.map((N) => N.grossReward * N.positionFraction)
-  ), ve = Se(
-    C.map((N) => N.netProjectedReward * N.positionFraction)
-  ), be = Se(
-    C.map(
+  ), G = Ae(
+    O.map((N) => N.grossReward * N.positionFraction)
+  ), ne = Ae(
+    O.map((N) => N.netProjectedReward * N.positionFraction)
+  ), x = Ae(
+    O.map(
       (N) => N.weightedGrossRContribution == null ? null : N.weightedGrossRContribution
     )
-  ), Y = Se(
-    C.map(
+  ), V = Ae(
+    O.map(
       (N) => N.weightedRContribution == null ? null : N.weightedRContribution
     )
   );
-  return I({
-    schemaVersion: Jr,
-    sizingModelVersion: Zr,
+  return M({
+    schemaVersion: ai,
+    sizingModelVersion: si,
     side: e.side,
     riskBudget: s,
     rawQuantity: f,
-    roundedQuantity: h,
+    roundedQuantity: m,
     effectiveEntry: c,
-    effectiveStop: u,
-    stopDistanceAbsolute: c == null || u == null ? null : u - c,
-    stopDistancePercent: c == null || u == null ? null : (u - c) / c * 100,
+    effectiveStop: l,
+    stopDistanceAbsolute: c == null || l == null ? null : l - c,
+    stopDistancePercent: c == null || l == null ? null : (l - c) / c * 100,
     stopDistanceAtr: e.stopDistanceAtr ?? null,
-    grossNotional: m,
-    estimatedEntryFee: v,
-    estimatedStopFee: y,
-    projectedLossAtStop: p,
-    projectedLossPercentEquity: p == null || e.accountState.equity <= 0 ? null : p / e.accountState.equity * 100,
+    grossNotional: h,
+    estimatedEntryFee: b,
+    estimatedStopFee: v,
+    projectedLossAtStop: g,
+    projectedLossPercentEquity: g == null || e.accountState.equity <= 0 ? null : g / e.accountState.equity * 100,
     selectedLeverage: S,
-    minimumRequiredLeverage: x,
-    initialMargin: b,
-    marginPercentEquity: b == null || e.accountState.equity <= 0 ? null : b / e.accountState.equity * 100,
-    marginPercentAvailableBalance: b == null || e.accountState.availableBalance == null || e.accountState.availableBalance <= 0 ? null : b / e.accountState.availableBalance * 100,
-    targetOutcomes: C,
-    weightedGrossReward: K,
-    weightedProjectedReward: ve,
-    weightedGrossR: be,
-    weightedProjectedR: Y,
+    minimumRequiredLeverage: P,
+    initialMargin: y,
+    marginPercentEquity: y == null || e.accountState.equity <= 0 ? null : y / e.accountState.equity * 100,
+    marginPercentAvailableBalance: y == null || e.accountState.availableBalance == null || e.accountState.availableBalance <= 0 ? null : y / e.accountState.availableBalance * 100,
+    targetOutcomes: O,
+    weightedGrossReward: G,
+    weightedProjectedReward: ne,
+    weightedGrossR: x,
+    weightedProjectedR: V,
     liquidationStatus: {
       status: "unavailable",
       exactPrice: null,
@@ -3695,11 +3902,11 @@ function $t(e) {
     warnings: n
   });
 }
-function $i(e) {
+function Xi(e) {
   var i;
   if (!Number.isFinite(e.createdAt) || e.createdAt < e.snapshot.decisionTime)
     throw new RangeError("Trade plan createdAt cannot precede its decision snapshot");
-  const t = $t({
+  const t = Wt({
     side: "short",
     intendedEntryPrice: e.entryPlan.intendedPrice,
     stopPrice: e.stopPlan.stopPrice,
@@ -3712,10 +3919,10 @@ function $i(e) {
     stopDistanceAtr: e.stopDistanceAtr,
     targetFractionTolerance: e.strategyProfile.targetPolicy.fractionTolerance
   }), n = {
-    schemaVersion: ei,
+    schemaVersion: ci,
     snapshotId: e.snapshot.id,
-    setupFamily: Q,
-    lifecycleVersion: U,
+    setupFamily: J,
+    lifecycleVersion: Q,
     lifecycleConfigHash: e.snapshot.lifecycleConfigHash,
     strategyProfileId: e.strategyProfile.id,
     strategyProfileVersion: e.strategyProfile.version,
@@ -3733,16 +3940,16 @@ function $i(e) {
     discretionaryOverrideReason: ((i = e.discretionaryOverrideReason) == null ? void 0 : i.trim()) || null,
     status: e.status,
     createdAt: e.createdAt
-  }, r = { ...n, id: e.id ?? qt(n) }, o = ni({
+  }, r = { ...n, id: e.id ?? Xt(n) }, o = ui({
     strategyProfile: e.strategyProfile,
     snapshot: e.snapshot,
     plan: r
   });
-  return I({ ...r, complianceResult: o });
+  return M({ ...r, complianceResult: o });
 }
-function ni(e) {
-  var d, h, m;
-  const { strategyProfile: t, snapshot: n, plan: r } = e, o = [...r.sizingResult.hardErrors], i = [], s = [...r.sizingResult.warnings], a = $t({
+function ui(e) {
+  var d, m, h;
+  const { strategyProfile: t, snapshot: n, plan: r } = e, o = [...r.sizingResult.hardErrors], i = [], s = [...r.sizingResult.warnings], a = Wt({
     side: r.side,
     intendedEntryPrice: r.entryPlan.intendedPrice,
     stopPrice: r.stopPlan.stopPrice,
@@ -3755,7 +3962,7 @@ function ni(e) {
     stopDistanceAtr: r.sizingResult.stopDistanceAtr,
     targetFractionTolerance: t.targetPolicy.fractionTolerance
   });
-  (Tt(t) !== t.profileHash || Et(n) !== n.id || qt(r) !== r.id || M(a) !== M(r.sizingResult)) && A(
+  (We(t) !== t.profileHash || _t(n) !== n.id || Xt(r) !== r.id || D(a) !== D(r.sizingResult)) && A(
     o,
     "SERIALIZED_INTEGRITY_MISMATCH",
     "A serialized profile, snapshot, plan, or sizing result failed deterministic verification"
@@ -3763,7 +3970,7 @@ function ni(e) {
     o,
     "INSTRUMENT_IDENTITY_MISMATCH",
     "Venue risk rules do not match the snapshot instrument"
-  ), (n.snapshotSchemaVersion !== Rt || n.strategyProfileId !== t.id || n.strategyProfileVersion !== t.version || n.strategyProfileHash !== t.profileHash || n.lifecycleVersion !== t.lifecycleVersion || n.lifecycleConfigHash !== t.lifecycleConfigHash || r.setupFamily !== t.setupFamily || r.lifecycleVersion !== t.lifecycleVersion || r.lifecycleConfigHash !== t.lifecycleConfigHash || r.strategyProfileId !== t.id || r.strategyProfileVersion !== t.version || r.strategyProfileHash !== t.profileHash || M(r.executionAssumptions) !== M(t.executionAssumptions)) && A(
+  ), (n.snapshotSchemaVersion !== It || n.strategyProfileId !== t.id || n.strategyProfileVersion !== t.version || n.strategyProfileHash !== t.profileHash || n.lifecycleVersion !== t.lifecycleVersion || n.lifecycleConfigHash !== t.lifecycleConfigHash || r.setupFamily !== t.setupFamily || r.lifecycleVersion !== t.lifecycleVersion || r.lifecycleConfigHash !== t.lifecycleConfigHash || r.strategyProfileId !== t.id || r.strategyProfileVersion !== t.version || r.strategyProfileHash !== t.profileHash || D(r.executionAssumptions) !== D(t.executionAssumptions)) && A(
     o,
     "STRATEGY_PROFILE_VERSION_MISMATCH",
     "Snapshot and strategy profile versions or hashes do not match"
@@ -3776,11 +3983,11 @@ function ni(e) {
     "STOP_DERIVATION_NOT_PERMITTED",
     `Stop derivation ${r.stopPlan.derivationType} is not permitted`
   );
-  for (const v of r.targetPlans)
-    t.targetPolicy.permittedDerivations.includes(v.derivationType) || A(
+  for (const b of r.targetPlans)
+    t.targetPolicy.permittedDerivations.includes(b.derivationType) || A(
       i,
       "TARGET_DERIVATION_NOT_PERMITTED",
-      `Target derivation ${v.derivationType} is not permitted`
+      `Target derivation ${b.derivationType} is not permitted`
     );
   r.targetPlans.length > t.targetPolicy.maximumTargets && A(
     i,
@@ -3788,14 +3995,14 @@ function ni(e) {
     `Plan has more than ${t.targetPolicy.maximumTargets} targets`
   );
   const c = r.targetPlans.reduce(
-    (v, y) => v + y.positionFraction,
+    (b, v) => b + v.positionFraction,
     0
   );
   Math.abs(c - 1) > t.targetPolicy.fractionTolerance && A(
     o,
     "TARGET_FRACTIONS_INVALID",
     `Target fractions exceed profile tolerance ${t.targetPolicy.fractionTolerance}`
-  ), ai(n, r, o), ci(r, o), oi(n, t, i), si(n, t, i), t.stopPolicy.requireOutsideEpisodeHigh && ((h = n.candidateEpisode) == null ? void 0 : h.episodeHigh) != null && r.stopPlan.stopPrice <= n.candidateEpisode.episodeHigh && A(
+  ), vi(n, r, o), yi(r, o), mi(n, t, i), hi(n, t, i), t.stopPolicy.requireOutsideEpisodeHigh && ((m = n.candidateEpisode) == null ? void 0 : m.episodeHigh) != null && r.stopPlan.stopPrice <= n.candidateEpisode.episodeHigh && A(
     i,
     "STOP_INSIDE_INVALIDATION_LEVEL",
     "Short stop is not beyond the candidate episode high"
@@ -3816,22 +4023,22 @@ function ni(e) {
     "RISK_ABOVE_PROFILE_LIMIT",
     "Projected stop loss exceeds the profile risk limit"
   );
-  const u = i.some((v) => v.code === "NO_ACTIVE_CANDIDATE"), l = ((m = r.discretionaryOverrideReason) == null ? void 0 : m.trim()) || null;
-  r.status === "finalized" && i.length > 0 && !u && !l && A(
+  const l = i.some((b) => b.code === "NO_ACTIVE_CANDIDATE"), u = ((h = r.discretionaryOverrideReason) == null ? void 0 : h.trim()) || null;
+  r.status === "finalized" && i.length > 0 && !l && !u && A(
     o,
     "OVERRIDE_REASON_REQUIRED",
     "A finalized discretionary override requires a user-supplied reason"
   );
   let f;
-  return o.length > 0 ? f = "InvalidPlan" : u ? f = "OutOfStrategy" : i.length === 0 ? f = "Compliant" : l ? f = "Overridden" : f = "OutOfStrategy", I({
+  return o.length > 0 ? f = "InvalidPlan" : l ? f = "OutOfStrategy" : i.length === 0 ? f = "Compliant" : u ? f = "Overridden" : f = "OutOfStrategy", M({
     classification: f,
     hardErrors: o,
     strategyViolations: i,
     warnings: s,
-    overrideReason: l
+    overrideReason: u
   });
 }
-function qi(e) {
+function Ki(e) {
   var r, o;
   if (!Number.isFinite(e.decisionTime) || e.decisionTime < 0)
     throw new RangeError("Decision time must be a non-negative finite Unix timestamp");
@@ -3848,7 +4055,7 @@ function qi(e) {
   if (e.tradePlan && e.tradePlan.snapshotId !== e.snapshot.id)
     throw new RangeError("Decision trade plan must reference the same snapshot");
   const t = {
-    schemaVersion: ti,
+    schemaVersion: li,
     sessionId: e.sessionId ?? null,
     snapshotId: e.snapshot.id,
     decisionTime: e.decisionTime,
@@ -3859,10 +4066,10 @@ function qi(e) {
     nextCondition: ((o = e.nextCondition) == null ? void 0 : o.trim()) || null,
     skipReason: e.skipReason ?? null,
     tradePlan: e.tradePlan ?? null
-  }, n = e.id ?? `decision:${O(t).slice(8)}`;
-  return I({ ...t, id: n });
+  }, n = e.id ?? `decision:${L(t).slice(8)}`;
+  return M({ ...t, id: n });
 }
-function ri(e, t, n, r) {
+function fi(e, t, n, r) {
   (!e.length || e.some((i) => i.targetPrice >= t)) && A(r, "NO_VALID_TARGET", "Every short target must be below entry");
   const o = e.reduce((i, s) => i + s.positionFraction, 0);
   (e.some(
@@ -3873,26 +4080,26 @@ function ri(e, t, n, r) {
     "Target fractions must be positive and sum to 1"
   );
 }
-function ii(e, t, n, r, o, i) {
+function di(e, t, n, r, o, i) {
   return t == null || n == null ? [] : e.map((s) => {
-    const a = s.targetPrice * (1 + i.adverseTargetSlippageBps / 1e4), c = t * (n - a), u = t * n * i.entryFeeRate, l = t * a * i.targetExitFeeRate, f = c - u - l, d = r != null && r > 0 ? c / r : null, h = o != null && o > 0 ? f / o : null;
+    const a = s.targetPrice * (1 + i.adverseTargetSlippageBps / 1e4), c = t * (n - a), l = t * n * i.entryFeeRate, u = t * a * i.targetExitFeeRate, f = c - l - u, d = r != null && r > 0 ? c / r : null, m = o != null && o > 0 ? f / o : null;
     return {
       targetId: s.id,
       targetPrice: s.targetPrice,
       effectiveTargetPrice: a,
       positionFraction: s.positionFraction,
       grossReward: c,
-      expectedEntryFee: u,
-      expectedExitFee: l,
+      expectedEntryFee: l,
+      expectedExitFee: u,
       netProjectedReward: f,
       grossR: d,
-      projectedR: h,
+      projectedR: m,
       weightedGrossRContribution: d == null ? null : d * s.positionFraction,
-      weightedRContribution: h == null ? null : h * s.positionFraction
+      weightedRContribution: m == null ? null : m * s.positionFraction
     };
   });
 }
-function oi(e, t, n) {
+function mi(e, t, n) {
   if (!(e.candidateEpisode != null && e.activeCandidateId === e.candidateEpisode.id && !["notCandidate", "invalidated", "expired"].includes(e.lifecycleState))) {
     A(n, "NO_ACTIVE_CANDIDATE", "No active Impulse Fade candidate exists");
     return;
@@ -3919,10 +4126,10 @@ function oi(e, t, n) {
     "The profile requires a confirmed retest rejection"
   ), e.lifecycleState === "entryCandidate" && e.lifecycleStateSince != null && t.entryPolicy.maxAgeSinceEntryCandidateSeconds != null && e.effectiveAsOf - e.lifecycleStateSince > t.entryPolicy.maxAgeSinceEntryCandidateSeconds && A(n, "RETEST_TOO_OLD", "EntryCandidate is older than the profile limit");
 }
-function si(e, t, n) {
+function hi(e, t, n) {
   var c;
   const r = t.entryPolicy.requiredDataQuality, o = r.candidateMetricsRequired && e.candidateMetrics == null, i = ((c = e.candidateMetrics) == null ? void 0 : c.historyCoverage.coverageRatio) ?? null, s = r.minimumHistoryCoverageRatio != null && (i == null || i < r.minimumHistoryCoverageRatio), a = e.dataQualityNotes.some(
-    (u) => r.rejectedNoteSeverities.includes(u.severity)
+    (l) => r.rejectedNoteSeverities.includes(l.severity)
   );
   (o || s || a) && A(
     n,
@@ -3930,9 +4137,9 @@ function si(e, t, n) {
     "Decision snapshot does not meet the profile data-quality requirements"
   );
 }
-function ai(e, t, n) {
+function vi(e, t, n) {
   const r = new Map(
-    ar(e).map((i) => [i.id, i])
+    mr(e).map((i) => [i.id, i])
   ), o = [
     {
       requiresReference: !1,
@@ -3966,7 +4173,7 @@ function ai(e, t, n) {
       `Reference ${i.id} was not known at the decision cutoff`
     );
     const s = r.get(i.id);
-    s ? M(s) !== M(i.reference) && A(
+    s ? D(s) !== D(i.reference) && A(
       n,
       "REFERENCE_LEVEL_SNAPSHOT_MISMATCH",
       `Reference ${i.id} differs from the frozen snapshot object`
@@ -3977,7 +4184,7 @@ function ai(e, t, n) {
     );
   }
 }
-function ci(e, t) {
+function yi(e, t) {
   const n = e.venueRules.priceTick, r = e.entryPlan.associatedReferenceLevel;
   r && Math.abs(e.entryPlan.intendedPrice - r.price) > n + 1e-12 && A(
     t,
@@ -3987,16 +4194,16 @@ function ci(e, t) {
   const o = e.stopPlan.referenceLevel;
   if (o && e.stopPlan.derivationType !== "manual") {
     const i = e.stopPlan.derivationType === "supportResistanceZoneBoundary" ? o.rangeHigh ?? o.price : o.price, { basisPoints: s, atrFraction: a, atrValue: c } = e.stopPlan.buffer;
-    let u = i;
+    let l = i;
     s != null && a != null ? A(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "Stop buffer must use basis points or ATR, not both"
-    ) : s != null ? u = i * (1 + s / 1e4) : a != null && (V(c ?? 0) ? u = i + a * (c ?? 0) : A(
+    ) : s != null ? l = i * (1 + s / 1e4) : a != null && (U(c ?? 0) ? l = i + a * (c ?? 0) : A(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "ATR stop buffers require the frozen ATR value"
-    )), Math.abs(e.stopPlan.stopPrice - u) > n + 1e-12 && A(
+    )), Math.abs(e.stopPlan.stopPrice - l) > n + 1e-12 && A(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "Stop price does not match its frozen reference and recorded buffer"
@@ -4013,136 +4220,136 @@ function ci(e, t) {
     );
   }
 }
-function li(e, t, n) {
-  return e.mode === "manual" ? V(e.leverage) ? e.leverage : null : t == null ? null : Math.max(1, ui(t, n));
+function bi(e, t, n) {
+  return e.mode === "manual" ? U(e.leverage) ? e.leverage : null : t == null ? null : Math.max(1, gi(t, n));
 }
-function qt(e) {
+function Xt(e) {
   const {
     id: t,
     complianceResult: n,
     ...r
   } = e;
-  return `trade-plan:${O(r).slice(8)}`;
+  return `trade-plan:${L(r).slice(8)}`;
 }
-function ot(e, t) {
-  if (!V(e) || !V(t)) return 0;
-  const n = Ut(t);
+function ft(e, t) {
+  if (!U(e) || !U(t)) return 0;
+  const n = Kt(t);
   return Number((Math.floor(e / t + 1e-12) * t).toFixed(n));
 }
-function ui(e, t) {
-  if (!V(e) || !V(t)) return e;
-  const n = Ut(t);
+function gi(e, t) {
+  if (!U(e) || !U(t)) return e;
+  const n = Kt(t);
   return Number((Math.ceil(e / t - 1e-12) * t).toFixed(n));
 }
-function Ut(e) {
+function Kt(e) {
   const t = e.toString().toLowerCase();
   return t.includes("e-") ? Number(t.split("e-")[1]) : t.includes(".") ? t.length - t.indexOf(".") - 1 : 0;
 }
-function pe(e, t) {
-  if (!Number.isFinite(e) || !V(t)) return !1;
+function we(e, t) {
+  if (!Number.isFinite(e) || !U(t)) return !1;
   const n = Math.round(e / t) * t;
   return Math.abs(e - n) <= Math.max(1e-12, t * 1e-9);
 }
-function Se(e) {
+function Ae(e) {
   return e.some((t) => t == null) ? null : e.reduce((t, n) => t + (n ?? 0), 0);
 }
-function V(e) {
+function U(e) {
   return Number.isFinite(e) && e > 0;
 }
-function J(e, t) {
+function ie(e, t) {
   return { code: e, message: t };
 }
 function A(e, t, n) {
-  e.some((r) => r.code === t) || e.push(J(t, n));
+  e.some((r) => r.code === t) || e.push(ie(t, n));
 }
 export {
-  xi as CANDLE_TIMESTAMP_SEMANTICS,
-  ti as DECISION_RECORD_SCHEMA_VERSION,
-  Rt as DECISION_SNAPSHOT_SCHEMA_VERSION,
-  sr as DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
-  gr as EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION,
-  Bi as EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE,
-  ce as IMPULSE_FADE_CANDIDATE_GATE,
-  en as IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION,
-  U as IMPULSE_FADE_LIFECYCLE_VERSION,
-  tr as IMPULSE_FADE_RESEARCH_PROFILE_ID,
-  nr as IMPULSE_FADE_RESEARCH_PROFILE_VERSION,
-  Q as IMPULSE_FADE_SETUP_FAMILY,
-  mr as RADAR_EPISODE_SCHEMA_VERSION,
-  vr as RADAR_METRIC_OBSERVATION_SCHEMA_VERSION,
-  br as RADAR_SCAN_RESULT_SCHEMA_VERSION,
-  xt as RADAR_SELECTION_PROFILE_SCHEMA_VERSION,
-  yr as RADAR_STATUS_OBSERVATION_SCHEMA_VERSION,
-  pr as RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION,
-  Sr as RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
-  hr as REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
-  Zr as SIZING_MODEL_VERSION,
-  Jr as SIZING_RESULT_SCHEMA_VERSION,
-  er as STRATEGY_PROFILE_SCHEMA_VERSION,
-  ei as TRADE_PLAN_SCHEMA_VERSION,
-  bi as appendSyntheticCandle,
-  ie as bucketStart,
-  $t as calculateLinearPerpetualSizing,
-  j as candleCloseTime,
-  Qe as candleToBytes,
-  jt as candlesToBytes,
-  O as canonicalHash,
-  Vi as canonicalRadarJson,
-  M as canonicalSerialize,
-  gt as computeAnchoredVwapLine,
-  Ci as computeAnchoredVwapSignals,
-  Pi as computeAnchoredVwapSnapshot,
-  Ri as computeAtrLine,
-  Si as computeBollingerBands,
-  mi as computeCloseChangePct,
-  gi as computeEmaLine,
-  Fe as computeExtensionSnapshot,
-  ki as computeMacd,
-  ue as computeMarketStructure,
-  yn as computeRelativeCumulativeReturnLine,
-  _i as computeRelativeStrengthDivergences,
-  wi as computeRsiLine,
-  tn as computeSetupState,
-  yi as computeSmaLine,
-  Ai as computeStochRsi,
-  Ii as computeStructureActiveLevels,
-  Ni as computeSupportResistanceZones,
-  bn as computeSupportResistanceZonesFromSwings,
-  vn as computeSwingPoints,
-  hi as computeViewBounds,
-  pi as computeWmaLine,
-  qi as createDecisionRecord,
-  Mi as createDecisionReferenceLevel,
-  Fi as createDecisionSnapshot,
-  Oe as createDurableObjectReference,
-  Ar as createExecutionVenueEligibilityObservation,
-  or as createImpulseFadeResearchProfile,
-  wr as createRadarSelectionProfile,
-  Li as createRadarStructureObservation,
-  ir as createStrategyProfile,
-  $i as createTradePlan,
-  Di as createUniverseMembershipObservation,
-  rr as decisionReferenceObservationId,
-  Et as decisionSnapshotId,
-  ar as decisionSnapshotReferenceLevels,
-  Ei as evaluateImpulseFadeSnapshot,
-  Ti as evaluateImpulseFadeTimeline,
-  ni as evaluateTradePlanCompliance,
-  Nt as executionVenueEligibilityObservationId,
-  I as immutableJsonClone,
-  oe as impulseFadeLifecycleConfigHash,
-  Oi as lineToBytes,
-  vi as makeSyntheticCandles,
-  zt as mergeLiveCandle,
-  st as normalizeOhlcvPoint,
-  fi as normalizeRestTimeframe,
-  at as packHistoricalCandles,
-  di as prependHistoricalCandles,
-  Pt as radarSelectionProfileHash,
-  It as radarStructureObservationId,
-  Hi as scanRadarEpisodes,
-  Tt as strategyProfileHash,
-  re as timeframeToSeconds,
-  qt as tradePlanId,
-  Ct as universeMembershipObservationId
+  Fi as CANDLE_TIMESTAMP_SEMANTICS,
+  li as DECISION_RECORD_SCHEMA_VERSION,
+  It as DECISION_SNAPSHOT_SCHEMA_VERSION,
+  dr as DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
+  kr as EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION,
+  Gi as EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE,
+  de as IMPULSE_FADE_CANDIDATE_GATE,
+  cn as IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION,
+  Q as IMPULSE_FADE_LIFECYCLE_VERSION,
+  cr as IMPULSE_FADE_RESEARCH_PROFILE_ID,
+  lr as IMPULSE_FADE_RESEARCH_PROFILE_VERSION,
+  J as IMPULSE_FADE_SETUP_FAMILY,
+  pr as RADAR_EPISODE_SCHEMA_VERSION,
+  Mt as RADAR_METRIC_OBSERVATION_SCHEMA_VERSION,
+  wr as RADAR_SCAN_RESULT_SCHEMA_VERSION,
+  Ot as RADAR_SELECTION_PROFILE_SCHEMA_VERSION,
+  Ar as RADAR_STATUS_OBSERVATION_SCHEMA_VERSION,
+  Tr as RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION,
+  Rr as RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
+  Sr as REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
+  si as SIZING_MODEL_VERSION,
+  ai as SIZING_RESULT_SCHEMA_VERSION,
+  ar as STRATEGY_PROFILE_SCHEMA_VERSION,
+  ci as TRADE_PLAN_SCHEMA_VERSION,
+  Ti as appendSyntheticCandle,
+  ae as bucketStart,
+  Wt as calculateLinearPerpetualSizing,
+  X as candleCloseTime,
+  et as candleToBytes,
+  Yt as candlesToBytes,
+  L as canonicalHash,
+  Wi as canonicalRadarJson,
+  D as canonicalSerialize,
+  Tt as computeAnchoredVwapLine,
+  Di as computeAnchoredVwapSignals,
+  Li as computeAnchoredVwapSnapshot,
+  _i as computeAtrLine,
+  Pi as computeBollingerBands,
+  wi as computeCloseChangePct,
+  Ei as computeEmaLine,
+  Ve as computeExtensionSnapshot,
+  Ni as computeMacd,
+  he as computeMarketStructure,
+  Tn as computeRelativeCumulativeReturnLine,
+  Vi as computeRelativeStrengthDivergences,
+  Ci as computeRsiLine,
+  ln as computeSetupState,
+  Ri as computeSmaLine,
+  Ii as computeStochRsi,
+  Bi as computeStructureActiveLevels,
+  Hi as computeSupportResistanceZones,
+  kn as computeSupportResistanceZonesFromSwings,
+  An as computeSwingPoints,
+  Ai as computeViewBounds,
+  xi as computeWmaLine,
+  Ki as createDecisionRecord,
+  qi as createDecisionReferenceLevel,
+  Ui as createDecisionSnapshot,
+  De as createDurableObjectReference,
+  xr as createExecutionVenueEligibilityObservation,
+  fr as createImpulseFadeResearchProfile,
+  Er as createRadarSelectionProfile,
+  ji as createRadarStructureObservation,
+  Nt as createStrategyProfile,
+  Xi as createTradePlan,
+  zi as createUniverseMembershipObservation,
+  ur as decisionReferenceObservationId,
+  _t as decisionSnapshotId,
+  mr as decisionSnapshotReferenceLevels,
+  Mi as evaluateImpulseFadeSnapshot,
+  Oi as evaluateImpulseFadeTimeline,
+  ui as evaluateTradePlanCompliance,
+  Bt as executionVenueEligibilityObservationId,
+  M as immutableJsonClone,
+  ce as impulseFadeLifecycleConfigHash,
+  $i as lineToBytes,
+  ki as makeSyntheticCandles,
+  Zt as mergeLiveCandle,
+  dt as normalizeOhlcvPoint,
+  pi as normalizeRestTimeframe,
+  mt as packHistoricalCandles,
+  Si as prependHistoricalCandles,
+  Ft as radarSelectionProfileHash,
+  Dt as radarStructureObservationId,
+  Qi as scanRadarEpisodes,
+  We as strategyProfileHash,
+  K as timeframeToSeconds,
+  Xt as tradePlanId,
+  Lt as universeMembershipObservationId
 };

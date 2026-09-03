@@ -118,6 +118,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -136,6 +137,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -207,7 +209,7 @@
       "dataQualityNotes": [],
       "decisionTime": 1700000000,
       "effectiveAsOf": 1700000000,
-      "id": "decision-snapshot:11f0591fced9b330",
+      "id": "decision-snapshot:faf7ea9acc768dea",
       "lifecycleConfigHash": "fnv1a64:761921830014999a",
       "lifecycleEvidence": [
         {
@@ -247,6 +249,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -270,6 +273,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -290,6 +294,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -308,6 +313,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -331,6 +337,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -349,6 +356,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -420,7 +428,7 @@
       "dataQualityNotes": [],
       "decisionTime": 1700000000,
       "effectiveAsOf": 1700000000,
-      "id": "decision-snapshot:e06159d671ffe375",
+      "id": "decision-snapshot:136879eeeb2c5fbb",
       "lifecycleConfigHash": "fnv1a64:761921830014999a",
       "lifecycleEvidence": [
         {
@@ -469,6 +477,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -492,6 +501,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -512,6 +522,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -530,6 +541,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -553,6 +565,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -571,6 +584,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -642,7 +656,7 @@
       "dataQualityNotes": [],
       "decisionTime": 1700000000,
       "effectiveAsOf": 1700000000,
-      "id": "decision-snapshot:bed7b6779ed9e3f0",
+      "id": "decision-snapshot:13a6e27e1587b98a",
       "lifecycleConfigHash": "fnv1a64:761921830014999a",
       "lifecycleEvidence": [
         {
@@ -698,6 +712,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -721,6 +736,7 @@
           "sourceObject": {
             "objectId": "fil-support-zone-1",
             "objectType": "SupportResistanceZone",
+            "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
             "snapshot": {
               "high": 0.725,
               "kind": "support",
@@ -741,6 +757,7 @@
           "sourceObject": {
             "objectId": "fil-episode-1",
             "objectType": "SetupCandidateEpisode",
+            "observationId": "decision-reference-observation:c69873a1729e4198",
             "snapshot": {
               "episodeHigh": 0.82,
               "episodeHighTime": 1699996400
@@ -759,6 +776,7 @@
           "sourceObject": {
             "objectId": "fil-break-retest-1",
             "objectType": "SetupLifecycleLevel",
+            "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
             "snapshot": {
               "evidenceId": "retest-rejection",
               "level": 0.79
@@ -774,12 +792,12 @@
       "action": "Wait",
       "confidence": 0.7,
       "decisionTime": 1700000000,
-      "id": "decision:302d16892442f77a",
+      "id": "decision:185badf3edcb0abb",
       "nextCondition": "Wait for RS weakness or a bearish structure break",
       "schemaVersion": "decision-record.1",
       "sessionId": null,
       "skipReason": null,
-      "snapshotId": "decision-snapshot:11f0591fced9b330",
+      "snapshotId": "decision-snapshot:faf7ea9acc768dea",
       "tags": [
         "training",
         "impulse-fade-v1"
@@ -791,12 +809,12 @@
       "action": "Skip",
       "confidence": 0.85,
       "decisionTime": 1700000000,
-      "id": "decision:cf5914059e0d915c",
+      "id": "decision:2cca5dcec5228c45",
       "nextCondition": null,
       "schemaVersion": "decision-record.1",
       "sessionId": null,
       "skipReason": "noViableStop",
-      "snapshotId": "decision-snapshot:11f0591fced9b330",
+      "snapshotId": "decision-snapshot:faf7ea9acc768dea",
       "tags": [
         "training",
         "risk-first"
@@ -808,12 +826,12 @@
       "action": "ProposeTrade",
       "confidence": null,
       "decisionTime": 1700000000,
-      "id": "decision:e5643dac713dea76",
+      "id": "decision:e4dd8cc4d30ca23e",
       "nextCondition": null,
       "schemaVersion": "decision-record.1",
       "sessionId": null,
       "skipReason": null,
-      "snapshotId": "decision-snapshot:bed7b6779ed9e3f0",
+      "snapshotId": "decision-snapshot:13a6e27e1587b98a",
       "tags": [
         "training",
         "compliant"
@@ -851,6 +869,7 @@
             "sourceObject": {
               "objectId": "fil-break-retest-1",
               "objectType": "SetupLifecycleLevel",
+              "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
               "snapshot": {
                 "evidenceId": "retest-rejection",
                 "level": 0.79
@@ -873,7 +892,7 @@
           "stopExitFeeRate": 0.00055,
           "targetExitFeeRate": 0.00055
         },
-        "id": "trade-plan:44cc31471e18b9aa",
+        "id": "trade-plan:d2b1389848808e74",
         "leveragePolicy": {
           "mode": "derivedMinimum"
         },
@@ -944,7 +963,7 @@
           "weightedProjectedR": 1.864371250224546,
           "weightedProjectedReward": 186.43640640817563
         },
-        "snapshotId": "decision-snapshot:bed7b6779ed9e3f0",
+        "snapshotId": "decision-snapshot:13a6e27e1587b98a",
         "status": "finalized",
         "stopPlan": {
           "buffer": {
@@ -965,6 +984,7 @@
             "sourceObject": {
               "objectId": "fil-episode-1",
               "objectType": "SetupCandidateEpisode",
+              "observationId": "decision-reference-observation:c69873a1729e4198",
               "snapshot": {
                 "episodeHigh": 0.82,
                 "episodeHighTime": 1699996400
@@ -995,6 +1015,7 @@
               "sourceObject": {
                 "objectId": "fil-support-zone-1",
                 "objectType": "SupportResistanceZone",
+                "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
                 "snapshot": {
                   "high": 0.725,
                   "kind": "support",
@@ -1031,12 +1052,12 @@
       "action": "ProposeTrade",
       "confidence": null,
       "decisionTime": 1700000000,
-      "id": "decision:294af316485df255",
+      "id": "decision:9ebc40a4daf52550",
       "nextCondition": null,
       "schemaVersion": "decision-record.1",
       "sessionId": null,
       "skipReason": null,
-      "snapshotId": "decision-snapshot:e06159d671ffe375",
+      "snapshotId": "decision-snapshot:136879eeeb2c5fbb",
       "tags": [
         "training",
         "override"
@@ -1087,6 +1108,7 @@
             "sourceObject": {
               "objectId": "fil-break-retest-1",
               "objectType": "SetupLifecycleLevel",
+              "observationId": "decision-reference-observation:49e5646ec7b9ef2b",
               "snapshot": {
                 "evidenceId": "retest-rejection",
                 "level": 0.79
@@ -1109,7 +1131,7 @@
           "stopExitFeeRate": 0.00055,
           "targetExitFeeRate": 0.00055
         },
-        "id": "trade-plan:51fa24d471c0b03e",
+        "id": "trade-plan:382dbc0fe9b9c939",
         "leveragePolicy": {
           "mode": "derivedMinimum"
         },
@@ -1180,7 +1202,7 @@
           "weightedProjectedR": 1.864371250224546,
           "weightedProjectedReward": 186.43640640817563
         },
-        "snapshotId": "decision-snapshot:e06159d671ffe375",
+        "snapshotId": "decision-snapshot:136879eeeb2c5fbb",
         "status": "finalized",
         "stopPlan": {
           "buffer": {
@@ -1201,6 +1223,7 @@
             "sourceObject": {
               "objectId": "fil-episode-1",
               "objectType": "SetupCandidateEpisode",
+              "observationId": "decision-reference-observation:c69873a1729e4198",
               "snapshot": {
                 "episodeHigh": 0.82,
                 "episodeHighTime": 1699996400
@@ -1231,6 +1254,7 @@
               "sourceObject": {
                 "objectId": "fil-support-zone-1",
                 "objectType": "SupportResistanceZone",
+                "observationId": "decision-reference-observation:0d37fcf88c2bd3ce",
                 "snapshot": {
                   "high": 0.725,
                   "kind": "support",

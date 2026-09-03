@@ -1,6 +1,6 @@
 {
   "name": "@cryptodouche/gpu-chart-vue",
-  "version": "0.1.22",
+  "version": "0.1.23",
   "private": true,
   "type": "module",
   "files": [
@@ -26,6 +26,7 @@
     "clean:appledouble": "find . -name '._*' -not -path './node_modules/*' -delete",
     "test": "vitest run",
     "audit:impulse-fade": "pnpm build && node scripts/audit-impulse-fade.mjs",
+    "audit:radar": "pnpm build && node scripts/audit-radar.mjs",
     "audit:trade-plan": "pnpm build && node scripts/audit-trade-planning.mjs",
     "pack:local": "pnpm build && pnpm clean:appledouble && pnpm pack",
     "build:renderer": "bash scripts/build-renderer.sh"

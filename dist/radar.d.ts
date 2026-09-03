@@ -214,10 +214,13 @@ export interface RadarHardGateResult {
     code: RadarHardGateCode;
     passed: boolean;
     explanation: string;
+    evidenceObservationIds: string[];
 }
+export type RadarHardGateEvidence = RadarMetricObservation | UniverseMembershipObservation | ExecutionVenueEligibilityObservation;
 export interface RadarDetectorResult {
     detectorId: string;
     detectorType: RadarMoveDetector["type"];
+    evaluable: boolean;
     passed: boolean;
     observationIds: string[];
     winningObservationId: string | null;
@@ -230,6 +233,8 @@ export interface RadarGateEvaluation {
     asOf: number;
     detectorResults: RadarDetectorResult[];
     hardGateResults: RadarHardGateResult[];
+    hardGateEvidence: RadarHardGateEvidence[];
+    evaluable: boolean;
     detectorGatePassed: boolean;
     hardGatesPassed: boolean;
     compositePassed: boolean;
@@ -252,6 +257,7 @@ export interface RadarEpisode {
     triggeringObservations: RadarMetricObservation[];
     selectionGateEvaluationId: string;
     hardGateResults: RadarHardGateResult[];
+    hardGateEvidence: RadarHardGateEvidence[];
     contextObservations: RadarMetricObservation[];
     selectionAnchor: RadarSelectionAnchor | null;
     pathContext: RadarPathContext;
@@ -312,6 +318,7 @@ export interface ReplayCaseManifest {
     }>;
     initialRadarObservations: RadarMetricObservation[];
     initialHardGateResults: RadarHardGateResult[];
+    initialHardGateEvidence: RadarHardGateEvidence[];
     initialLifecycleState: string | null;
     initialLifecycleStateRef: DurableObjectReference | null;
     executionVenueEligibility: ExecutionVenueEligibilityObservation;
