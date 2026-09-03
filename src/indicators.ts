@@ -1,7 +1,11 @@
 import { timeframeToSeconds } from "./data";
+import { canonicalHash } from "./serialization";
 import type { CandleRecord } from "./types";
 
 export const IMPULSE_FADE_SETUP_FAMILY = "impulse_fade_v1" as const;
+export const IMPULSE_FADE_LIFECYCLE_VERSION = "impulse_fade_v1.lifecycle.1" as const;
+export const IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION =
+  "impulse_fade_v1.lifecycle-config.1" as const;
 
 export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
 
@@ -266,11 +270,14 @@ export interface SetupStateOptions {
   retestToleranceAtr?: number;
   invalidationBps?: number;
   maxCandidateAgeSeconds?: number;
+  lifecycleConfigHash?: string;
 }
 
 export interface SetupStateSnapshot {
   strategy: "pumpFade";
   setupFamily: SetupFamily;
+  lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+  lifecycleConfigHash: string;
   asOf: number | null;
   executionTimeframe: string;
   state: SetupStateName;
@@ -295,6 +302,8 @@ export interface SetupStateSnapshot {
 export interface SetupCandidateEpisode {
   id: string;
   setupFamily: SetupFamily;
+  lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+  lifecycleConfigHash: string;
   symbol: string;
   source: string;
   venue: string;
@@ -402,6 +411,9 @@ export interface ImpulseFadeTimelineOptions {
 
 export interface ImpulseFadeTimelineRecord {
   asOf: number;
+  setupFamily: SetupFamily;
+  lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+  lifecycleConfigHash: string;
   candidateGatePassed: boolean;
   candidateId: string | null;
   candidateDetectedAt: number | null;
@@ -702,6 +714,16 @@ export function computeSetupState(options: SetupStateOptions = {}): SetupStateSn
     asOf,
     updatedTs: latestTs,
     executionTimeframe,
+    lifecycleConfigHash:
+      options.lifecycleConfigHash ?? impulseFadeLifecycleConfigHash({
+        extensionOptions: options.extensionOptions,
+        resistanceNearPct: options.resistanceNearPct,
+        retestNearPct: options.retestNearPct,
+        retestToleranceBps: options.retestToleranceBps,
+        retestToleranceAtr: options.retestToleranceAtr,
+        invalidationBps: options.invalidationBps,
+        maxCandidateAgeSeconds: options.maxCandidateAgeSeconds,
+      }),
   };
   const fallbackState = snapshotSetupState({
     extension,
@@ -769,6 +791,63 @@ export function evaluateImpulseFadeTimeline(
   return evaluateImpulseFadeTimelineInternal(options).records;
 }
 
+export function impulseFadeLifecycleConfigHash(
+  config: ImpulseFadeTimelineConfig = {},
+): string {
+  return canonicalHash({
+    lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+    lifecycleConfigVersion: IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION,
+    candidateGate: {
+      returnPct: 8,
+      percentile: 95,
+      zScore: 2,
+      atrExtension: 2,
+      mode: "any",
+    },
+    extension: {
+      windowSeconds: clampIntegerOption(
+        config.extensionOptions?.windowSeconds,
+        60,
+        30 * 86_400,
+        86_400,
+      ),
+      historyDays: clampIntegerOption(config.extensionOptions?.historyDays, 1, 365, 180),
+      minSamples: clampIntegerOption(config.extensionOptions?.minSamples, 1, 5000, 20),
+      emaPeriod: clampIntegerOption(config.extensionOptions?.emaPeriod, 2, 500, 20),
+      atrPeriod: clampIntegerOption(config.extensionOptions?.atrPeriod, 2, 500, 14),
+    },
+    marketStructure: {
+      lookback: clampIntegerOption(
+        config.marketStructureOptions?.lookback,
+        20,
+        2000,
+        500,
+      ),
+      pivotStrength: clampIntegerOption(
+        config.marketStructureOptions?.pivotStrength,
+        1,
+        20,
+        3,
+      ),
+      atrPeriod: clampIntegerOption(config.marketStructureOptions?.atrPeriod, 2, 100, 14),
+      minMoveAtr: clampNumberOption(config.marketStructureOptions?.minMoveAtr, 0, 10, 0.75),
+      maxSwings: clampIntegerOption(config.marketStructureOptions?.maxSwings, 1, 500, 120),
+      maxBreaks: clampIntegerOption(config.marketStructureOptions?.maxBreaks, 1, 200, 24),
+    },
+    resistanceNearPct: clampNumberOption(config.resistanceNearPct, 0, 10, 1.5),
+    retestNearPct: clampNumberOption(config.retestNearPct, 0, 10, 0.8),
+    retestToleranceBps: clampNumberOption(config.retestToleranceBps, 0, 1000, 35),
+    retestToleranceAtr: clampNumberOption(config.retestToleranceAtr, 0, 10, 0.25),
+    invalidationBps: clampNumberOption(config.invalidationBps, 0, 1000, 10),
+    maxCandidateAgeSeconds: clampIntegerOption(
+      config.maxCandidateAgeSeconds,
+      60,
+      30 * 86_400,
+      72 * 60 * 60,
+    ),
+  });
+}
+
 export function evaluateImpulseFadeSnapshot(
   options: ImpulseFadeTimelineOptions,
 ): SetupStateSnapshot | null {
@@ -813,6 +892,7 @@ function evaluateImpulseFadeTimelineInternal(options: ImpulseFadeTimelineOptions
   const executionTimeframe = options.executionTimeframe;
   const executionCandles = options.candlesByTimeframe[executionTimeframe] ?? [];
   const config = options.config ?? {};
+  const lifecycleConfigHash = impulseFadeLifecycleConfigHash(config);
   const points = impulseFadeEvaluationPoints(options);
   const htfStructureHistory = buildHtfStructureHistory(
     options,
@@ -853,6 +933,9 @@ function evaluateImpulseFadeTimelineInternal(options: ImpulseFadeTimelineOptions
 
     return {
       asOf,
+      setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+      lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+      lifecycleConfigHash,
       candidateGatePassed: setupExtensionGatePass(extension),
       candidateId: snapshot.candidate?.id ?? null,
       candidateDetectedAt: snapshot.candidate?.detectedAt ?? null,
@@ -884,6 +967,7 @@ function impulseFadeSnapshotAt(
   const executionTimeframe = options.executionTimeframe;
   const executionCandles = options.candlesByTimeframe[executionTimeframe] ?? [];
   const config = options.config ?? {};
+  const lifecycleConfigHash = impulseFadeLifecycleConfigHash(config);
   const closedExecutionCandles = completedCandlesAt(executionCandles, executionTimeframe, asOf);
   const extensionSnapshot = computeExtensionSnapshot(closedExecutionCandles, config.extensionOptions);
   const metricObservation = latestCandidateMetricObservation(options.candidateMetrics, asOf);
@@ -924,6 +1008,7 @@ function impulseFadeSnapshotAt(
     retestToleranceAtr: config.retestToleranceAtr,
     invalidationBps: config.invalidationBps,
     maxCandidateAgeSeconds: config.maxCandidateAgeSeconds,
+    lifecycleConfigHash,
   });
 }
 
@@ -1150,6 +1235,7 @@ function computeImpulseFadeLifecycle(
       state: "notCandidate",
       reason: "No active Impulse Fade v1 candidate",
       dataQuality,
+      lifecycleConfigHash: options.lifecycleConfigHash,
     });
   }
 
@@ -1365,6 +1451,17 @@ function evaluateImpulseFadeCandidate(
   const candidate: SetupCandidateEpisode = {
     id: candidateId,
     setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+    lifecycleConfigHash:
+      options.lifecycleConfigHash ?? impulseFadeLifecycleConfigHash({
+        extensionOptions: options.extensionOptions,
+        resistanceNearPct: options.resistanceNearPct,
+        retestNearPct: options.retestNearPct,
+        retestToleranceBps: options.retestToleranceBps,
+        retestToleranceAtr: options.retestToleranceAtr,
+        invalidationBps: options.invalidationBps,
+        maxCandidateAgeSeconds: options.maxCandidateAgeSeconds,
+      }),
     symbol,
     source,
     venue,
@@ -1383,6 +1480,8 @@ function evaluateImpulseFadeCandidate(
   return {
     strategy: "pumpFade",
     setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+    lifecycleConfigHash: candidate.lifecycleConfigHash,
     asOf,
     executionTimeframe,
     state,
@@ -1753,10 +1852,14 @@ function snapshotFallbackSetupState(options: {
   state: SetupStateName;
   reason: string;
   dataQuality?: string[];
+  lifecycleConfigHash?: string;
 }): SetupStateSnapshot {
   return {
     strategy: "pumpFade",
     setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+    lifecycleConfigHash:
+      options.lifecycleConfigHash ?? impulseFadeLifecycleConfigHash(),
     asOf: options.asOf,
     executionTimeframe: options.executionTimeframe,
     state: options.state,

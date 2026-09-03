@@ -4,6 +4,8 @@ import {
   computeMarketStructure,
   evaluateImpulseFadeSnapshot,
   evaluateImpulseFadeTimeline,
+  IMPULSE_FADE_LIFECYCLE_VERSION,
+  impulseFadeLifecycleConfigHash,
 } from "./indicators";
 import type {
   AnchoredVwapSignal,
@@ -166,10 +168,17 @@ describe("Impulse Fade lifecycle timeline", () => {
     expect(first).toEqual(second);
     expect(JSON.stringify(first)).toBe(JSON.stringify(second));
     expect(first.at(-1)).toMatchObject({
+      setupFamily: "impulse_fade_v1",
+      lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+      lifecycleConfigHash: impulseFadeLifecycleConfigHash(input.config),
       candidateGatePassed: false,
       candidateDetectedAt: 300,
       candidateId: "impulse_fade_v1:filusdt:external:bybit:1m:300",
       currentState: "developing",
+    });
+    expect(evaluateImpulseFadeSnapshot(input)?.candidate).toMatchObject({
+      lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+      lifecycleConfigHash: impulseFadeLifecycleConfigHash(input.config),
     });
   });
 

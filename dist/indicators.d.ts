@@ -1,5 +1,7 @@
 import type { CandleRecord } from "./types";
 export declare const IMPULSE_FADE_SETUP_FAMILY: "impulse_fade_v1";
+export declare const IMPULSE_FADE_LIFECYCLE_VERSION: "impulse_fade_v1.lifecycle.1";
+export declare const IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION: "impulse_fade_v1.lifecycle-config.1";
 export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
 export interface SupportResistanceZone {
     kind: "support" | "resistance";
@@ -213,10 +215,13 @@ export interface SetupStateOptions {
     retestToleranceAtr?: number;
     invalidationBps?: number;
     maxCandidateAgeSeconds?: number;
+    lifecycleConfigHash?: string;
 }
 export interface SetupStateSnapshot {
     strategy: "pumpFade";
     setupFamily: SetupFamily;
+    lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+    lifecycleConfigHash: string;
     asOf: number | null;
     executionTimeframe: string;
     state: SetupStateName;
@@ -240,6 +245,8 @@ export interface SetupStateSnapshot {
 export interface SetupCandidateEpisode {
     id: string;
     setupFamily: SetupFamily;
+    lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+    lifecycleConfigHash: string;
     symbol: string;
     source: string;
     venue: string;
@@ -337,6 +344,9 @@ export interface ImpulseFadeTimelineOptions {
 }
 export interface ImpulseFadeTimelineRecord {
     asOf: number;
+    setupFamily: SetupFamily;
+    lifecycleVersion: typeof IMPULSE_FADE_LIFECYCLE_VERSION;
+    lifecycleConfigHash: string;
     candidateGatePassed: boolean;
     candidateId: string | null;
     candidateDetectedAt: number | null;
@@ -377,6 +387,7 @@ export declare function computeAtrLine(candles: CandleRecord[], period?: number)
 export declare function computeExtensionSnapshot(candles: CandleRecord[], options?: ExtensionSnapshotOptions): ExtensionSnapshot;
 export declare function computeSetupState(options?: SetupStateOptions): SetupStateSnapshot;
 export declare function evaluateImpulseFadeTimeline(options: ImpulseFadeTimelineOptions): ImpulseFadeTimelineRecord[];
+export declare function impulseFadeLifecycleConfigHash(config?: ImpulseFadeTimelineConfig): string;
 export declare function evaluateImpulseFadeSnapshot(options: ImpulseFadeTimelineOptions): SetupStateSnapshot | null;
 export declare const CANDLE_TIMESTAMP_SEMANTICS: "openTime";
 export declare function candleCloseTime(candle: Pick<CandleRecord, "ts" | "bucket">, timeframe: string | number): number;

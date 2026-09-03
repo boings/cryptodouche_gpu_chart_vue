@@ -3,6 +3,7 @@ export * from "./bars";
 export * from "./data";
 export * from "./indicators";
 export * from "./scheduler";
+export * from "./serialization";
 export * from "./timeAxis";
 export * from "./types";
 export * from "./viewport";
