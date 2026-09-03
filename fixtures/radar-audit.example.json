@@ -31,7 +31,7 @@
                 "percentile": 100,
                 "zScore": null,
                 "referenceTime": 1704150000,
-                "observationId": "radar-observation:d736e34510e83357"
+                "observationId": "radar-observation:f35b4320bc761e14"
               }
             ],
             "hardGates": [
@@ -40,6 +40,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -81,16 +82,16 @@
               "symbol": "REBOUNDUSDT"
             },
             "initialLifecycleState": "developing",
-            "episodeId": "radar-episode:b1de32718f07a069",
-            "manifestId": "replay-case:05b5e32fc4c2db1b"
+            "episodeId": "radar-episode:ed4b74bc6d8668a0",
+            "manifestId": "replay-case:318041fd07a5f58e"
           }
         ],
         "statusEvents": [
           {
             "asOf": 1704157200,
-            "episodeId": "radar-episode:b1de32718f07a069",
-            "logicalObjectId": "radar-episode:b1de32718f07a069",
-            "observationId": "radar-status:04ac6e86128b12b0",
+            "episodeId": "radar-episode:ed4b74bc6d8668a0",
+            "logicalObjectId": "radar-episode:ed4b74bc6d8668a0",
+            "observationId": "radar-status:043c89b17cc3cd88",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -98,7 +99,7 @@
           }
         ],
         "manifestIds": [
-          "replay-case:05b5e32fc4c2db1b"
+          "replay-case:318041fd07a5f58e"
         ]
       },
       "scanInput": {
@@ -210,7 +211,7 @@
               "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
               "lifecycleConfigHash": "fnv1a64:761921830014999a",
               "asOf": 1704157200,
-              "executionTimeframe": "1h",
+              "executionTimeframe": "15m",
               "state": "developing",
               "currentState": "developing",
               "stateSince": 1704157200,
@@ -226,7 +227,7 @@
                 "symbol": "REBOUNDUSDT",
                 "source": "bybit",
                 "venue": "bybit",
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "detectedAt": 1704157200,
                 "detectionEventTime": 1704157200,
                 "detectionMetrics": {
@@ -275,9 +276,9 @@
         "episodeStatusObservations": [
           {
             "asOf": 1704157200,
-            "episodeId": "radar-episode:b1de32718f07a069",
-            "logicalObjectId": "radar-episode:b1de32718f07a069",
-            "observationId": "radar-status:04ac6e86128b12b0",
+            "episodeId": "radar-episode:ed4b74bc6d8668a0",
+            "logicalObjectId": "radar-episode:ed4b74bc6d8668a0",
+            "observationId": "radar-status:043c89b17cc3cd88",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -289,81 +290,22 @@
             "activeUntil": 1704416400,
             "contextObservations": [
               {
-                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704150000,
-                "inputHash": "fnv1a64:b5402c7affce406e",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:da059a280cdef7e5",
-                "metricCode": "quote_notional",
-                "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:08021c5fd4d0df8f",
-                "percentile": null,
-                "referenceTime": 1704150000,
-                "referenceValue": null,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "quoteNotional",
-                "value": 1720000,
-                "window": 86400,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:6b843299cda75e5e",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 172800-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:192092b0583e2376",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:975de979d92487ee",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 172800,
-                "zScore": null
-              },
-              {
                 "configHash": "fnv1a64:e2d0012a5f4fdcf0",
                 "dataOrigin": "audit-fixture",
                 "dataQualityNotes": [],
                 "effectiveAsOf": 1704157200,
                 "historyEnd": 1704153600,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
+                "inputHash": "fnv1a64:566cfd663357385f",
                 "knownAt": 1704157200,
                 "logicalObjectId": "radar-metric:03f6afab3f1f1ebb",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:a5fcb1e0f3aecd51",
+                "observationId": "radar-observation:047a062a39887472",
                 "percentile": null,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:f4a54b36c131f29e",
                 "requestedAsOf": 1704157200,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -373,33 +315,6 @@
                 "unit": "percent",
                 "value": -7.9999999999999964,
                 "window": 86400,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:289e0fe8044cdb36",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
-                "metricCode": "rolling_trough_runup",
-                "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d736e34510e83357",
-                "percentile": 100,
-                "referenceTime": 1704150000,
-                "referenceValue": 80,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": 14.999999999999991,
-                "window": 172800,
                 "zScore": null
               },
               {
@@ -415,15 +330,16 @@
                 "effectiveAsOf": 1704157200,
                 "historyEnd": 1704153600,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
+                "inputHash": "fnv1a64:566cfd663357385f",
                 "knownAt": 1704157200,
                 "logicalObjectId": "radar-metric:667aa06a8ebc992e",
                 "metricCode": "ema_atr_displacement",
                 "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:d9d1cdd42e8030b1",
+                "observationId": "radar-observation:2a2a032b281b53c0",
                 "percentile": null,
                 "referenceTime": 1704153600,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:f2a0116098074e54",
                 "requestedAsOf": 1704157200,
                 "sampleCount": 3,
                 "schemaVersion": "radar-metric-observation.1",
@@ -433,6 +349,96 @@
                 "unit": "atr",
                 "value": null,
                 "window": null,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:6b843299cda75e5e",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 172800-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:566cfd663357385f",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:192092b0583e2376",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:995c08705138aa77",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:8b7138750eec3819",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:289e0fe8044cdb36",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:566cfd663357385f",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
+                "metricCode": "rolling_trough_runup",
+                "metricVersion": "rolling-trough-runup.1",
+                "observationId": "radar-observation:f35b4320bc761e14",
+                "percentile": 100,
+                "referenceTime": 1704150000,
+                "referenceValue": 80,
+                "requestId": "radar-observation-request:81f4ae85921049c3",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": 14.999999999999991,
+                "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704150000,
+                "inputHash": "fnv1a64:c17f5eafe491dad2",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:da059a280cdef7e5",
+                "metricCode": "quote_notional",
+                "metricVersion": "quote-notional.1",
+                "observationId": "radar-observation:fd90ca171dde338c",
+                "percentile": null,
+                "referenceTime": 1704150000,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:7ee1488afb9a76c7",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "quoteNotional",
+                "value": 1720000,
+                "window": 86400,
                 "zScore": null
               }
             ],
@@ -486,18 +492,19 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
-            "id": "radar-episode:b1de32718f07a069",
+            "id": "radar-episode:ed4b74bc6d8668a0",
             "initialLifecycleCandidateId": "audit-candidate:REBOUNDUSDT:primary:1704157200",
             "initialLifecycleCandidateRef": {
               "eventTime": 1704157200,
               "knownAt": 1704157200,
               "logicalObjectId": "audit-candidate:REBOUNDUSDT:primary:1704157200",
               "objectType": "SetupCandidateEpisode",
-              "observationId": "setupcandidateepisode-observation:43e878b23fd395d1",
+              "observationId": "setupcandidateepisode-observation:1da0f9d8f4922d33",
               "snapshot": {
                 "currentState": "developing",
                 "detectedAt": 1704157200,
@@ -510,7 +517,7 @@
                 },
                 "episodeHigh": 92,
                 "episodeHighTime": 1704157200,
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "id": "audit-candidate:REBOUNDUSDT:primary:1704157200",
                 "initialMtfContext": [],
                 "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -529,7 +536,7 @@
               "knownAt": 1704157200,
               "logicalObjectId": "audit-candidate:REBOUNDUSDT:primary:1704157200",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:3bd401c01da54495",
+              "observationId": "setupstatesnapshot-observation:01b9520eda4be173",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704157200,
@@ -545,7 +552,7 @@
                   },
                   "episodeHigh": 92,
                   "episodeHighTime": 1704157200,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:REBOUNDUSDT:primary:1704157200",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -562,7 +569,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -580,8 +587,8 @@
               }
             },
             "initialMtfStructure": {},
-            "logicalObjectId": "radar-episode:b1de32718f07a069",
-            "observationId": "radar-episode-observation:1f5210485f6894e5",
+            "logicalObjectId": "radar-episode:ed4b74bc6d8668a0",
+            "observationId": "radar-episode-observation:c056fb5850ee05c7",
             "pathContext": {
               "contextTags": [
                 "rebound_after_drawdown"
@@ -610,13 +617,13 @@
             "selectionAnchor": {
               "ageSeconds": 3600,
               "logicalObjectId": "selection-anchor:2b330c1ef27dca03",
-              "observationId": "selection-anchor-observation:26bf3d89a77b3380",
+              "observationId": "selection-anchor-observation:c9394155a8fa82e5",
               "price": 80,
               "referenceField": "close",
-              "sourceObservationId": "radar-observation:d736e34510e83357",
+              "sourceObservationId": "radar-observation:f35b4320bc761e14",
               "timestamp": 1704150000
             },
-            "selectionGateEvaluationId": "radar-gate:9b6d6e931efc8324",
+            "selectionGateEvaluationId": "radar-gate:fc37e2cccc43f1c7",
             "selectionProfileHash": "fnv1a64:7003128e294884d0",
             "selectionProfileId": "radar-audit.rebound",
             "selectionProfileVersion": "1",
@@ -636,15 +643,16 @@
                 "effectiveAsOf": 1704157200,
                 "historyEnd": 1704153600,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
+                "inputHash": "fnv1a64:566cfd663357385f",
                 "knownAt": 1704157200,
                 "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d736e34510e83357",
+                "observationId": "radar-observation:f35b4320bc761e14",
                 "percentile": 100,
                 "referenceTime": 1704150000,
                 "referenceValue": 80,
+                "requestId": "radar-observation-request:81f4ae85921049c3",
                 "requestedAsOf": 1704157200,
                 "sampleCount": 2,
                 "schemaVersion": "radar-metric-observation.1",
@@ -672,10 +680,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:1d5bcfcac859aedb"
+                  "radar-observation:e0208d5febd5ef4d"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:35577e369c375276"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -701,12 +713,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:aa1614dab940c98b",
+            "id": "radar-gate:c12b95c913a70e46",
             "source": "bybit",
             "symbol": "REBOUNDUSDT"
           },
@@ -721,10 +734,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:3518ff37c102d1e4"
+                  "radar-observation:035dd131ed4b2951"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:7473220f3b979e9c"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -750,12 +767,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:0eb9990de5c6fde2",
+            "id": "radar-gate:c93c8c3a4c5ab39d",
             "source": "bybit",
             "symbol": "REBOUNDUSDT"
           },
@@ -770,10 +788,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +15.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:d736e34510e83357"
+                  "radar-observation:f35b4320bc761e14"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:81f4ae85921049c3"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:d736e34510e83357"
+                "winningObservationId": "radar-observation:f35b4320bc761e14",
+                "winningObservationRequestId": "radar-observation-request:81f4ae85921049c3"
               }
             ],
             "evaluable": true,
@@ -799,12 +821,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:9b6d6e931efc8324",
+            "id": "radar-gate:fc37e2cccc43f1c7",
             "source": "bybit",
             "symbol": "REBOUNDUSDT"
           }
@@ -817,15 +840,16 @@
             "effectiveAsOf": 1704070800,
             "historyEnd": 1704067200,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:7cb31e997dc18867",
+            "inputHash": "fnv1a64:d34f303a5e79deb0",
             "knownAt": 1704070800,
             "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:1d5bcfcac859aedb",
+            "observationId": "radar-observation:e0208d5febd5ef4d",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:35577e369c375276",
             "requestedAsOf": 1704070800,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -844,15 +868,16 @@
             "effectiveAsOf": 1704153600,
             "historyEnd": 1704150000,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:922618ea69081f82",
+            "inputHash": "fnv1a64:2253c91a0f5254e4",
             "knownAt": 1704153600,
             "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:3518ff37c102d1e4",
+            "observationId": "radar-observation:035dd131ed4b2951",
             "percentile": 100,
             "referenceTime": 1704150000,
             "referenceValue": 80,
+            "requestId": "radar-observation-request:7473220f3b979e9c",
             "requestedAsOf": 1704153600,
             "sampleCount": 1,
             "schemaVersion": "radar-metric-observation.1",
@@ -865,81 +890,22 @@
             "zScore": null
           },
           {
-            "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [],
-            "effectiveAsOf": 1704157200,
-            "historyEnd": 1704153600,
-            "historyStart": 1704150000,
-            "inputHash": "fnv1a64:b5402c7affce406e",
-            "knownAt": 1704157200,
-            "logicalObjectId": "radar-metric:da059a280cdef7e5",
-            "metricCode": "quote_notional",
-            "metricVersion": "quote-notional.1",
-            "observationId": "radar-observation:08021c5fd4d0df8f",
-            "percentile": null,
-            "referenceTime": 1704150000,
-            "referenceValue": null,
-            "requestedAsOf": 1704157200,
-            "sampleCount": 2,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REBOUNDUSDT",
-            "timeframe": "1h",
-            "unit": "quoteNotional",
-            "value": 1720000,
-            "window": 86400,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:6b843299cda75e5e",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 172800-second reference exists",
-                "severity": "warning"
-              }
-            ],
-            "effectiveAsOf": 1704157200,
-            "historyEnd": 1704153600,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:36df015451491b84",
-            "knownAt": 1704157200,
-            "logicalObjectId": "radar-metric:192092b0583e2376",
-            "metricCode": "elapsed_window_return",
-            "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:975de979d92487ee",
-            "percentile": null,
-            "referenceTime": null,
-            "referenceValue": null,
-            "requestedAsOf": 1704157200,
-            "sampleCount": 0,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REBOUNDUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": null,
-            "window": 172800,
-            "zScore": null
-          },
-          {
             "configHash": "fnv1a64:e2d0012a5f4fdcf0",
             "dataOrigin": "audit-fixture",
             "dataQualityNotes": [],
             "effectiveAsOf": 1704157200,
             "historyEnd": 1704153600,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:36df015451491b84",
+            "inputHash": "fnv1a64:566cfd663357385f",
             "knownAt": 1704157200,
             "logicalObjectId": "radar-metric:03f6afab3f1f1ebb",
             "metricCode": "elapsed_window_return",
             "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:a5fcb1e0f3aecd51",
+            "observationId": "radar-observation:047a062a39887472",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:f4a54b36c131f29e",
             "requestedAsOf": 1704157200,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -949,33 +915,6 @@
             "unit": "percent",
             "value": -7.9999999999999964,
             "window": 86400,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:289e0fe8044cdb36",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [],
-            "effectiveAsOf": 1704157200,
-            "historyEnd": 1704153600,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:36df015451491b84",
-            "knownAt": 1704157200,
-            "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
-            "metricCode": "rolling_trough_runup",
-            "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:d736e34510e83357",
-            "percentile": 100,
-            "referenceTime": 1704150000,
-            "referenceValue": 80,
-            "requestedAsOf": 1704157200,
-            "sampleCount": 2,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REBOUNDUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": 14.999999999999991,
-            "window": 172800,
             "zScore": null
           },
           {
@@ -991,15 +930,16 @@
             "effectiveAsOf": 1704157200,
             "historyEnd": 1704153600,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:36df015451491b84",
+            "inputHash": "fnv1a64:566cfd663357385f",
             "knownAt": 1704157200,
             "logicalObjectId": "radar-metric:667aa06a8ebc992e",
             "metricCode": "ema_atr_displacement",
             "metricVersion": "ema-atr-displacement.1",
-            "observationId": "radar-observation:d9d1cdd42e8030b1",
+            "observationId": "radar-observation:2a2a032b281b53c0",
             "percentile": null,
             "referenceTime": 1704153600,
             "referenceValue": null,
+            "requestId": "radar-observation-request:f2a0116098074e54",
             "requestedAsOf": 1704157200,
             "sampleCount": 3,
             "schemaVersion": "radar-metric-observation.1",
@@ -1009,6 +949,96 @@
             "unit": "atr",
             "value": null,
             "window": null,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:6b843299cda75e5e",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 172800-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1704157200,
+            "historyEnd": 1704153600,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:566cfd663357385f",
+            "knownAt": 1704157200,
+            "logicalObjectId": "radar-metric:192092b0583e2376",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:995c08705138aa77",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:8b7138750eec3819",
+            "requestedAsOf": 1704157200,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REBOUNDUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 172800,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:289e0fe8044cdb36",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1704157200,
+            "historyEnd": 1704153600,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:566cfd663357385f",
+            "knownAt": 1704157200,
+            "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
+            "metricCode": "rolling_trough_runup",
+            "metricVersion": "rolling-trough-runup.1",
+            "observationId": "radar-observation:f35b4320bc761e14",
+            "percentile": 100,
+            "referenceTime": 1704150000,
+            "referenceValue": 80,
+            "requestId": "radar-observation-request:81f4ae85921049c3",
+            "requestedAsOf": 1704157200,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REBOUNDUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": 14.999999999999991,
+            "window": 172800,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1704157200,
+            "historyEnd": 1704153600,
+            "historyStart": 1704150000,
+            "inputHash": "fnv1a64:c17f5eafe491dad2",
+            "knownAt": 1704157200,
+            "logicalObjectId": "radar-metric:da059a280cdef7e5",
+            "metricCode": "quote_notional",
+            "metricVersion": "quote-notional.1",
+            "observationId": "radar-observation:fd90ca171dde338c",
+            "percentile": null,
+            "referenceTime": 1704150000,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:7ee1488afb9a76c7",
+            "requestedAsOf": 1704157200,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REBOUNDUSDT",
+            "timeframe": "1h",
+            "unit": "quoteNotional",
+            "value": 1720000,
+            "window": 86400,
             "zScore": null
           }
         ],
@@ -1053,7 +1083,7 @@
               "symbol": "REBOUNDUSDT"
             },
             "futureOutcomeRef": null,
-            "id": "replay-case:05b5e32fc4c2db1b",
+            "id": "replay-case:318041fd07a5f58e",
             "initialHardGateEvidence": [
               {
                 "dataQualityNotes": [],
@@ -1076,6 +1106,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:4f814116ee44cfbc"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -1086,7 +1117,7 @@
               "knownAt": 1704157200,
               "logicalObjectId": "audit-candidate:REBOUNDUSDT:primary:1704157200",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:3bd401c01da54495",
+              "observationId": "setupstatesnapshot-observation:01b9520eda4be173",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704157200,
@@ -1102,7 +1133,7 @@
                   },
                   "episodeHigh": 92,
                   "episodeHighTime": 1704157200,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:REBOUNDUSDT:primary:1704157200",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -1119,7 +1150,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -1138,81 +1169,22 @@
             },
             "initialRadarObservations": [
               {
-                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704150000,
-                "inputHash": "fnv1a64:b5402c7affce406e",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:da059a280cdef7e5",
-                "metricCode": "quote_notional",
-                "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:08021c5fd4d0df8f",
-                "percentile": null,
-                "referenceTime": 1704150000,
-                "referenceValue": null,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "quoteNotional",
-                "value": 1720000,
-                "window": 86400,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:6b843299cda75e5e",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 172800-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:192092b0583e2376",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:975de979d92487ee",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 172800,
-                "zScore": null
-              },
-              {
                 "configHash": "fnv1a64:e2d0012a5f4fdcf0",
                 "dataOrigin": "audit-fixture",
                 "dataQualityNotes": [],
                 "effectiveAsOf": 1704157200,
                 "historyEnd": 1704153600,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
+                "inputHash": "fnv1a64:566cfd663357385f",
                 "knownAt": 1704157200,
                 "logicalObjectId": "radar-metric:03f6afab3f1f1ebb",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:a5fcb1e0f3aecd51",
+                "observationId": "radar-observation:047a062a39887472",
                 "percentile": null,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:f4a54b36c131f29e",
                 "requestedAsOf": 1704157200,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1222,33 +1194,6 @@
                 "unit": "percent",
                 "value": -7.9999999999999964,
                 "window": 86400,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:289e0fe8044cdb36",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704157200,
-                "historyEnd": 1704153600,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
-                "knownAt": 1704157200,
-                "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
-                "metricCode": "rolling_trough_runup",
-                "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d736e34510e83357",
-                "percentile": 100,
-                "referenceTime": 1704150000,
-                "referenceValue": 80,
-                "requestedAsOf": 1704157200,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REBOUNDUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": 14.999999999999991,
-                "window": 172800,
                 "zScore": null
               },
               {
@@ -1264,15 +1209,16 @@
                 "effectiveAsOf": 1704157200,
                 "historyEnd": 1704153600,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:36df015451491b84",
+                "inputHash": "fnv1a64:566cfd663357385f",
                 "knownAt": 1704157200,
                 "logicalObjectId": "radar-metric:667aa06a8ebc992e",
                 "metricCode": "ema_atr_displacement",
                 "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:d9d1cdd42e8030b1",
+                "observationId": "radar-observation:2a2a032b281b53c0",
                 "percentile": null,
                 "referenceTime": 1704153600,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:f2a0116098074e54",
                 "requestedAsOf": 1704157200,
                 "sampleCount": 3,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1282,6 +1228,96 @@
                 "unit": "atr",
                 "value": null,
                 "window": null,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:6b843299cda75e5e",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 172800-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:566cfd663357385f",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:192092b0583e2376",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:995c08705138aa77",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:8b7138750eec3819",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:289e0fe8044cdb36",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:566cfd663357385f",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:8ddd4d63c7c7c997",
+                "metricCode": "rolling_trough_runup",
+                "metricVersion": "rolling-trough-runup.1",
+                "observationId": "radar-observation:f35b4320bc761e14",
+                "percentile": 100,
+                "referenceTime": 1704150000,
+                "referenceValue": 80,
+                "requestId": "radar-observation-request:81f4ae85921049c3",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": 14.999999999999991,
+                "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704157200,
+                "historyEnd": 1704153600,
+                "historyStart": 1704150000,
+                "inputHash": "fnv1a64:c17f5eafe491dad2",
+                "knownAt": 1704157200,
+                "logicalObjectId": "radar-metric:da059a280cdef7e5",
+                "metricCode": "quote_notional",
+                "metricVersion": "quote-notional.1",
+                "observationId": "radar-observation:fd90ca171dde338c",
+                "percentile": null,
+                "referenceTime": 1704150000,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:7ee1488afb9a76c7",
+                "requestedAsOf": 1704157200,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REBOUNDUSDT",
+                "timeframe": "1h",
+                "unit": "quoteNotional",
+                "value": 1720000,
+                "window": 86400,
                 "zScore": null
               }
             ],
@@ -1298,8 +1334,8 @@
                 "timeframe": "1h"
               }
             ],
-            "radarEpisodeId": "radar-episode:b1de32718f07a069",
-            "radarEpisodeObservationId": "radar-episode-observation:1f5210485f6894e5",
+            "radarEpisodeId": "radar-episode:ed4b74bc6d8668a0",
+            "radarEpisodeObservationId": "radar-episode-observation:c056fb5850ee05c7",
             "schemaVersion": "replay-case-manifest.1",
             "selectionProfileRef": {
               "canonicalConfigHash": "fnv1a64:7003128e294884d0",
@@ -1352,7 +1388,7 @@
                 "percentile": 100,
                 "zScore": null,
                 "referenceTime": 1704067200,
-                "observationId": "radar-observation:d93b4434a41e4f8b"
+                "observationId": "radar-observation:d24820a32d465874"
               }
             ],
             "hardGates": [
@@ -1361,6 +1397,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -1402,8 +1439,8 @@
               "symbol": "REARMUSDT"
             },
             "initialLifecycleState": "developing",
-            "episodeId": "radar-episode:1361ab346afc7177",
-            "manifestId": "replay-case:39e1cd68d4517586"
+            "episodeId": "radar-episode:3f6547a8ec7836d7",
+            "manifestId": "replay-case:196ec977be76694f"
           },
           {
             "detectedAt": 1704088800,
@@ -1419,7 +1456,7 @@
                 "percentile": 80,
                 "zScore": 1.1743764572705986,
                 "referenceTime": 1704078000,
-                "observationId": "radar-observation:bbdad08d9768bb26"
+                "observationId": "radar-observation:bfb00750414ef5be"
               }
             ],
             "hardGates": [
@@ -1428,6 +1465,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -1469,16 +1507,16 @@
               "symbol": "REARMUSDT"
             },
             "initialLifecycleState": "deteriorating",
-            "episodeId": "radar-episode:e95c634d7c4bf657",
-            "manifestId": "replay-case:0353d3ac868e0e27"
+            "episodeId": "radar-episode:6ece9617ae3a6eea",
+            "manifestId": "replay-case:7ed977f1f0163c20"
           }
         ],
         "statusEvents": [
           {
             "asOf": 1704074400,
-            "episodeId": "radar-episode:1361ab346afc7177",
-            "logicalObjectId": "radar-episode:1361ab346afc7177",
-            "observationId": "radar-status:e13e073f7aeb380c",
+            "episodeId": "radar-episode:3f6547a8ec7836d7",
+            "logicalObjectId": "radar-episode:3f6547a8ec7836d7",
+            "observationId": "radar-status:00a88b64409261dc",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -1486,9 +1524,9 @@
           },
           {
             "asOf": 1704085200,
-            "episodeId": "radar-episode:1361ab346afc7177",
-            "logicalObjectId": "radar-episode:1361ab346afc7177",
-            "observationId": "radar-status:b47ab1779a4b1a49",
+            "episodeId": "radar-episode:3f6547a8ec7836d7",
+            "logicalObjectId": "radar-episode:3f6547a8ec7836d7",
+            "observationId": "radar-status:2b7303c5132099f9",
             "rearmState": "armed",
             "reason": "radarGateReset",
             "schemaVersion": "radar-episode-status.1",
@@ -1496,9 +1534,9 @@
           },
           {
             "asOf": 1704088800,
-            "episodeId": "radar-episode:e95c634d7c4bf657",
-            "logicalObjectId": "radar-episode:e95c634d7c4bf657",
-            "observationId": "radar-status:6a2e4f656a1d904f",
+            "episodeId": "radar-episode:6ece9617ae3a6eea",
+            "logicalObjectId": "radar-episode:6ece9617ae3a6eea",
+            "observationId": "radar-status:39154cd55226b6b7",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -1506,8 +1544,8 @@
           }
         ],
         "manifestIds": [
-          "replay-case:0353d3ac868e0e27",
-          "replay-case:39e1cd68d4517586"
+          "replay-case:196ec977be76694f",
+          "replay-case:7ed977f1f0163c20"
         ]
       },
       "scanInput": {
@@ -1652,7 +1690,7 @@
               "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
               "lifecycleConfigHash": "fnv1a64:761921830014999a",
               "asOf": 1704074400,
-              "executionTimeframe": "1h",
+              "executionTimeframe": "15m",
               "state": "developing",
               "currentState": "developing",
               "stateSince": 1704074400,
@@ -1668,7 +1706,7 @@
                 "symbol": "REARMUSDT",
                 "source": "bybit",
                 "venue": "bybit",
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "detectedAt": 1704074400,
                 "detectionEventTime": 1704074400,
                 "detectionMetrics": {
@@ -1700,7 +1738,7 @@
               "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
               "lifecycleConfigHash": "fnv1a64:761921830014999a",
               "asOf": 1704088800,
-              "executionTimeframe": "1h",
+              "executionTimeframe": "15m",
               "state": "deteriorating",
               "currentState": "deteriorating",
               "stateSince": 1704088800,
@@ -1716,7 +1754,7 @@
                 "symbol": "REARMUSDT",
                 "source": "bybit",
                 "venue": "bybit",
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "detectedAt": 1704088800,
                 "detectionEventTime": 1704088800,
                 "detectionMetrics": {
@@ -1765,9 +1803,9 @@
         "episodeStatusObservations": [
           {
             "asOf": 1704074400,
-            "episodeId": "radar-episode:1361ab346afc7177",
-            "logicalObjectId": "radar-episode:1361ab346afc7177",
-            "observationId": "radar-status:e13e073f7aeb380c",
+            "episodeId": "radar-episode:3f6547a8ec7836d7",
+            "logicalObjectId": "radar-episode:3f6547a8ec7836d7",
+            "observationId": "radar-status:00a88b64409261dc",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -1775,9 +1813,9 @@
           },
           {
             "asOf": 1704085200,
-            "episodeId": "radar-episode:1361ab346afc7177",
-            "logicalObjectId": "radar-episode:1361ab346afc7177",
-            "observationId": "radar-status:b47ab1779a4b1a49",
+            "episodeId": "radar-episode:3f6547a8ec7836d7",
+            "logicalObjectId": "radar-episode:3f6547a8ec7836d7",
+            "observationId": "radar-status:2b7303c5132099f9",
             "rearmState": "armed",
             "reason": "radarGateReset",
             "schemaVersion": "radar-episode-status.1",
@@ -1785,9 +1823,9 @@
           },
           {
             "asOf": 1704088800,
-            "episodeId": "radar-episode:e95c634d7c4bf657",
-            "logicalObjectId": "radar-episode:e95c634d7c4bf657",
-            "observationId": "radar-status:6a2e4f656a1d904f",
+            "episodeId": "radar-episode:6ece9617ae3a6eea",
+            "logicalObjectId": "radar-episode:6ece9617ae3a6eea",
+            "observationId": "radar-status:39154cd55226b6b7",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -1798,6 +1836,40 @@
           {
             "activeUntil": 1704333600,
             "contextObservations": [
+              {
+                "configHash": "fnv1a64:ec940ecaf0bf875d",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "INSUFFICIENT_METRIC_HISTORY",
+                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                    "severity": "error"
+                  }
+                ],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:cd834c737eb69450",
+                "metricCode": "ema_atr_displacement",
+                "metricVersion": "ema-atr-displacement.1",
+                "observationId": "radar-observation:245668a0512731ce",
+                "percentile": null,
+                "referenceTime": 1704070800,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:0ee0fef4c4d14e5e",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "atr",
+                "value": null,
+                "window": null,
+                "zScore": null
+              },
               {
                 "configHash": "fnv1a64:e2d0012a5f4fdcf0",
                 "dataOrigin": "audit-fixture",
@@ -1811,15 +1883,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:e74cecfad124dc01",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:1d0514814cb0cee7",
+                "observationId": "radar-observation:2d2b2b8005be72d6",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6e52fea6dfc037c2",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1844,15 +1917,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:561057b17f22b9b4",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:5d351723c674d030",
+                "observationId": "radar-observation:3aadb78a5dc417e3",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:1eb77289de64ca82",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1871,15 +1945,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:0dc3cf786a68e853",
                 "metricCode": "quote_notional",
                 "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:98facbe926f19359",
+                "observationId": "radar-observation:a5015b6073020c8a",
                 "percentile": null,
                 "referenceTime": 1704067200,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:40df7f027c01bbe5",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 2,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1898,15 +1973,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d93b4434a41e4f8b",
+                "observationId": "radar-observation:d24820a32d465874",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:93aa6da653d5b44d",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -1916,39 +1992,6 @@
                 "unit": "percent",
                 "value": 19.999999999999996,
                 "window": 7200,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:ec940ecaf0bf875d",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "INSUFFICIENT_METRIC_HISTORY",
-                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                    "severity": "error"
-                  }
-                ],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:cd834c737eb69450",
-                "metricCode": "ema_atr_displacement",
-                "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:e06970be6e8202cd",
-                "percentile": null,
-                "referenceTime": 1704070800,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "atr",
-                "value": null,
-                "window": null,
                 "zScore": null
               }
             ],
@@ -2007,18 +2050,19 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
-            "id": "radar-episode:1361ab346afc7177",
+            "id": "radar-episode:3f6547a8ec7836d7",
             "initialLifecycleCandidateId": "audit-candidate:REARMUSDT:first:1704074400",
             "initialLifecycleCandidateRef": {
               "eventTime": 1704074400,
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:REARMUSDT:first:1704074400",
               "objectType": "SetupCandidateEpisode",
-              "observationId": "setupcandidateepisode-observation:75025c56c1341077",
+              "observationId": "setupcandidateepisode-observation:37a62cb27cc2a229",
               "snapshot": {
                 "currentState": "developing",
                 "detectedAt": 1704074400,
@@ -2031,7 +2075,7 @@
                 },
                 "episodeHigh": 120,
                 "episodeHighTime": 1704074400,
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "id": "audit-candidate:REARMUSDT:first:1704074400",
                 "initialMtfContext": [],
                 "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -2050,7 +2094,7 @@
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:REARMUSDT:first:1704074400",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:608180cf6960a779",
+              "observationId": "setupstatesnapshot-observation:a6f70bc2e67fc573",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704074400,
@@ -2066,7 +2110,7 @@
                   },
                   "episodeHigh": 120,
                   "episodeHighTime": 1704074400,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:REARMUSDT:first:1704074400",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -2083,7 +2127,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -2101,8 +2145,8 @@
               }
             },
             "initialMtfStructure": {},
-            "logicalObjectId": "radar-episode:1361ab346afc7177",
-            "observationId": "radar-episode-observation:1988aa8434eccee6",
+            "logicalObjectId": "radar-episode:3f6547a8ec7836d7",
+            "observationId": "radar-episode-observation:6750ce7517ce1f50",
             "pathContext": {
               "contextTags": [
                 "unknown"
@@ -2131,13 +2175,13 @@
             "selectionAnchor": {
               "ageSeconds": 3600,
               "logicalObjectId": "selection-anchor:ec28b0f3496928a9",
-              "observationId": "selection-anchor-observation:f4482b730e815f17",
+              "observationId": "selection-anchor-observation:9ba92d1d5b4f0af3",
               "price": 100,
               "referenceField": "close",
-              "sourceObservationId": "radar-observation:d93b4434a41e4f8b",
+              "sourceObservationId": "radar-observation:d24820a32d465874",
               "timestamp": 1704067200
             },
-            "selectionGateEvaluationId": "radar-gate:4603258df9d49a22",
+            "selectionGateEvaluationId": "radar-gate:8fe82e1d50ce02ff",
             "selectionProfileHash": "fnv1a64:fa3909122772927e",
             "selectionProfileId": "radar-audit.reset-rearm",
             "selectionProfileVersion": "1",
@@ -2157,15 +2201,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d93b4434a41e4f8b",
+                "observationId": "radar-observation:d24820a32d465874",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:93aa6da653d5b44d",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -2183,6 +2228,40 @@
             "activeUntil": 1704348000,
             "contextObservations": [
               {
+                "configHash": "fnv1a64:ec940ecaf0bf875d",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "INSUFFICIENT_METRIC_HISTORY",
+                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                    "severity": "error"
+                  }
+                ],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:cd834c737eb69450",
+                "metricCode": "ema_atr_displacement",
+                "metricVersion": "ema-atr-displacement.1",
+                "observationId": "radar-observation:5e66882d4d917ab6",
+                "percentile": null,
+                "referenceTime": 1704085200,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:048c580093dc4172",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 6,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "atr",
+                "value": null,
+                "window": null,
+                "zScore": null
+              },
+              {
                 "configHash": "fnv1a64:e2d0012a5f4fdcf0",
                 "dataOrigin": "audit-fixture",
                 "dataQualityNotes": [
@@ -2195,15 +2274,16 @@
                 "effectiveAsOf": 1704088800,
                 "historyEnd": 1704085200,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
+                "inputHash": "fnv1a64:93466c977e909a1f",
                 "knownAt": 1704088800,
                 "logicalObjectId": "radar-metric:e74cecfad124dc01",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:995bc6213a9ccb40",
+                "observationId": "radar-observation:abd21d8a179f5eb4",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:ca0e4d96f7bf667c",
                 "requestedAsOf": 1704088800,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -2214,6 +2294,34 @@
                 "value": null,
                 "window": 86400,
                 "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:c6402df80fdaa8a0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
+                "metricCode": "rolling_trough_runup",
+                "metricVersion": "rolling-trough-runup.1",
+                "observationId": "radar-observation:bfb00750414ef5be",
+                "percentile": 80,
+                "referenceTime": 1704078000,
+                "referenceValue": 100,
+                "requestId": "radar-observation-request:f7ade6a9e013004a",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 5,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": 19.999999999999996,
+                "window": 7200,
+                "zScore": 1.1743764572705986
               },
               {
                 "configHash": "fnv1a64:6b843299cda75e5e",
@@ -2228,15 +2336,16 @@
                 "effectiveAsOf": 1704088800,
                 "historyEnd": 1704085200,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
+                "inputHash": "fnv1a64:93466c977e909a1f",
                 "knownAt": 1704088800,
                 "logicalObjectId": "radar-metric:561057b17f22b9b4",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:a890d8d374cbf5b1",
+                "observationId": "radar-observation:c8d11a08c9a1db19",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:1f90e51b7e8b9d30",
                 "requestedAsOf": 1704088800,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -2249,81 +2358,22 @@
                 "zScore": null
               },
               {
-                "configHash": "fnv1a64:c6402df80fdaa8a0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
-                "metricCode": "rolling_trough_runup",
-                "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:bbdad08d9768bb26",
-                "percentile": 80,
-                "referenceTime": 1704078000,
-                "referenceValue": 100,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 5,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": 19.999999999999996,
-                "window": 7200,
-                "zScore": 1.1743764572705986
-              },
-              {
-                "configHash": "fnv1a64:ec940ecaf0bf875d",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "INSUFFICIENT_METRIC_HISTORY",
-                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                    "severity": "error"
-                  }
-                ],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:cd834c737eb69450",
-                "metricCode": "ema_atr_displacement",
-                "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:d3de67afe3c1b52e",
-                "percentile": null,
-                "referenceTime": 1704085200,
-                "referenceValue": null,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 6,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "atr",
-                "value": null,
-                "window": null,
-                "zScore": null
-              },
-              {
                 "configHash": "fnv1a64:2ffdc8e021ce6fe0",
                 "dataOrigin": "audit-fixture",
                 "dataQualityNotes": [],
                 "effectiveAsOf": 1704088800,
                 "historyEnd": 1704085200,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
+                "inputHash": "fnv1a64:93466c977e909a1f",
                 "knownAt": 1704088800,
                 "logicalObjectId": "radar-metric:0dc3cf786a68e853",
                 "metricCode": "quote_notional",
                 "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:dec6f98ee0e050cb",
+                "observationId": "radar-observation:cf7bff0109c49b73",
                 "percentile": null,
                 "referenceTime": 1704067200,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:309f14ce93510a12",
                 "requestedAsOf": 1704088800,
                 "sampleCount": 6,
                 "schemaVersion": "radar-metric-observation.1",
@@ -2391,18 +2441,19 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
-            "id": "radar-episode:e95c634d7c4bf657",
+            "id": "radar-episode:6ece9617ae3a6eea",
             "initialLifecycleCandidateId": "audit-candidate:REARMUSDT:second:1704088800",
             "initialLifecycleCandidateRef": {
               "eventTime": 1704088800,
               "knownAt": 1704088800,
               "logicalObjectId": "audit-candidate:REARMUSDT:second:1704088800",
               "objectType": "SetupCandidateEpisode",
-              "observationId": "setupcandidateepisode-observation:e385d4fce2c88097",
+              "observationId": "setupcandidateepisode-observation:7e46cfe7d2e3dcf5",
               "snapshot": {
                 "currentState": "deteriorating",
                 "detectedAt": 1704088800,
@@ -2415,7 +2466,7 @@
                 },
                 "episodeHigh": 120,
                 "episodeHighTime": 1704088800,
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "id": "audit-candidate:REARMUSDT:second:1704088800",
                 "initialMtfContext": [],
                 "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -2434,7 +2485,7 @@
               "knownAt": 1704088800,
               "logicalObjectId": "audit-candidate:REARMUSDT:second:1704088800",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:4f9429e5df78d202",
+              "observationId": "setupstatesnapshot-observation:1b51039ba56ddcd0",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704088800,
@@ -2450,7 +2501,7 @@
                   },
                   "episodeHigh": 120,
                   "episodeHighTime": 1704088800,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:REARMUSDT:second:1704088800",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -2467,7 +2518,7 @@
                 "currentState": "deteriorating",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DETERIORATING",
@@ -2485,8 +2536,8 @@
               }
             },
             "initialMtfStructure": {},
-            "logicalObjectId": "radar-episode:e95c634d7c4bf657",
-            "observationId": "radar-episode-observation:3c83b1337bcb70c6",
+            "logicalObjectId": "radar-episode:6ece9617ae3a6eea",
+            "observationId": "radar-episode-observation:21d3e37e5b3a0edb",
             "pathContext": {
               "contextTags": [
                 "rebound_after_drawdown"
@@ -2515,13 +2566,13 @@
             "selectionAnchor": {
               "ageSeconds": 7200,
               "logicalObjectId": "selection-anchor:40fa9c3623b986fb",
-              "observationId": "selection-anchor-observation:0bf6834c912e827b",
+              "observationId": "selection-anchor-observation:e4cafa7d9d04afd6",
               "price": 100,
               "referenceField": "close",
-              "sourceObservationId": "radar-observation:bbdad08d9768bb26",
+              "sourceObservationId": "radar-observation:bfb00750414ef5be",
               "timestamp": 1704078000
             },
-            "selectionGateEvaluationId": "radar-gate:40ef68b2e81661c7",
+            "selectionGateEvaluationId": "radar-gate:8cef5fa2fdc690ec",
             "selectionProfileHash": "fnv1a64:fa3909122772927e",
             "selectionProfileId": "radar-audit.reset-rearm",
             "selectionProfileVersion": "1",
@@ -2541,15 +2592,16 @@
                 "effectiveAsOf": 1704088800,
                 "historyEnd": 1704085200,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
+                "inputHash": "fnv1a64:93466c977e909a1f",
                 "knownAt": 1704088800,
                 "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:bbdad08d9768bb26",
+                "observationId": "radar-observation:bfb00750414ef5be",
                 "percentile": 80,
                 "referenceTime": 1704078000,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:f7ade6a9e013004a",
                 "requestedAsOf": 1704088800,
                 "sampleCount": 5,
                 "schemaVersion": "radar-metric-observation.1",
@@ -2577,10 +2629,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:a107038ef7121b63"
+                  "radar-observation:e5620341aa1b7f79"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:443a34c386e796db"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -2606,12 +2662,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:2b31bed2a0c307ac",
+            "id": "radar-gate:a1964e960036832a",
             "source": "bybit",
             "symbol": "REARMUSDT"
           },
@@ -2626,10 +2683,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +20.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:d93b4434a41e4f8b"
+                  "radar-observation:d24820a32d465874"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:93aa6da653d5b44d"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:d93b4434a41e4f8b"
+                "winningObservationId": "radar-observation:d24820a32d465874",
+                "winningObservationRequestId": "radar-observation-request:93aa6da653d5b44d"
               }
             ],
             "evaluable": true,
@@ -2655,12 +2716,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:4603258df9d49a22",
+            "id": "radar-gate:8fe82e1d50ce02ff",
             "source": "bybit",
             "symbol": "REARMUSDT"
           },
@@ -2675,10 +2737,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +21.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:a1ace5cf6a976182"
+                  "radar-observation:e3d9b8fd3ba4a824"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:409c8fb9d767036f"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:a1ace5cf6a976182"
+                "winningObservationId": "radar-observation:e3d9b8fd3ba4a824",
+                "winningObservationRequestId": "radar-observation-request:409c8fb9d767036f"
               }
             ],
             "evaluable": true,
@@ -2704,12 +2770,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:6abc15377d063d43",
+            "id": "radar-gate:4922c8fa4640f8e8",
             "source": "bybit",
             "symbol": "REARMUSDT"
           },
@@ -2724,10 +2791,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:e0f22de354ff5ada"
+                  "radar-observation:b0dd5e8296f85cbb"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:d6386239e37402e0"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -2753,12 +2824,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:e1d0e5cdeb5b317c",
+            "id": "radar-gate:43204b6b4bcb8c3a",
             "source": "bybit",
             "symbol": "REARMUSDT"
           },
@@ -2773,10 +2845,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:cd61a75a1bd0bbbc"
+                  "radar-observation:8b79125ebd61952c"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:58a28b81fca02366"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -2802,12 +2878,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:9cb94af534c9d635",
+            "id": "radar-gate:a8d6a7bd63689f7f",
             "source": "bybit",
             "symbol": "REARMUSDT"
           },
@@ -2822,10 +2899,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +20.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:bbdad08d9768bb26"
+                  "radar-observation:bfb00750414ef5be"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:f7ade6a9e013004a"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:bbdad08d9768bb26"
+                "winningObservationId": "radar-observation:bfb00750414ef5be",
+                "winningObservationRequestId": "radar-observation-request:f7ade6a9e013004a"
               }
             ],
             "evaluable": true,
@@ -2851,12 +2932,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:40ef68b2e81661c7",
+            "id": "radar-gate:8cef5fa2fdc690ec",
             "source": "bybit",
             "symbol": "REARMUSDT"
           }
@@ -2869,15 +2951,16 @@
             "effectiveAsOf": 1704070800,
             "historyEnd": 1704067200,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:7cb31e997dc18867",
+            "inputHash": "fnv1a64:d34f303a5e79deb0",
             "knownAt": 1704070800,
             "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:a107038ef7121b63",
+            "observationId": "radar-observation:e5620341aa1b7f79",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:443a34c386e796db",
             "requestedAsOf": 1704070800,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -2887,6 +2970,40 @@
             "unit": "percent",
             "value": 0,
             "window": 7200,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:ec940ecaf0bf875d",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [
+              {
+                "code": "INSUFFICIENT_METRIC_HISTORY",
+                "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                "severity": "error"
+              }
+            ],
+            "effectiveAsOf": 1704074400,
+            "historyEnd": 1704070800,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:6b5b28f592c31155",
+            "knownAt": 1704074400,
+            "logicalObjectId": "radar-metric:cd834c737eb69450",
+            "metricCode": "ema_atr_displacement",
+            "metricVersion": "ema-atr-displacement.1",
+            "observationId": "radar-observation:245668a0512731ce",
+            "percentile": null,
+            "referenceTime": 1704070800,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:0ee0fef4c4d14e5e",
+            "requestedAsOf": 1704074400,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REARMUSDT",
+            "timeframe": "1h",
+            "unit": "atr",
+            "value": null,
+            "window": null,
             "zScore": null
           },
           {
@@ -2902,15 +3019,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:e74cecfad124dc01",
             "metricCode": "elapsed_window_return",
             "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:1d0514814cb0cee7",
+            "observationId": "radar-observation:2d2b2b8005be72d6",
             "percentile": null,
             "referenceTime": null,
             "referenceValue": null,
+            "requestId": "radar-observation-request:6e52fea6dfc037c2",
             "requestedAsOf": 1704074400,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -2935,15 +3053,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:561057b17f22b9b4",
             "metricCode": "elapsed_window_return",
             "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:5d351723c674d030",
+            "observationId": "radar-observation:3aadb78a5dc417e3",
             "percentile": null,
             "referenceTime": null,
             "referenceValue": null,
+            "requestId": "radar-observation-request:1eb77289de64ca82",
             "requestedAsOf": 1704074400,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -2962,15 +3081,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:0dc3cf786a68e853",
             "metricCode": "quote_notional",
             "metricVersion": "quote-notional.1",
-            "observationId": "radar-observation:98facbe926f19359",
+            "observationId": "radar-observation:a5015b6073020c8a",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": null,
+            "requestId": "radar-observation-request:40df7f027c01bbe5",
             "requestedAsOf": 1704074400,
             "sampleCount": 2,
             "schemaVersion": "radar-metric-observation.1",
@@ -2989,15 +3109,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:d93b4434a41e4f8b",
+            "observationId": "radar-observation:d24820a32d465874",
             "percentile": 100,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:93aa6da653d5b44d",
             "requestedAsOf": 1704074400,
             "sampleCount": 1,
             "schemaVersion": "radar-metric-observation.1",
@@ -3010,54 +3131,22 @@
             "zScore": null
           },
           {
-            "configHash": "fnv1a64:ec940ecaf0bf875d",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [
-              {
-                "code": "INSUFFICIENT_METRIC_HISTORY",
-                "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                "severity": "error"
-              }
-            ],
-            "effectiveAsOf": 1704074400,
-            "historyEnd": 1704070800,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
-            "knownAt": 1704074400,
-            "logicalObjectId": "radar-metric:cd834c737eb69450",
-            "metricCode": "ema_atr_displacement",
-            "metricVersion": "ema-atr-displacement.1",
-            "observationId": "radar-observation:e06970be6e8202cd",
-            "percentile": null,
-            "referenceTime": 1704070800,
-            "referenceValue": null,
-            "requestedAsOf": 1704074400,
-            "sampleCount": 2,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REARMUSDT",
-            "timeframe": "1h",
-            "unit": "atr",
-            "value": null,
-            "window": null,
-            "zScore": null
-          },
-          {
             "configHash": "fnv1a64:c6402df80fdaa8a0",
             "dataOrigin": "audit-fixture",
             "dataQualityNotes": [],
             "effectiveAsOf": 1704078000,
             "historyEnd": 1704074400,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b904c6fb2c8d05da",
+            "inputHash": "fnv1a64:8e815cf918aa225b",
             "knownAt": 1704078000,
             "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:a1ace5cf6a976182",
+            "observationId": "radar-observation:e3d9b8fd3ba4a824",
             "percentile": 100,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:409c8fb9d767036f",
             "requestedAsOf": 1704078000,
             "sampleCount": 2,
             "schemaVersion": "radar-metric-observation.1",
@@ -3076,15 +3165,16 @@
             "effectiveAsOf": 1704081600,
             "historyEnd": 1704078000,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:a948a6deed2258bc",
+            "inputHash": "fnv1a64:99c203546a133430",
             "knownAt": 1704081600,
             "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:e0f22de354ff5ada",
+            "observationId": "radar-observation:b0dd5e8296f85cbb",
             "percentile": 33.33333333333333,
             "referenceTime": 1704078000,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:d6386239e37402e0",
             "requestedAsOf": 1704081600,
             "sampleCount": 3,
             "schemaVersion": "radar-metric-observation.1",
@@ -3103,15 +3193,16 @@
             "effectiveAsOf": 1704085200,
             "historyEnd": 1704081600,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:610e8d5cd097b152",
+            "inputHash": "fnv1a64:932db34ef9bbd72d",
             "knownAt": 1704085200,
             "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:cd61a75a1bd0bbbc",
+            "observationId": "radar-observation:8b79125ebd61952c",
             "percentile": 50,
             "referenceTime": 1704078000,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:58a28b81fca02366",
             "requestedAsOf": 1704085200,
             "sampleCount": 4,
             "schemaVersion": "radar-metric-observation.1",
@@ -3122,99 +3213,6 @@
             "value": 0,
             "window": 7200,
             "zScore": -0.9994056463070785
-          },
-          {
-            "configHash": "fnv1a64:e2d0012a5f4fdcf0",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 86400-second reference exists",
-                "severity": "warning"
-              }
-            ],
-            "effectiveAsOf": 1704088800,
-            "historyEnd": 1704085200,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:aee9acf87dfe4e46",
-            "knownAt": 1704088800,
-            "logicalObjectId": "radar-metric:e74cecfad124dc01",
-            "metricCode": "elapsed_window_return",
-            "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:995bc6213a9ccb40",
-            "percentile": null,
-            "referenceTime": null,
-            "referenceValue": null,
-            "requestedAsOf": 1704088800,
-            "sampleCount": 0,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REARMUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": null,
-            "window": 86400,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:6b843299cda75e5e",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 172800-second reference exists",
-                "severity": "warning"
-              }
-            ],
-            "effectiveAsOf": 1704088800,
-            "historyEnd": 1704085200,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:aee9acf87dfe4e46",
-            "knownAt": 1704088800,
-            "logicalObjectId": "radar-metric:561057b17f22b9b4",
-            "metricCode": "elapsed_window_return",
-            "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:a890d8d374cbf5b1",
-            "percentile": null,
-            "referenceTime": null,
-            "referenceValue": null,
-            "requestedAsOf": 1704088800,
-            "sampleCount": 0,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REARMUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": null,
-            "window": 172800,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:c6402df80fdaa8a0",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [],
-            "effectiveAsOf": 1704088800,
-            "historyEnd": 1704085200,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:aee9acf87dfe4e46",
-            "knownAt": 1704088800,
-            "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
-            "metricCode": "rolling_trough_runup",
-            "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:bbdad08d9768bb26",
-            "percentile": 80,
-            "referenceTime": 1704078000,
-            "referenceValue": 100,
-            "requestedAsOf": 1704088800,
-            "sampleCount": 5,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "REARMUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": 19.999999999999996,
-            "window": 7200,
-            "zScore": 1.1743764572705986
           },
           {
             "configHash": "fnv1a64:ec940ecaf0bf875d",
@@ -3229,15 +3227,16 @@
             "effectiveAsOf": 1704088800,
             "historyEnd": 1704085200,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:aee9acf87dfe4e46",
+            "inputHash": "fnv1a64:93466c977e909a1f",
             "knownAt": 1704088800,
             "logicalObjectId": "radar-metric:cd834c737eb69450",
             "metricCode": "ema_atr_displacement",
             "metricVersion": "ema-atr-displacement.1",
-            "observationId": "radar-observation:d3de67afe3c1b52e",
+            "observationId": "radar-observation:5e66882d4d917ab6",
             "percentile": null,
             "referenceTime": 1704085200,
             "referenceValue": null,
+            "requestId": "radar-observation-request:048c580093dc4172",
             "requestedAsOf": 1704088800,
             "sampleCount": 6,
             "schemaVersion": "radar-metric-observation.1",
@@ -3250,21 +3249,118 @@
             "zScore": null
           },
           {
+            "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 86400-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1704088800,
+            "historyEnd": 1704085200,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:93466c977e909a1f",
+            "knownAt": 1704088800,
+            "logicalObjectId": "radar-metric:e74cecfad124dc01",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:abd21d8a179f5eb4",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:ca0e4d96f7bf667c",
+            "requestedAsOf": 1704088800,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REARMUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 86400,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:c6402df80fdaa8a0",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1704088800,
+            "historyEnd": 1704085200,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:93466c977e909a1f",
+            "knownAt": 1704088800,
+            "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
+            "metricCode": "rolling_trough_runup",
+            "metricVersion": "rolling-trough-runup.1",
+            "observationId": "radar-observation:bfb00750414ef5be",
+            "percentile": 80,
+            "referenceTime": 1704078000,
+            "referenceValue": 100,
+            "requestId": "radar-observation-request:f7ade6a9e013004a",
+            "requestedAsOf": 1704088800,
+            "sampleCount": 5,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REARMUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": 19.999999999999996,
+            "window": 7200,
+            "zScore": 1.1743764572705986
+          },
+          {
+            "configHash": "fnv1a64:6b843299cda75e5e",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 172800-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1704088800,
+            "historyEnd": 1704085200,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:93466c977e909a1f",
+            "knownAt": 1704088800,
+            "logicalObjectId": "radar-metric:561057b17f22b9b4",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:c8d11a08c9a1db19",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:1f90e51b7e8b9d30",
+            "requestedAsOf": 1704088800,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "REARMUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 172800,
+            "zScore": null
+          },
+          {
             "configHash": "fnv1a64:2ffdc8e021ce6fe0",
             "dataOrigin": "audit-fixture",
             "dataQualityNotes": [],
             "effectiveAsOf": 1704088800,
             "historyEnd": 1704085200,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:aee9acf87dfe4e46",
+            "inputHash": "fnv1a64:93466c977e909a1f",
             "knownAt": 1704088800,
             "logicalObjectId": "radar-metric:0dc3cf786a68e853",
             "metricCode": "quote_notional",
             "metricVersion": "quote-notional.1",
-            "observationId": "radar-observation:dec6f98ee0e050cb",
+            "observationId": "radar-observation:cf7bff0109c49b73",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": null,
+            "requestId": "radar-observation-request:309f14ce93510a12",
             "requestedAsOf": 1704088800,
             "sampleCount": 6,
             "schemaVersion": "radar-metric-observation.1",
@@ -3278,319 +3374,6 @@
           }
         ],
         "replayCaseManifests": [
-          {
-            "availableTimeframes": [
-              "1h"
-            ],
-            "dataCoverageByTimeframe": {
-              "1h": {
-                "availableEnd": 1704085200,
-                "availableStart": 1704067200,
-                "completedCandleCount": 6,
-                "completedThrough": 1704088800
-              }
-            },
-            "dataQualityNotes": [
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 86400-second reference exists",
-                "severity": "warning"
-              },
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 172800-second reference exists",
-                "severity": "warning"
-              },
-              {
-                "code": "INSUFFICIENT_METRIC_HISTORY",
-                "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                "severity": "error"
-              }
-            ],
-            "detectedAt": 1704088800,
-            "executionVenueEligibility": {
-              "dataQualityNotes": [],
-              "effectiveFrom": 1704063600,
-              "effectiveTo": null,
-              "evidenceSource": "deterministic-radar-audit",
-              "executionVenue": "phemex",
-              "knownAt": 1704063600,
-              "logicalObjectId": "execution-venue:phemex:REARMUSDT",
-              "marketDataSource": "bybit",
-              "observationId": "execution-venue-observation:be0f4107c6c679b8",
-              "schemaVersion": "execution-venue-eligibility.1",
-              "status": "Available",
-              "symbol": "REARMUSDT"
-            },
-            "futureOutcomeRef": null,
-            "id": "replay-case:0353d3ac868e0e27",
-            "initialHardGateEvidence": [
-              {
-                "dataQualityNotes": [],
-                "effectiveFrom": 1704063600,
-                "effectiveTo": null,
-                "evidenceSource": "deterministic-radar-audit",
-                "executionVenue": "phemex",
-                "knownAt": 1704063600,
-                "logicalObjectId": "execution-venue:phemex:REARMUSDT",
-                "marketDataSource": "bybit",
-                "observationId": "execution-venue-observation:be0f4107c6c679b8",
-                "schemaVersion": "execution-venue-eligibility.1",
-                "status": "Available",
-                "symbol": "REARMUSDT"
-              }
-            ],
-            "initialHardGateResults": [
-              {
-                "code": "executionVenueEligibility",
-                "evidenceObservationIds": [
-                  "execution-venue-observation:be0f4107c6c679b8"
-                ],
-                "explanation": "Execution venue Available",
-                "passed": true
-              }
-            ],
-            "initialLifecycleState": "deteriorating",
-            "initialLifecycleStateRef": {
-              "eventTime": 1704088800,
-              "knownAt": 1704088800,
-              "logicalObjectId": "audit-candidate:REARMUSDT:second:1704088800",
-              "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:4f9429e5df78d202",
-              "snapshot": {
-                "activeBreakLevel": null,
-                "asOf": 1704088800,
-                "candidate": {
-                  "currentState": "deteriorating",
-                  "detectedAt": 1704088800,
-                  "detectionEventTime": 1704088800,
-                  "detectionMetrics": {
-                    "atrExtension": null,
-                    "percentile": null,
-                    "returnPct": null,
-                    "zScore": null
-                  },
-                  "episodeHigh": 120,
-                  "episodeHighTime": 1704088800,
-                  "executionTimeframe": "1h",
-                  "id": "audit-candidate:REARMUSDT:second:1704088800",
-                  "initialMtfContext": [],
-                  "lifecycleConfigHash": "fnv1a64:761921830014999a",
-                  "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
-                  "setupFamily": "impulse_fade_v1",
-                  "source": "bybit",
-                  "stateSince": 1704088800,
-                  "symbol": "REARMUSDT",
-                  "terminalAt": null,
-                  "venue": "bybit"
-                },
-                "checks": [],
-                "confluence": [],
-                "currentState": "deteriorating",
-                "dataQuality": [],
-                "evidence": [],
-                "executionTimeframe": "1h",
-                "expiryReason": null,
-                "invalidationReason": null,
-                "label": "PUMP FADE DETERIORATING",
-                "lifecycleConfigHash": "fnv1a64:761921830014999a",
-                "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
-                "pendingConditions": [],
-                "reason": "Deterministic lifecycle context supplied by the radar audit fixture",
-                "retestLevel": null,
-                "setupFamily": "impulse_fade_v1",
-                "state": "deteriorating",
-                "stateSince": 1704088800,
-                "strategy": "pumpFade",
-                "transitions": [],
-                "updatedTs": 1704088800
-              }
-            },
-            "initialRadarObservations": [
-              {
-                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 86400-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:e74cecfad124dc01",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:995bc6213a9ccb40",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 86400,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:6b843299cda75e5e",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 172800-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:561057b17f22b9b4",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:a890d8d374cbf5b1",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 172800,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:c6402df80fdaa8a0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
-                "metricCode": "rolling_trough_runup",
-                "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:bbdad08d9768bb26",
-                "percentile": 80,
-                "referenceTime": 1704078000,
-                "referenceValue": 100,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 5,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": 19.999999999999996,
-                "window": 7200,
-                "zScore": 1.1743764572705986
-              },
-              {
-                "configHash": "fnv1a64:ec940ecaf0bf875d",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "INSUFFICIENT_METRIC_HISTORY",
-                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                    "severity": "error"
-                  }
-                ],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:cd834c737eb69450",
-                "metricCode": "ema_atr_displacement",
-                "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:d3de67afe3c1b52e",
-                "percentile": null,
-                "referenceTime": 1704085200,
-                "referenceValue": null,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 6,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "atr",
-                "value": null,
-                "window": null,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704088800,
-                "historyEnd": 1704085200,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:aee9acf87dfe4e46",
-                "knownAt": 1704088800,
-                "logicalObjectId": "radar-metric:0dc3cf786a68e853",
-                "metricCode": "quote_notional",
-                "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:dec6f98ee0e050cb",
-                "percentile": null,
-                "referenceTime": 1704067200,
-                "referenceValue": null,
-                "requestedAsOf": 1704088800,
-                "sampleCount": 6,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "quoteNotional",
-                "value": 6610000,
-                "window": 86400,
-                "zScore": null
-              }
-            ],
-            "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
-            "preRollRequirements": [
-              {
-                "minimumBars": 0,
-                "minimumDurationSeconds": 172800,
-                "purposes": [
-                  "24h/48h path context",
-                  "liquidity context",
-                  "recent-trough-runup"
-                ],
-                "timeframe": "1h"
-              }
-            ],
-            "radarEpisodeId": "radar-episode:e95c634d7c4bf657",
-            "radarEpisodeObservationId": "radar-episode-observation:3c83b1337bcb70c6",
-            "schemaVersion": "replay-case-manifest.1",
-            "selectionProfileRef": {
-              "canonicalConfigHash": "fnv1a64:fa3909122772927e",
-              "id": "radar-audit.reset-rearm",
-              "version": "1"
-            },
-            "source": "bybit",
-            "startAsOf": 1704088800,
-            "strategyProfileRef": {
-              "id": "impulse_fade_v1.research.default",
-              "profileHash": "fnv1a64:d775f8489b62ae94",
-              "version": "1"
-            },
-            "symbol": "REARMUSDT"
-          },
           {
             "availableTimeframes": [
               "1h"
@@ -3636,7 +3419,7 @@
               "symbol": "REARMUSDT"
             },
             "futureOutcomeRef": null,
-            "id": "replay-case:39e1cd68d4517586",
+            "id": "replay-case:196ec977be76694f",
             "initialHardGateEvidence": [
               {
                 "dataQualityNotes": [],
@@ -3659,6 +3442,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:be0f4107c6c679b8"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -3669,7 +3453,7 @@
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:REARMUSDT:first:1704074400",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:608180cf6960a779",
+              "observationId": "setupstatesnapshot-observation:a6f70bc2e67fc573",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704074400,
@@ -3685,7 +3469,7 @@
                   },
                   "episodeHigh": 120,
                   "episodeHighTime": 1704074400,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:REARMUSDT:first:1704074400",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -3702,7 +3486,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -3721,6 +3505,40 @@
             },
             "initialRadarObservations": [
               {
+                "configHash": "fnv1a64:ec940ecaf0bf875d",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "INSUFFICIENT_METRIC_HISTORY",
+                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                    "severity": "error"
+                  }
+                ],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:cd834c737eb69450",
+                "metricCode": "ema_atr_displacement",
+                "metricVersion": "ema-atr-displacement.1",
+                "observationId": "radar-observation:245668a0512731ce",
+                "percentile": null,
+                "referenceTime": 1704070800,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:0ee0fef4c4d14e5e",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "atr",
+                "value": null,
+                "window": null,
+                "zScore": null
+              },
+              {
                 "configHash": "fnv1a64:e2d0012a5f4fdcf0",
                 "dataOrigin": "audit-fixture",
                 "dataQualityNotes": [
@@ -3733,15 +3551,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:e74cecfad124dc01",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:1d0514814cb0cee7",
+                "observationId": "radar-observation:2d2b2b8005be72d6",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6e52fea6dfc037c2",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -3766,15 +3585,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:561057b17f22b9b4",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:5d351723c674d030",
+                "observationId": "radar-observation:3aadb78a5dc417e3",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:1eb77289de64ca82",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -3793,15 +3613,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:0dc3cf786a68e853",
                 "metricCode": "quote_notional",
                 "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:98facbe926f19359",
+                "observationId": "radar-observation:a5015b6073020c8a",
                 "percentile": null,
                 "referenceTime": 1704067200,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:40df7f027c01bbe5",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 2,
                 "schemaVersion": "radar-metric-observation.1",
@@ -3820,15 +3641,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:d93b4434a41e4f8b",
+                "observationId": "radar-observation:d24820a32d465874",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:93aa6da653d5b44d",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -3838,39 +3660,6 @@
                 "unit": "percent",
                 "value": 19.999999999999996,
                 "window": 7200,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:ec940ecaf0bf875d",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "INSUFFICIENT_METRIC_HISTORY",
-                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
-                    "severity": "error"
-                  }
-                ],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:cd834c737eb69450",
-                "metricCode": "ema_atr_displacement",
-                "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:e06970be6e8202cd",
-                "percentile": null,
-                "referenceTime": 1704070800,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "REARMUSDT",
-                "timeframe": "1h",
-                "unit": "atr",
-                "value": null,
-                "window": null,
                 "zScore": null
               }
             ],
@@ -3887,8 +3676,8 @@
                 "timeframe": "1h"
               }
             ],
-            "radarEpisodeId": "radar-episode:1361ab346afc7177",
-            "radarEpisodeObservationId": "radar-episode-observation:1988aa8434eccee6",
+            "radarEpisodeId": "radar-episode:3f6547a8ec7836d7",
+            "radarEpisodeObservationId": "radar-episode-observation:6750ce7517ce1f50",
             "schemaVersion": "replay-case-manifest.1",
             "selectionProfileRef": {
               "canonicalConfigHash": "fnv1a64:fa3909122772927e",
@@ -3897,6 +3686,325 @@
             },
             "source": "bybit",
             "startAsOf": 1704074400,
+            "strategyProfileRef": {
+              "id": "impulse_fade_v1.research.default",
+              "profileHash": "fnv1a64:d775f8489b62ae94",
+              "version": "1"
+            },
+            "symbol": "REARMUSDT"
+          },
+          {
+            "availableTimeframes": [
+              "1h"
+            ],
+            "dataCoverageByTimeframe": {
+              "1h": {
+                "availableEnd": 1704085200,
+                "availableStart": 1704067200,
+                "completedCandleCount": 6,
+                "completedThrough": 1704088800
+              }
+            },
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 86400-second reference exists",
+                "severity": "warning"
+              },
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 172800-second reference exists",
+                "severity": "warning"
+              },
+              {
+                "code": "INSUFFICIENT_METRIC_HISTORY",
+                "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                "severity": "error"
+              }
+            ],
+            "detectedAt": 1704088800,
+            "executionVenueEligibility": {
+              "dataQualityNotes": [],
+              "effectiveFrom": 1704063600,
+              "effectiveTo": null,
+              "evidenceSource": "deterministic-radar-audit",
+              "executionVenue": "phemex",
+              "knownAt": 1704063600,
+              "logicalObjectId": "execution-venue:phemex:REARMUSDT",
+              "marketDataSource": "bybit",
+              "observationId": "execution-venue-observation:be0f4107c6c679b8",
+              "schemaVersion": "execution-venue-eligibility.1",
+              "status": "Available",
+              "symbol": "REARMUSDT"
+            },
+            "futureOutcomeRef": null,
+            "id": "replay-case:7ed977f1f0163c20",
+            "initialHardGateEvidence": [
+              {
+                "dataQualityNotes": [],
+                "effectiveFrom": 1704063600,
+                "effectiveTo": null,
+                "evidenceSource": "deterministic-radar-audit",
+                "executionVenue": "phemex",
+                "knownAt": 1704063600,
+                "logicalObjectId": "execution-venue:phemex:REARMUSDT",
+                "marketDataSource": "bybit",
+                "observationId": "execution-venue-observation:be0f4107c6c679b8",
+                "schemaVersion": "execution-venue-eligibility.1",
+                "status": "Available",
+                "symbol": "REARMUSDT"
+              }
+            ],
+            "initialHardGateResults": [
+              {
+                "code": "executionVenueEligibility",
+                "evidenceObservationIds": [
+                  "execution-venue-observation:be0f4107c6c679b8"
+                ],
+                "evidenceRequestIds": [],
+                "explanation": "Execution venue Available",
+                "passed": true
+              }
+            ],
+            "initialLifecycleState": "deteriorating",
+            "initialLifecycleStateRef": {
+              "eventTime": 1704088800,
+              "knownAt": 1704088800,
+              "logicalObjectId": "audit-candidate:REARMUSDT:second:1704088800",
+              "objectType": "SetupStateSnapshot",
+              "observationId": "setupstatesnapshot-observation:1b51039ba56ddcd0",
+              "snapshot": {
+                "activeBreakLevel": null,
+                "asOf": 1704088800,
+                "candidate": {
+                  "currentState": "deteriorating",
+                  "detectedAt": 1704088800,
+                  "detectionEventTime": 1704088800,
+                  "detectionMetrics": {
+                    "atrExtension": null,
+                    "percentile": null,
+                    "returnPct": null,
+                    "zScore": null
+                  },
+                  "episodeHigh": 120,
+                  "episodeHighTime": 1704088800,
+                  "executionTimeframe": "15m",
+                  "id": "audit-candidate:REARMUSDT:second:1704088800",
+                  "initialMtfContext": [],
+                  "lifecycleConfigHash": "fnv1a64:761921830014999a",
+                  "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+                  "setupFamily": "impulse_fade_v1",
+                  "source": "bybit",
+                  "stateSince": 1704088800,
+                  "symbol": "REARMUSDT",
+                  "terminalAt": null,
+                  "venue": "bybit"
+                },
+                "checks": [],
+                "confluence": [],
+                "currentState": "deteriorating",
+                "dataQuality": [],
+                "evidence": [],
+                "executionTimeframe": "15m",
+                "expiryReason": null,
+                "invalidationReason": null,
+                "label": "PUMP FADE DETERIORATING",
+                "lifecycleConfigHash": "fnv1a64:761921830014999a",
+                "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+                "pendingConditions": [],
+                "reason": "Deterministic lifecycle context supplied by the radar audit fixture",
+                "retestLevel": null,
+                "setupFamily": "impulse_fade_v1",
+                "state": "deteriorating",
+                "stateSince": 1704088800,
+                "strategy": "pumpFade",
+                "transitions": [],
+                "updatedTs": 1704088800
+              }
+            },
+            "initialRadarObservations": [
+              {
+                "configHash": "fnv1a64:ec940ecaf0bf875d",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "INSUFFICIENT_METRIC_HISTORY",
+                    "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                    "severity": "error"
+                  }
+                ],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:cd834c737eb69450",
+                "metricCode": "ema_atr_displacement",
+                "metricVersion": "ema-atr-displacement.1",
+                "observationId": "radar-observation:5e66882d4d917ab6",
+                "percentile": null,
+                "referenceTime": 1704085200,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:048c580093dc4172",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 6,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "atr",
+                "value": null,
+                "window": null,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 86400-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:e74cecfad124dc01",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:abd21d8a179f5eb4",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:ca0e4d96f7bf667c",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 86400,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:c6402df80fdaa8a0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:eb4aff6fc5c4b431",
+                "metricCode": "rolling_trough_runup",
+                "metricVersion": "rolling-trough-runup.1",
+                "observationId": "radar-observation:bfb00750414ef5be",
+                "percentile": 80,
+                "referenceTime": 1704078000,
+                "referenceValue": 100,
+                "requestId": "radar-observation-request:f7ade6a9e013004a",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 5,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": 19.999999999999996,
+                "window": 7200,
+                "zScore": 1.1743764572705986
+              },
+              {
+                "configHash": "fnv1a64:6b843299cda75e5e",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 172800-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:561057b17f22b9b4",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:c8d11a08c9a1db19",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:1f90e51b7e8b9d30",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704088800,
+                "historyEnd": 1704085200,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:93466c977e909a1f",
+                "knownAt": 1704088800,
+                "logicalObjectId": "radar-metric:0dc3cf786a68e853",
+                "metricCode": "quote_notional",
+                "metricVersion": "quote-notional.1",
+                "observationId": "radar-observation:cf7bff0109c49b73",
+                "percentile": null,
+                "referenceTime": 1704067200,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:309f14ce93510a12",
+                "requestedAsOf": 1704088800,
+                "sampleCount": 6,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "REARMUSDT",
+                "timeframe": "1h",
+                "unit": "quoteNotional",
+                "value": 6610000,
+                "window": 86400,
+                "zScore": null
+              }
+            ],
+            "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+            "preRollRequirements": [
+              {
+                "minimumBars": 0,
+                "minimumDurationSeconds": 172800,
+                "purposes": [
+                  "24h/48h path context",
+                  "liquidity context",
+                  "recent-trough-runup"
+                ],
+                "timeframe": "1h"
+              }
+            ],
+            "radarEpisodeId": "radar-episode:6ece9617ae3a6eea",
+            "radarEpisodeObservationId": "radar-episode-observation:21d3e37e5b3a0edb",
+            "schemaVersion": "replay-case-manifest.1",
+            "selectionProfileRef": {
+              "canonicalConfigHash": "fnv1a64:fa3909122772927e",
+              "id": "radar-audit.reset-rearm",
+              "version": "1"
+            },
+            "source": "bybit",
+            "startAsOf": 1704088800,
             "strategyProfileRef": {
               "id": "impulse_fade_v1.research.default",
               "profileHash": "fnv1a64:d775f8489b62ae94",
@@ -3940,7 +4048,7 @@
                 "percentile": 100,
                 "zScore": null,
                 "referenceTime": 1704067200,
-                "observationId": "radar-observation:2ab0ddb8e1fb0f06"
+                "observationId": "radar-observation:0dc97e893e6d7657"
               }
             ],
             "hardGates": [
@@ -3949,6 +4057,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -3990,16 +4099,16 @@
               "symbol": "CONTINUEUSDT"
             },
             "initialLifecycleState": "developing",
-            "episodeId": "radar-episode:9b2ff59cba733448",
-            "manifestId": "replay-case:8676ba344629ae21"
+            "episodeId": "radar-episode:1458064fdf720625",
+            "manifestId": "replay-case:7811f9d44ab392b5"
           }
         ],
         "statusEvents": [
           {
             "asOf": 1704074400,
-            "episodeId": "radar-episode:9b2ff59cba733448",
-            "logicalObjectId": "radar-episode:9b2ff59cba733448",
-            "observationId": "radar-status:7bdf7d223dd3075a",
+            "episodeId": "radar-episode:1458064fdf720625",
+            "logicalObjectId": "radar-episode:1458064fdf720625",
+            "observationId": "radar-status:9e4781f1a50b30c2",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -4007,7 +4116,7 @@
           }
         ],
         "manifestIds": [
-          "replay-case:8676ba344629ae21"
+          "replay-case:7811f9d44ab392b5"
         ]
       },
       "scanInput": {
@@ -4130,7 +4239,7 @@
               "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
               "lifecycleConfigHash": "fnv1a64:761921830014999a",
               "asOf": 1704074400,
-              "executionTimeframe": "1h",
+              "executionTimeframe": "15m",
               "state": "developing",
               "currentState": "developing",
               "stateSince": 1704074400,
@@ -4146,7 +4255,7 @@
                 "symbol": "CONTINUEUSDT",
                 "source": "bybit",
                 "venue": "bybit",
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "detectedAt": 1704074400,
                 "detectionEventTime": 1704074400,
                 "detectionMetrics": {
@@ -4195,9 +4304,9 @@
         "episodeStatusObservations": [
           {
             "asOf": 1704074400,
-            "episodeId": "radar-episode:9b2ff59cba733448",
-            "logicalObjectId": "radar-episode:9b2ff59cba733448",
-            "observationId": "radar-status:7bdf7d223dd3075a",
+            "episodeId": "radar-episode:1458064fdf720625",
+            "logicalObjectId": "radar-episode:1458064fdf720625",
+            "observationId": "radar-status:9e4781f1a50b30c2",
             "rearmState": "blockedUntilReset",
             "reason": "detected",
             "schemaVersion": "radar-episode-status.1",
@@ -4215,15 +4324,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:18df713f18f5a009",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:2ab0ddb8e1fb0f06",
+                "observationId": "radar-observation:0dc97e893e6d7657",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:1dc5030b96f56097",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -4233,33 +4343,6 @@
                 "unit": "percent",
                 "value": 19.999999999999996,
                 "window": 172800,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:a958cbc740dc1bab",
-                "metricCode": "quote_notional",
-                "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:4ffe6ce4f9ba93a4",
-                "percentile": null,
-                "referenceTime": 1704067200,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "CONTINUEUSDT",
-                "timeframe": "1h",
-                "unit": "quoteNotional",
-                "value": 2200000,
-                "window": 86400,
                 "zScore": null
               },
               {
@@ -4275,15 +4358,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:78aa217a2cd61dcc",
                 "metricCode": "ema_atr_displacement",
                 "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:64a5610b0878a0d2",
+                "observationId": "radar-observation:25daa336b8ef404f",
                 "percentile": null,
                 "referenceTime": 1704070800,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6134d817f7272147",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 2,
                 "schemaVersion": "radar-metric-observation.1",
@@ -4293,39 +4377,6 @@
                 "unit": "atr",
                 "value": null,
                 "window": null,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 86400-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:3d484083ff477abd",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:d82839afc6d8368d",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "CONTINUEUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 86400,
                 "zScore": null
               },
               {
@@ -4341,15 +4392,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:0b00436f8e62962e",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:d8eeb91d7fce563b",
+                "observationId": "radar-observation:5b93db3734b3ebd2",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6d66b70574ce0121",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -4360,17 +4412,79 @@
                 "value": null,
                 "window": 172800,
                 "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:a958cbc740dc1bab",
+                "metricCode": "quote_notional",
+                "metricVersion": "quote-notional.1",
+                "observationId": "radar-observation:60f3a1ecba405f65",
+                "percentile": null,
+                "referenceTime": 1704067200,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:600db69061f46743",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "CONTINUEUSDT",
+                "timeframe": "1h",
+                "unit": "quoteNotional",
+                "value": 2200000,
+                "window": 86400,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 86400-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:3d484083ff477abd",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:ccc56934a7c051ea",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:6172f873bcf3df62",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "CONTINUEUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 86400,
+                "zScore": null
               }
             ],
             "dataQualityNotes": [
               {
                 "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 86400-second reference exists",
+                "message": "No completed 172800-second reference exists",
                 "severity": "warning"
               },
               {
                 "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 172800-second reference exists",
+                "message": "No completed 86400-second reference exists",
                 "severity": "warning"
               },
               {
@@ -4417,18 +4531,19 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
-            "id": "radar-episode:9b2ff59cba733448",
+            "id": "radar-episode:1458064fdf720625",
             "initialLifecycleCandidateId": "audit-candidate:CONTINUEUSDT:primary:1704074400",
             "initialLifecycleCandidateRef": {
               "eventTime": 1704074400,
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:CONTINUEUSDT:primary:1704074400",
               "objectType": "SetupCandidateEpisode",
-              "observationId": "setupcandidateepisode-observation:246ffbe4b70d6ea3",
+              "observationId": "setupcandidateepisode-observation:f22ba3e8d7e346c5",
               "snapshot": {
                 "currentState": "developing",
                 "detectedAt": 1704074400,
@@ -4441,7 +4556,7 @@
                 },
                 "episodeHigh": 120,
                 "episodeHighTime": 1704074400,
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "id": "audit-candidate:CONTINUEUSDT:primary:1704074400",
                 "initialMtfContext": [],
                 "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -4460,7 +4575,7 @@
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:CONTINUEUSDT:primary:1704074400",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:fbd2eb1417626f99",
+              "observationId": "setupstatesnapshot-observation:4ba271c0ecfeb34b",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704074400,
@@ -4476,7 +4591,7 @@
                   },
                   "episodeHigh": 120,
                   "episodeHighTime": 1704074400,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:CONTINUEUSDT:primary:1704074400",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -4493,7 +4608,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -4511,8 +4626,8 @@
               }
             },
             "initialMtfStructure": {},
-            "logicalObjectId": "radar-episode:9b2ff59cba733448",
-            "observationId": "radar-episode-observation:d36cce5224110597",
+            "logicalObjectId": "radar-episode:1458064fdf720625",
+            "observationId": "radar-episode-observation:e68591e5d82756a5",
             "pathContext": {
               "contextTags": [
                 "unknown"
@@ -4541,13 +4656,13 @@
             "selectionAnchor": {
               "ageSeconds": 3600,
               "logicalObjectId": "selection-anchor:1c9b5a68eaa45b21",
-              "observationId": "selection-anchor-observation:596e08a5befd0fc5",
+              "observationId": "selection-anchor-observation:5d660ed11eeaded4",
               "price": 100,
               "referenceField": "close",
-              "sourceObservationId": "radar-observation:2ab0ddb8e1fb0f06",
+              "sourceObservationId": "radar-observation:0dc97e893e6d7657",
               "timestamp": 1704067200
             },
-            "selectionGateEvaluationId": "radar-gate:2ddf83440efb232e",
+            "selectionGateEvaluationId": "radar-gate:2fd973d7985e7e73",
             "selectionProfileHash": "fnv1a64:d42a86b42d3002d2",
             "selectionProfileId": "radar-audit.continuation",
             "selectionProfileVersion": "1",
@@ -4567,15 +4682,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:18df713f18f5a009",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:2ab0ddb8e1fb0f06",
+                "observationId": "radar-observation:0dc97e893e6d7657",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:1dc5030b96f56097",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -4603,10 +4719,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +0.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:5428188a0649ad9e"
+                  "radar-observation:16e491ae8ed155a0"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:271816604dec43d0"
                 ],
                 "passed": false,
-                "winningObservationId": null
+                "winningObservationId": null,
+                "winningObservationRequestId": null
               }
             ],
             "evaluable": true,
@@ -4632,12 +4752,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:0d0f1c7a99c40758",
+            "id": "radar-gate:c3d5a6e84070d125",
             "source": "bybit",
             "symbol": "CONTINUEUSDT"
           },
@@ -4652,10 +4773,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +20.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:2ab0ddb8e1fb0f06"
+                  "radar-observation:0dc97e893e6d7657"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:1dc5030b96f56097"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:2ab0ddb8e1fb0f06"
+                "winningObservationId": "radar-observation:0dc97e893e6d7657",
+                "winningObservationRequestId": "radar-observation-request:1dc5030b96f56097"
               }
             ],
             "evaluable": true,
@@ -4681,12 +4806,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:2ddf83440efb232e",
+            "id": "radar-gate:2fd973d7985e7e73",
             "source": "bybit",
             "symbol": "CONTINUEUSDT"
           },
@@ -4701,10 +4827,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +45.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:3b41a0b68ce27769"
+                  "radar-observation:a031957672e4c5a3"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:e22e9adc115d72b1"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:3b41a0b68ce27769"
+                "winningObservationId": "radar-observation:a031957672e4c5a3",
+                "winningObservationRequestId": "radar-observation-request:e22e9adc115d72b1"
               }
             ],
             "evaluable": true,
@@ -4730,12 +4860,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:f5b865c7a6e1b54b",
+            "id": "radar-gate:419c73e763ce91b4",
             "source": "bybit",
             "symbol": "CONTINUEUSDT"
           },
@@ -4750,10 +4881,14 @@
                 "evaluable": true,
                 "explanation": "Completed-close run-up +70.00% versus +15.00% minimum",
                 "observationIds": [
-                  "radar-observation:a9269e5615050feb"
+                  "radar-observation:9d229279fe688bbc"
+                ],
+                "observationRequestIds": [
+                  "radar-observation-request:31fe2dba8b3bc489"
                 ],
                 "passed": true,
-                "winningObservationId": "radar-observation:a9269e5615050feb"
+                "winningObservationId": "radar-observation:9d229279fe688bbc",
+                "winningObservationRequestId": "radar-observation-request:31fe2dba8b3bc489"
               }
             ],
             "evaluable": true,
@@ -4779,12 +4914,13 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
             ],
             "hardGatesPassed": true,
-            "id": "radar-gate:d9f4a094d36d626f",
+            "id": "radar-gate:f340edf37b34f54a",
             "source": "bybit",
             "symbol": "CONTINUEUSDT"
           }
@@ -4797,15 +4933,16 @@
             "effectiveAsOf": 1704070800,
             "historyEnd": 1704067200,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:7cb31e997dc18867",
+            "inputHash": "fnv1a64:d34f303a5e79deb0",
             "knownAt": 1704070800,
             "logicalObjectId": "radar-metric:18df713f18f5a009",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:5428188a0649ad9e",
+            "observationId": "radar-observation:16e491ae8ed155a0",
             "percentile": null,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:271816604dec43d0",
             "requestedAsOf": 1704070800,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -4824,15 +4961,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:18df713f18f5a009",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:2ab0ddb8e1fb0f06",
+            "observationId": "radar-observation:0dc97e893e6d7657",
             "percentile": 100,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:1dc5030b96f56097",
             "requestedAsOf": 1704074400,
             "sampleCount": 1,
             "schemaVersion": "radar-metric-observation.1",
@@ -4842,33 +4980,6 @@
             "unit": "percent",
             "value": 19.999999999999996,
             "window": 172800,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [],
-            "effectiveAsOf": 1704074400,
-            "historyEnd": 1704070800,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
-            "knownAt": 1704074400,
-            "logicalObjectId": "radar-metric:a958cbc740dc1bab",
-            "metricCode": "quote_notional",
-            "metricVersion": "quote-notional.1",
-            "observationId": "radar-observation:4ffe6ce4f9ba93a4",
-            "percentile": null,
-            "referenceTime": 1704067200,
-            "referenceValue": null,
-            "requestedAsOf": 1704074400,
-            "sampleCount": 2,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "CONTINUEUSDT",
-            "timeframe": "1h",
-            "unit": "quoteNotional",
-            "value": 2200000,
-            "window": 86400,
             "zScore": null
           },
           {
@@ -4884,15 +4995,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:78aa217a2cd61dcc",
             "metricCode": "ema_atr_displacement",
             "metricVersion": "ema-atr-displacement.1",
-            "observationId": "radar-observation:64a5610b0878a0d2",
+            "observationId": "radar-observation:25daa336b8ef404f",
             "percentile": null,
             "referenceTime": 1704070800,
             "referenceValue": null,
+            "requestId": "radar-observation-request:6134d817f7272147",
             "requestedAsOf": 1704074400,
             "sampleCount": 2,
             "schemaVersion": "radar-metric-observation.1",
@@ -4902,39 +5014,6 @@
             "unit": "atr",
             "value": null,
             "window": null,
-            "zScore": null
-          },
-          {
-            "configHash": "fnv1a64:e2d0012a5f4fdcf0",
-            "dataOrigin": "audit-fixture",
-            "dataQualityNotes": [
-              {
-                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 86400-second reference exists",
-                "severity": "warning"
-              }
-            ],
-            "effectiveAsOf": 1704074400,
-            "historyEnd": 1704070800,
-            "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
-            "knownAt": 1704074400,
-            "logicalObjectId": "radar-metric:3d484083ff477abd",
-            "metricCode": "elapsed_window_return",
-            "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:d82839afc6d8368d",
-            "percentile": null,
-            "referenceTime": null,
-            "referenceValue": null,
-            "requestedAsOf": 1704074400,
-            "sampleCount": 0,
-            "schemaVersion": "radar-metric-observation.1",
-            "source": "bybit",
-            "symbol": "CONTINUEUSDT",
-            "timeframe": "1h",
-            "unit": "percent",
-            "value": null,
-            "window": 86400,
             "zScore": null
           },
           {
@@ -4950,15 +5029,16 @@
             "effectiveAsOf": 1704074400,
             "historyEnd": 1704070800,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:b94326c6fe6c88af",
+            "inputHash": "fnv1a64:6b5b28f592c31155",
             "knownAt": 1704074400,
             "logicalObjectId": "radar-metric:0b00436f8e62962e",
             "metricCode": "elapsed_window_return",
             "metricVersion": "elapsed-window-return.1",
-            "observationId": "radar-observation:d8eeb91d7fce563b",
+            "observationId": "radar-observation:5b93db3734b3ebd2",
             "percentile": null,
             "referenceTime": null,
             "referenceValue": null,
+            "requestId": "radar-observation-request:6d66b70574ce0121",
             "requestedAsOf": 1704074400,
             "sampleCount": 0,
             "schemaVersion": "radar-metric-observation.1",
@@ -4971,21 +5051,84 @@
             "zScore": null
           },
           {
+            "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1704074400,
+            "historyEnd": 1704070800,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:6b5b28f592c31155",
+            "knownAt": 1704074400,
+            "logicalObjectId": "radar-metric:a958cbc740dc1bab",
+            "metricCode": "quote_notional",
+            "metricVersion": "quote-notional.1",
+            "observationId": "radar-observation:60f3a1ecba405f65",
+            "percentile": null,
+            "referenceTime": 1704067200,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:600db69061f46743",
+            "requestedAsOf": 1704074400,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "CONTINUEUSDT",
+            "timeframe": "1h",
+            "unit": "quoteNotional",
+            "value": 2200000,
+            "window": 86400,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+            "dataOrigin": "audit-fixture",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 86400-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1704074400,
+            "historyEnd": 1704070800,
+            "historyStart": 1704067200,
+            "inputHash": "fnv1a64:6b5b28f592c31155",
+            "knownAt": 1704074400,
+            "logicalObjectId": "radar-metric:3d484083ff477abd",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:ccc56934a7c051ea",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:6172f873bcf3df62",
+            "requestedAsOf": 1704074400,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "CONTINUEUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 86400,
+            "zScore": null
+          },
+          {
             "configHash": "fnv1a64:289e0fe8044cdb36",
             "dataOrigin": "audit-fixture",
             "dataQualityNotes": [],
             "effectiveAsOf": 1704078000,
             "historyEnd": 1704074400,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:04f285c43e467fb8",
+            "inputHash": "fnv1a64:bdcb7f64bc254195",
             "knownAt": 1704078000,
             "logicalObjectId": "radar-metric:18df713f18f5a009",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:3b41a0b68ce27769",
+            "observationId": "radar-observation:a031957672e4c5a3",
             "percentile": 100,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:e22e9adc115d72b1",
             "requestedAsOf": 1704078000,
             "sampleCount": 2,
             "schemaVersion": "radar-metric-observation.1",
@@ -5004,15 +5147,16 @@
             "effectiveAsOf": 1704081600,
             "historyEnd": 1704078000,
             "historyStart": 1704067200,
-            "inputHash": "fnv1a64:c6a96f8853e6e407",
+            "inputHash": "fnv1a64:6bcef2d247fe155b",
             "knownAt": 1704081600,
             "logicalObjectId": "radar-metric:18df713f18f5a009",
             "metricCode": "rolling_trough_runup",
             "metricVersion": "rolling-trough-runup.1",
-            "observationId": "radar-observation:a9269e5615050feb",
+            "observationId": "radar-observation:9d229279fe688bbc",
             "percentile": 100,
             "referenceTime": 1704067200,
             "referenceValue": 100,
+            "requestId": "radar-observation-request:31fe2dba8b3bc489",
             "requestedAsOf": 1704081600,
             "sampleCount": 3,
             "schemaVersion": "radar-metric-observation.1",
@@ -5041,12 +5185,12 @@
             "dataQualityNotes": [
               {
                 "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 86400-second reference exists",
+                "message": "No completed 172800-second reference exists",
                 "severity": "warning"
               },
               {
                 "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                "message": "No completed 172800-second reference exists",
+                "message": "No completed 86400-second reference exists",
                 "severity": "warning"
               },
               {
@@ -5071,7 +5215,7 @@
               "symbol": "CONTINUEUSDT"
             },
             "futureOutcomeRef": null,
-            "id": "replay-case:8676ba344629ae21",
+            "id": "replay-case:7811f9d44ab392b5",
             "initialHardGateEvidence": [
               {
                 "dataQualityNotes": [],
@@ -5094,6 +5238,7 @@
                 "evidenceObservationIds": [
                   "execution-venue-observation:3e7b980265d566b6"
                 ],
+                "evidenceRequestIds": [],
                 "explanation": "Execution venue Available",
                 "passed": true
               }
@@ -5104,7 +5249,7 @@
               "knownAt": 1704074400,
               "logicalObjectId": "audit-candidate:CONTINUEUSDT:primary:1704074400",
               "objectType": "SetupStateSnapshot",
-              "observationId": "setupstatesnapshot-observation:fbd2eb1417626f99",
+              "observationId": "setupstatesnapshot-observation:4ba271c0ecfeb34b",
               "snapshot": {
                 "activeBreakLevel": null,
                 "asOf": 1704074400,
@@ -5120,7 +5265,7 @@
                   },
                   "episodeHigh": 120,
                   "episodeHighTime": 1704074400,
-                  "executionTimeframe": "1h",
+                  "executionTimeframe": "15m",
                   "id": "audit-candidate:CONTINUEUSDT:primary:1704074400",
                   "initialMtfContext": [],
                   "lifecycleConfigHash": "fnv1a64:761921830014999a",
@@ -5137,7 +5282,7 @@
                 "currentState": "developing",
                 "dataQuality": [],
                 "evidence": [],
-                "executionTimeframe": "1h",
+                "executionTimeframe": "15m",
                 "expiryReason": null,
                 "invalidationReason": null,
                 "label": "PUMP FADE DEVELOPING",
@@ -5162,15 +5307,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:18df713f18f5a009",
                 "metricCode": "rolling_trough_runup",
                 "metricVersion": "rolling-trough-runup.1",
-                "observationId": "radar-observation:2ab0ddb8e1fb0f06",
+                "observationId": "radar-observation:0dc97e893e6d7657",
                 "percentile": 100,
                 "referenceTime": 1704067200,
                 "referenceValue": 100,
+                "requestId": "radar-observation-request:1dc5030b96f56097",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 1,
                 "schemaVersion": "radar-metric-observation.1",
@@ -5180,33 +5326,6 @@
                 "unit": "percent",
                 "value": 19.999999999999996,
                 "window": 172800,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:a958cbc740dc1bab",
-                "metricCode": "quote_notional",
-                "metricVersion": "quote-notional.1",
-                "observationId": "radar-observation:4ffe6ce4f9ba93a4",
-                "percentile": null,
-                "referenceTime": 1704067200,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 2,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "CONTINUEUSDT",
-                "timeframe": "1h",
-                "unit": "quoteNotional",
-                "value": 2200000,
-                "window": 86400,
                 "zScore": null
               },
               {
@@ -5222,15 +5341,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:78aa217a2cd61dcc",
                 "metricCode": "ema_atr_displacement",
                 "metricVersion": "ema-atr-displacement.1",
-                "observationId": "radar-observation:64a5610b0878a0d2",
+                "observationId": "radar-observation:25daa336b8ef404f",
                 "percentile": null,
                 "referenceTime": 1704070800,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6134d817f7272147",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 2,
                 "schemaVersion": "radar-metric-observation.1",
@@ -5240,39 +5360,6 @@
                 "unit": "atr",
                 "value": null,
                 "window": null,
-                "zScore": null
-              },
-              {
-                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
-                "dataOrigin": "audit-fixture",
-                "dataQualityNotes": [
-                  {
-                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
-                    "message": "No completed 86400-second reference exists",
-                    "severity": "warning"
-                  }
-                ],
-                "effectiveAsOf": 1704074400,
-                "historyEnd": 1704070800,
-                "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
-                "knownAt": 1704074400,
-                "logicalObjectId": "radar-metric:3d484083ff477abd",
-                "metricCode": "elapsed_window_return",
-                "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:d82839afc6d8368d",
-                "percentile": null,
-                "referenceTime": null,
-                "referenceValue": null,
-                "requestedAsOf": 1704074400,
-                "sampleCount": 0,
-                "schemaVersion": "radar-metric-observation.1",
-                "source": "bybit",
-                "symbol": "CONTINUEUSDT",
-                "timeframe": "1h",
-                "unit": "percent",
-                "value": null,
-                "window": 86400,
                 "zScore": null
               },
               {
@@ -5288,15 +5375,16 @@
                 "effectiveAsOf": 1704074400,
                 "historyEnd": 1704070800,
                 "historyStart": 1704067200,
-                "inputHash": "fnv1a64:b94326c6fe6c88af",
+                "inputHash": "fnv1a64:6b5b28f592c31155",
                 "knownAt": 1704074400,
                 "logicalObjectId": "radar-metric:0b00436f8e62962e",
                 "metricCode": "elapsed_window_return",
                 "metricVersion": "elapsed-window-return.1",
-                "observationId": "radar-observation:d8eeb91d7fce563b",
+                "observationId": "radar-observation:5b93db3734b3ebd2",
                 "percentile": null,
                 "referenceTime": null,
                 "referenceValue": null,
+                "requestId": "radar-observation-request:6d66b70574ce0121",
                 "requestedAsOf": 1704074400,
                 "sampleCount": 0,
                 "schemaVersion": "radar-metric-observation.1",
@@ -5306,6 +5394,68 @@
                 "unit": "percent",
                 "value": null,
                 "window": 172800,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:a958cbc740dc1bab",
+                "metricCode": "quote_notional",
+                "metricVersion": "quote-notional.1",
+                "observationId": "radar-observation:60f3a1ecba405f65",
+                "percentile": null,
+                "referenceTime": 1704067200,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:600db69061f46743",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 2,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "CONTINUEUSDT",
+                "timeframe": "1h",
+                "unit": "quoteNotional",
+                "value": 2200000,
+                "window": 86400,
+                "zScore": null
+              },
+              {
+                "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+                "dataOrigin": "audit-fixture",
+                "dataQualityNotes": [
+                  {
+                    "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                    "message": "No completed 86400-second reference exists",
+                    "severity": "warning"
+                  }
+                ],
+                "effectiveAsOf": 1704074400,
+                "historyEnd": 1704070800,
+                "historyStart": 1704067200,
+                "inputHash": "fnv1a64:6b5b28f592c31155",
+                "knownAt": 1704074400,
+                "logicalObjectId": "radar-metric:3d484083ff477abd",
+                "metricCode": "elapsed_window_return",
+                "metricVersion": "elapsed-window-return.1",
+                "observationId": "radar-observation:ccc56934a7c051ea",
+                "percentile": null,
+                "referenceTime": null,
+                "referenceValue": null,
+                "requestId": "radar-observation-request:6172f873bcf3df62",
+                "requestedAsOf": 1704074400,
+                "sampleCount": 0,
+                "schemaVersion": "radar-metric-observation.1",
+                "source": "bybit",
+                "symbol": "CONTINUEUSDT",
+                "timeframe": "1h",
+                "unit": "percent",
+                "value": null,
+                "window": 86400,
                 "zScore": null
               }
             ],
@@ -5322,8 +5472,8 @@
                 "timeframe": "1h"
               }
             ],
-            "radarEpisodeId": "radar-episode:9b2ff59cba733448",
-            "radarEpisodeObservationId": "radar-episode-observation:d36cce5224110597",
+            "radarEpisodeId": "radar-episode:1458064fdf720625",
+            "radarEpisodeObservationId": "radar-episode-observation:e68591e5d82756a5",
             "schemaVersion": "replay-case-manifest.1",
             "selectionProfileRef": {
               "canonicalConfigHash": "fnv1a64:d42a86b42d3002d2",

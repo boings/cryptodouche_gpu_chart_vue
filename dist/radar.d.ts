@@ -110,6 +110,7 @@ export interface RadarMetricObservation {
     schemaVersion: typeof RADAR_METRIC_OBSERVATION_SCHEMA_VERSION;
     logicalObjectId: string;
     observationId: string;
+    requestId: string;
     metricCode: string;
     metricVersion: string;
     symbol: string;
@@ -215,6 +216,7 @@ export interface RadarHardGateResult {
     passed: boolean;
     explanation: string;
     evidenceObservationIds: string[];
+    evidenceRequestIds: string[];
 }
 export type RadarHardGateEvidence = RadarMetricObservation | UniverseMembershipObservation | ExecutionVenueEligibilityObservation;
 export interface RadarDetectorResult {
@@ -223,7 +225,9 @@ export interface RadarDetectorResult {
     evaluable: boolean;
     passed: boolean;
     observationIds: string[];
+    observationRequestIds: string[];
     winningObservationId: string | null;
+    winningObservationRequestId: string | null;
     explanation: string;
 }
 export interface RadarGateEvaluation {

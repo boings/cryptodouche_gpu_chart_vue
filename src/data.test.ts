@@ -177,6 +177,22 @@ describe("gpu chart data utilities", () => {
     expect(point?.ts).toBe(Date.UTC(2026, 5, 27, 11, 54, 0, 0) / 1000);
   });
 
+  it("preserves a valid candle revision publication time", () => {
+    const point = normalizeOhlcvPoint({
+      ts: 60,
+      o: 1,
+      h: 2,
+      l: 0.5,
+      c: 1.5,
+      knownAt: 120,
+    });
+
+    expect(point?.knownAt).toBe(120);
+    expect(
+      normalizeOhlcvPoint({ ts: 60, o: 1, h: 2, l: 0.5, c: 1.5, knownAt: "bad" }),
+    ).toBeNull();
+  });
+
   it("appends next-bucket live updates and ignores malformed or large-gap data", () => {
     const state = packHistoricalCandles(
       [

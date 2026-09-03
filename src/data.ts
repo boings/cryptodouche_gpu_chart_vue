@@ -40,7 +40,15 @@ export function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null {
   const h = finiteNumber(record.h);
   const l = finiteNumber(record.l);
   const c = finiteNumber(record.c);
-  if (ts == null || o == null || h == null || l == null || c == null) return null;
+  const knownAt = record.knownAt == null ? undefined : parseTimestamp(record.knownAt);
+  if (
+    ts == null ||
+    o == null ||
+    h == null ||
+    l == null ||
+    c == null ||
+    (record.knownAt != null && knownAt == null)
+  ) return null;
   return {
     ts,
     o,
@@ -50,6 +58,7 @@ export function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null {
     v_base: finiteNumber(record.v_base),
     v_quote: finiteNumber(record.v_quote),
     ver: finiteNumber(record.ver),
+    knownAt: knownAt ?? undefined,
   };
 }
 

@@ -151,6 +151,7 @@ export interface RadarMetricObservation {
   schemaVersion: typeof RADAR_METRIC_OBSERVATION_SCHEMA_VERSION;
   logicalObjectId: string;
   observationId: string;
+  requestId: string;
   metricCode: string;
   metricVersion: string;
   symbol: string;
@@ -275,6 +276,7 @@ export interface RadarHardGateResult {
   passed: boolean;
   explanation: string;
   evidenceObservationIds: string[];
+  evidenceRequestIds: string[];
 }
 
 export type RadarHardGateEvidence =
@@ -288,7 +290,9 @@ export interface RadarDetectorResult {
   evaluable: boolean;
   passed: boolean;
   observationIds: string[];
+  observationRequestIds: string[];
   winningObservationId: string | null;
+  winningObservationRequestId: string | null;
   explanation: string;
 }
 
@@ -441,6 +445,7 @@ interface DetectorEvaluationInternal {
 
 interface MutableRadarState {
   previousGate: boolean | null;
+  previousEvaluationAsOf: number | null;
   activeEpisode: RadarEpisode | null;
   blockedEpisode: RadarEpisode | null;
   falseSince: number | null;
@@ -502,7 +507,7 @@ export function createRadarStructureObservation(
     !input.logicalObjectId.trim() ||
     !input.symbol.trim() ||
     !input.source.trim() ||
-    !input.timeframe.trim() ||
+    !isStrictTimeframe(input.timeframe) ||
     !input.state.trim() ||
     !Number.isFinite(input.eventTime) ||
     !Number.isFinite(input.knownAt) ||
@@ -684,6 +689,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       .filter((asOf) => cadenceIncludes(asOf, input.selectionProfile));
     const state: MutableRadarState = {
       previousGate: null,
+      previousEvaluationAsOf: null,
       activeEpisode: null,
       blockedEpisode: null,
       falseSince: null,
@@ -691,6 +697,16 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
     };
 
     for (const asOf of points) {
+      const expectedCadenceSeconds =
+        strictTimeframeSeconds(input.selectionProfile.scanTimeframe) *
+        input.selectionProfile.evaluationCadence.everyBars;
+      if (
+        state.previousEvaluationAsOf != null &&
+        asOf - state.previousEvaluationAsOf > expectedCadenceSeconds
+      ) {
+        state.previousGate = null;
+        state.falseSince = null;
+      }
       const inRequestedRange = asOf >= input.from;
       const detectorEvaluations = input.selectionProfile.moveDetectors.map((detector) =>
         evaluateDetector(detector, series, asOf, input.selectionProfile.scanTimeframe),
@@ -698,7 +714,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       if (inRequestedRange) {
         for (const evaluation of detectorEvaluations) {
           for (const observation of evaluation.observations) {
-            observations.set(observation.observationId, observation);
+            observations.set(observation.requestId, observation);
           }
         }
       }
@@ -727,7 +743,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       if (inRequestedRange) {
         for (const evidence of hardGateEvaluation.evidence) {
           if (evidence.schemaVersion === RADAR_METRIC_OBSERVATION_SCHEMA_VERSION) {
-            observations.set(evidence.observationId, evidence);
+            observations.set(evidence.requestId, evidence);
           }
         }
       }
@@ -789,6 +805,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           seriesKey,
           asOf,
           profile: input.selectionProfile,
+          strategyProfile,
           detectorEvaluations,
           selectionEvaluation: evaluation,
           hardGateEvidence: hardGateEvaluation.evidence,
@@ -804,7 +821,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           const manifest = createReplayCaseManifest(episode, series, input.selectionProfile, strategyProfile);
           replayCaseManifests.push(manifest);
           for (const observation of episode.contextObservations) {
-            observations.set(observation.observationId, observation);
+            observations.set(observation.requestId, observation);
           }
         }
         state.activeEpisode = episode;
@@ -813,6 +830,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       }
 
       state.previousGate = compositeEvaluable ? compositePassed : null;
+      state.previousEvaluationAsOf = asOf;
     }
   }
 
@@ -979,6 +997,7 @@ function evaluateMaximumWindowReturn(
     metricCode: "maximum_window_return",
     metricVersion: "maximum-window-return.1",
     window: winner?.window ?? null,
+    logicalWindow: null,
     referenceTime: winner?.referenceTime ?? null,
     referenceValue: winner?.referenceValue ?? null,
     value: winner?.value ?? null,
@@ -1130,6 +1149,7 @@ function createRadarEpisode(input: {
   seriesKey: string;
   asOf: number;
   profile: RadarSelectionProfile;
+  strategyProfile: StrategyProfile;
   detectorEvaluations: DetectorEvaluationInternal[];
   selectionEvaluation: RadarGateEvaluation;
   hardGateEvidence: RadarHardGateEvidence[];
@@ -1199,11 +1219,13 @@ function createRadarEpisode(input: {
     atrObservation,
     initialMtfStructure,
   );
-  const lifecycle = latestLifecycleAt(
+  const lifecycleSnapshot = latestLifecycleAt(
     input.lifecycleHistory,
     input.series,
     input.asOf,
+    input.strategyProfile,
   );
+  const lifecycle = lifecycleSnapshot?.candidate ? lifecycleSnapshot : null;
   const candidate = lifecycle?.candidate ?? null;
   const lifecycleKnownAt = lifecycle?.asOf ?? null;
   const lifecycleStateRef = lifecycle && lifecycleKnownAt != null
@@ -1436,6 +1458,7 @@ function createMetricObservation(input: {
   metricCode: string;
   metricVersion: string;
   window: number | null;
+  logicalWindow?: number | null;
   referenceTime: number | null;
   referenceValue: number | null;
   value: number | null;
@@ -1453,6 +1476,12 @@ function createMetricObservation(input: {
     input.timeframe && input.historyCandles.at(-1)
       ? candleCloseTime(input.historyCandles.at(-1)!, input.timeframe)
       : input.asOf;
+  const knownAt = input.timeframe
+    ? input.historyCandles.reduce(
+        (latest, item) => Math.max(latest, candleRevisionKnownAt(item, input.timeframe!)),
+        effectiveAsOf,
+      )
+    : input.asOf;
   const inputHash = canonicalHash(
     input.historyCandles.map((item) => ({
       bucket: item.bucket,
@@ -1464,6 +1493,7 @@ function createMetricObservation(input: {
       vBase: finite(item.v_base) ? item.v_base : null,
       vQuote: finite(item.v_quote) ? item.v_quote : null,
       ver: finite(item.ver) ? item.ver : null,
+      knownAt: input.timeframe ? candleRevisionKnownAt(item, input.timeframe) : null,
     })),
   );
   const logicalObjectId = `radar-metric:${hashSuffix({
@@ -1472,10 +1502,10 @@ function createMetricObservation(input: {
     source: input.series.source,
     dataOrigin: input.series.dataOrigin ?? null,
     timeframe: input.timeframe,
-    window: input.window,
+    window: input.logicalWindow === undefined ? input.window : input.logicalWindow,
     configHash: input.configHash,
   })}`;
-  const definition = {
+  const revisionDefinition = {
     schemaVersion: RADAR_METRIC_OBSERVATION_SCHEMA_VERSION,
     logicalObjectId,
     metricCode: input.metricCode,
@@ -1484,9 +1514,8 @@ function createMetricObservation(input: {
     source: input.series.source,
     dataOrigin: input.series.dataOrigin ?? null,
     timeframe: input.timeframe,
-    requestedAsOf: input.asOf,
     effectiveAsOf,
-    knownAt: effectiveAsOf,
+    knownAt,
     window: input.window,
     referenceTime: input.referenceTime,
     referenceValue: input.referenceValue,
@@ -1501,10 +1530,13 @@ function createMetricObservation(input: {
     inputHash,
     dataQualityNotes: input.notes,
   };
-  const { requestedAsOf: _requestedAsOf, ...identityDefinition } = definition;
+  const observationId = `radar-observation:${hashSuffix(revisionDefinition)}`;
+  const requestedAsOf = input.asOf;
   return immutableJsonClone({
-    ...definition,
-    observationId: `radar-observation:${hashSuffix(identityDefinition)}`,
+    ...revisionDefinition,
+    observationId,
+    requestId: `radar-observation-request:${hashSuffix({ observationId, requestedAsOf })}`,
+    requestedAsOf,
   });
 }
 
@@ -1663,6 +1695,15 @@ function hardGateResult(
     passed,
     explanation,
     evidenceObservationIds: [...new Set(evidence.map((item) => item.observationId))].sort(),
+    evidenceRequestIds: [
+      ...new Set(
+        evidence.flatMap((item) =>
+          item.schemaVersion === RADAR_METRIC_OBSERVATION_SCHEMA_VERSION
+            ? [item.requestId]
+            : [],
+        ),
+      ),
+    ].sort(),
   };
 }
 
@@ -1809,7 +1850,10 @@ function detectorResult(
     evaluable,
     passed,
     observationIds: observations.map((item) => item.observationId),
+    observationRequestIds: observations.map((item) => item.requestId),
     winningObservationId,
+    winningObservationRequestId:
+      observations.find((item) => item.observationId === winningObservationId)?.requestId ?? null,
     explanation,
   };
 }
@@ -1848,26 +1892,56 @@ function completedCandles(
   timeframe: string,
   asOf: number,
 ) {
-  const cutoffCandles = candles.filter((item) => {
+  return orderedCandles(cutoffCandleRevisions(candles, timeframe, asOf), timeframe);
+}
+
+function cutoffCandleRevisions(
+  candles: readonly CandleRecord[],
+  timeframe: string,
+  asOf: number,
+) {
+  const timeframeSeconds = strictTimeframeSeconds(timeframe);
+  return candles.filter((item) => {
     if (!Number.isFinite(item.bucket)) {
       throw new RangeError("Candle bucket must be finite");
     }
-    return candleCloseTime(item, timeframe) <= asOf;
+    const closeTime = item.bucket + timeframeSeconds;
+    if (closeTime > asOf) return false;
+    if (item.knownAt != null && !Number.isFinite(item.knownAt)) {
+      throw new RangeError(`Invalid candle revision time for bucket ${item.bucket}`);
+    }
+    return candleRevisionKnownAt(item, timeframe) <= asOf;
   });
-  return orderedCandles(cutoffCandles);
 }
 
-function orderedCandles(candles: readonly CandleRecord[]) {
+function orderedCandles(candles: readonly CandleRecord[], timeframe: string) {
+  const timeframeSeconds = strictTimeframeSeconds(timeframe);
   const byBucket = new Map<number, CandleRecord>();
   for (const candle of [...candles].sort((left, right) => left.bucket - right.bucket || left.ts - right.ts)) {
-    if (!validCandle(candle)) {
+    if (
+      !validCandle(candle) ||
+      candle.bucket % timeframeSeconds !== 0 ||
+      Math.floor(candle.ts / timeframeSeconds) * timeframeSeconds !== candle.bucket
+    ) {
       throw new RangeError(`Invalid candle for bucket ${candle.bucket}`);
     }
+    const closeTime = candle.bucket + timeframeSeconds;
+    const revisionKnownAt = candleRevisionKnownAt(candle, timeframe);
+    if (revisionKnownAt < closeTime) {
+      throw new RangeError(`Candle revision predates close for bucket ${candle.bucket}`);
+    }
     const existing = byBucket.get(candle.bucket);
-    if (existing && canonicalCandle(existing) !== canonicalCandle(candle)) {
-      throw new Error(
-        `Conflicting candle revisions for bucket ${candle.bucket}; supply cutoff-resolved history`,
-      );
+    if (existing) {
+      const existingKnownAt = candleRevisionKnownAt(existing, timeframe);
+      if (
+        existingKnownAt === revisionKnownAt &&
+        canonicalCandle(existing, timeframe) !== canonicalCandle(candle, timeframe)
+      ) {
+        throw new Error(
+          `Conflicting candle revisions for bucket ${candle.bucket} at ${revisionKnownAt}`,
+        );
+      }
+      if (existingKnownAt > revisionKnownAt) continue;
     }
     byBucket.set(candle.bucket, candle);
   }
@@ -1880,10 +1954,8 @@ function cutoffSeries(series: RadarSymbolSeries, asOf: number): RadarSymbolSerie
   }
   const candlesByTimeframe = Object.fromEntries(
     Object.entries(series.candlesByTimeframe).map(([timeframe, candles]) => {
-      if (!validPositive(timeframeToSeconds(timeframe))) {
-        throw new RangeError(`Invalid radar timeframe ${timeframe}`);
-      }
-      return [timeframe, completedCandles(candles, timeframe, asOf)];
+      strictTimeframeSeconds(timeframe);
+      return [timeframe, cutoffCandleRevisions(candles, timeframe, asOf)];
     }),
   );
   return {
@@ -1935,7 +2007,7 @@ function structureAt(
   );
 }
 
-function canonicalCandle(candle: CandleRecord) {
+function canonicalCandle(candle: CandleRecord, timeframe: string) {
   return canonicalSerialize({
     bucket: candle.bucket,
     ts: candle.ts,
@@ -1946,7 +2018,12 @@ function canonicalCandle(candle: CandleRecord) {
     vBase: finite(candle.v_base) ? candle.v_base : null,
     vQuote: finite(candle.v_quote) ? candle.v_quote : null,
     ver: finite(candle.ver) ? candle.ver : null,
+    knownAt: candleRevisionKnownAt(candle, timeframe),
   });
+}
+
+function candleRevisionKnownAt(candle: CandleRecord, timeframe: string) {
+  return candle.knownAt ?? candleCloseTime(candle, timeframe);
 }
 
 function latestAtOrBefore(candles: readonly CandleRecord[], target: number) {
@@ -2087,9 +2164,14 @@ function latestLifecycleAt(
   history: readonly SetupStateSnapshot[],
   series: RadarSymbolSeries,
   asOf: number,
+  strategyProfile: StrategyProfile,
 ) {
-  const eligible = history.filter((item) => item.asOf != null && item.asOf <= asOf);
-  for (const item of eligible) validateLifecycleSnapshotAt(item, series, asOf);
+  const eligible = history.filter(
+    (item) => item.candidate != null && item.asOf != null && item.asOf <= asOf,
+  );
+  for (const item of eligible) {
+    validateLifecycleSnapshotAt(item, series, asOf, strategyProfile);
+  }
   const maximumAsOf = Math.max(...eligible.map((item) => item.asOf ?? -Infinity));
   const latest = eligible.filter((item) => item.asOf === maximumAsOf);
   if (new Set(latest.map((item) => canonicalSerialize(item))).size > 1) {
@@ -2102,25 +2184,35 @@ function validateLifecycleSnapshotAt(
   snapshot: SetupStateSnapshot,
   series: RadarSymbolSeries,
   cutoff: number,
+  strategyProfile: StrategyProfile,
 ) {
   if (
     snapshot.setupFamily !== "impulse_fade_v1" ||
     snapshot.lifecycleVersion !== IMPULSE_FADE_LIFECYCLE_VERSION ||
-    !snapshot.lifecycleConfigHash.trim()
+    snapshot.lifecycleVersion !== strategyProfile.lifecycleVersion ||
+    snapshot.lifecycleConfigHash !== strategyProfile.lifecycleConfigHash ||
+    snapshot.executionTimeframe !== strategyProfile.timeframeRoles.executionTimeframe
   ) {
-    throw new Error("Lifecycle snapshot is incompatible with the radar profile");
+    throw new Error("Lifecycle snapshot is incompatible with the manifest strategy profile");
   }
   assertCausalTime(snapshot.asOf, cutoff, "lifecycle asOf");
   assertCausalTime(snapshot.updatedTs, cutoff, "lifecycle updatedTs");
   assertCausalTime(snapshot.stateSince, cutoff, "lifecycle stateSince");
   const candidate = snapshot.candidate;
   if (candidate) {
+    const sourceMatches = [series.source, series.dataOrigin]
+      .filter((item): item is string => item != null)
+      .some((item) => item.toLowerCase() === candidate.source.toLowerCase());
+    const venueMatches =
+      !candidate.venue.trim() || candidate.venue.toLowerCase() === series.source.toLowerCase();
     if (
       candidate.symbol.toUpperCase() !== series.symbol.toUpperCase() ||
-      candidate.source.toLowerCase() !== series.source.toLowerCase() ||
+      !sourceMatches ||
+      !venueMatches ||
       candidate.setupFamily !== snapshot.setupFamily ||
       candidate.lifecycleVersion !== snapshot.lifecycleVersion ||
-      candidate.lifecycleConfigHash !== snapshot.lifecycleConfigHash
+      candidate.lifecycleConfigHash !== snapshot.lifecycleConfigHash ||
+      candidate.executionTimeframe !== strategyProfile.timeframeRoles.executionTimeframe
     ) {
       throw new Error("Lifecycle candidate does not match the radar series and lifecycle identity");
     }
@@ -2272,7 +2364,7 @@ function venuePolicyPasses(status: ExecutionVenueEligibilityStatus, mode: Execut
 }
 
 function cadenceIncludes(asOf: number, profile: RadarSelectionProfile) {
-  const timeframe = timeframeToSeconds(profile.scanTimeframe);
+  const timeframe = strictTimeframeSeconds(profile.scanTimeframe);
   const closeIndex = Math.floor(asOf / timeframe);
   return closeIndex % profile.evaluationCadence.everyBars === 0;
 }
@@ -2291,7 +2383,9 @@ function validateProfile(definition: RadarSelectionProfileDefinition) {
   if (definition.setupFamily !== "impulse_fade_v1") {
     createProfileError("Only impulse_fade_v1 radar profiles are supported");
   }
-  if (!validPositive(timeframeToSeconds(definition.scanTimeframe))) {
+  try {
+    strictTimeframeSeconds(definition.scanTimeframe);
+  } catch {
     createProfileError("scanTimeframe must be valid");
   }
   if (definition.evaluationCadence.mode !== "completedScanCandle") {
@@ -2366,7 +2460,7 @@ function validateDetector(detector: RadarMoveDetector) {
   }
   if (detector.type === "emaAtrDisplacement") {
     if (
-      !validPositive(timeframeToSeconds(detector.analysisTimeframe)) ||
+      !isStrictTimeframe(detector.analysisTimeframe) ||
       !Number.isInteger(detector.emaPeriod) ||
       detector.emaPeriod < 1 ||
       !Number.isInteger(detector.atrPeriod) ||
@@ -2455,7 +2549,8 @@ function validCandle(candle: CandleRecord) {
     candle.l <= Math.min(candle.o, candle.c, candle.h) &&
     optionalNonnegative(candle.v_base) &&
     optionalNonnegative(candle.v_quote) &&
-    optionalNonnegative(candle.ver)
+    optionalNonnegative(candle.ver) &&
+    optionalNonnegative(candle.knownAt)
   );
 }
 
@@ -2481,7 +2576,7 @@ function dedupeNotes(notes: readonly RadarDataQualityNote[]) {
 }
 
 function dedupeObservations(observations: readonly RadarMetricObservation[]) {
-  return [...new Map(observations.map((item) => [item.observationId, item])).values()]
+  return [...new Map(observations.map((item) => [item.requestId, item])).values()]
     .sort(compareObservations);
 }
 
@@ -2519,7 +2614,11 @@ function latestUniqueObservation<T extends { observationId: string }>(
 }
 
 function compareObservations(left: RadarMetricObservation, right: RadarMetricObservation) {
-  return left.knownAt - right.knownAt || left.observationId.localeCompare(right.observationId);
+  return (
+    left.requestedAsOf - right.requestedAsOf ||
+    left.observationId.localeCompare(right.observationId) ||
+    left.requestId.localeCompare(right.requestId)
+  );
 }
 
 function compareEvaluations(left: RadarGateEvaluation, right: RadarGateEvaluation) {
@@ -2538,7 +2637,18 @@ function compareStatusObservations(
 }
 
 function compareTimeframes(left: string, right: string) {
-  return timeframeToSeconds(left) - timeframeToSeconds(right) || left.localeCompare(right);
+  return strictTimeframeSeconds(left) - strictTimeframeSeconds(right) || left.localeCompare(right);
+}
+
+function isStrictTimeframe(timeframe: string) {
+  return /^[1-9]\d*[mhd]$/.test(timeframe) && validPositive(timeframeToSeconds(timeframe));
+}
+
+function strictTimeframeSeconds(timeframe: string) {
+  if (!isStrictTimeframe(timeframe)) {
+    throw new RangeError(`Invalid radar timeframe ${timeframe}`);
+  }
+  return timeframeToSeconds(timeframe);
 }
 
 function profileRef(profile: RadarSelectionProfile) {

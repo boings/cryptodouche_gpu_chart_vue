@@ -244,7 +244,7 @@ insufficient data.
 Every selection metric is serialized as `RadarMetricObservation` with:
 
 ```text
-schemaVersion, logicalObjectId, observationId
+schemaVersion, logicalObjectId, observationId, requestId
 metricCode, metricVersion, configHash, inputHash
 symbol, source, dataOrigin, timeframe
 requestedAsOf, effectiveAsOf, knownAt
@@ -254,8 +254,9 @@ dataQualityNotes[]
 ```
 
 Missing values remain `null` with an explanatory note and never become a valid
-zero. `inputHash` covers candle timestamps, buckets, OHLCV values, and supplied
-revision numbers, while chart-only x coordinates are excluded.
+zero. `inputHash` covers candle timestamps, buckets, OHLCV values, supplied
+revision numbers, and the revision publication time, while chart-only x
+coordinates are excluded.
 
 ## Selection-anchor freeze
 
@@ -304,10 +305,10 @@ Supported hard gates are:
 | `executionVenueEligibility` | Point-in-time intended-venue status satisfies the profile policy |
 
 `RadarGateEvaluation` retains every detector result, every hard-gate result,
-their explanations, exact evidence observation IDs, embedded cutoff-safe gate
-evidence, and the final composite result. The episode and manifest preserve the
-same evidence. Hard gates constrain corpus eligibility; they are not silently
-folded into a move score.
+their explanations, exact value-revision observation IDs, metric request IDs,
+embedded cutoff-safe gate evidence, and the final composite result. The episode
+and manifest preserve the same evidence. Hard gates constrain corpus
+eligibility; they are not silently folded into a move score.
 
 ## Completed candles and `asOf`
 
@@ -324,12 +325,20 @@ A 4h EMA/ATR detector used by a 1h scanner, for example, cannot consume the 4h
 candle until its 4h close.
 
 Each metric observation records `requestedAsOf`, `effectiveAsOf`, and `knownAt`.
-`requestedAsOf` is the scan-candle evaluation boundary. `effectiveAsOf` and
-`knownAt` are the close time of the latest completed candle actually used by
-that metric. A 4h observation requested by consecutive 1h evaluations therefore
-retains one observation ID until another 4h candle closes. The gate evaluation
-preserves each 1h request time. Reference times may be older and are stored
-explicitly.
+`requestedAsOf` is the actual scanner evaluation time. `effectiveAsOf` is the
+close of the latest completed candle used, while `knownAt` is the latest
+publication time among the selected candle revisions. A 4h value requested by
+consecutive 1h evaluations therefore retains one value-revision observation ID
+until its inputs change, while each 1h request receives a distinct `requestId`.
+Reference times may be older and are stored explicitly.
+
+An OHLCV row may supply `knownAt` to represent when that exact revision became
+available. Revisions with `knownAt > asOf` are invisible. Among revisions for
+one bucket, the latest revision known by the cutoff wins. Different rows with
+the same bucket and the same `knownAt` are rejected as ambiguous. If `knownAt`
+is omitted, the row is treated as immutable and known at candle close. This
+default preserves ordinary final-candle feeds without pretending that a
+finalized history can reconstruct past corrections.
 
 An unavailable detector is not treated as a confirmed false value. A first
 measurable gate that is already true cannot invent a false-to-true crossing at
@@ -344,7 +353,9 @@ history. The generated manifest reports required pre-roll by timeframe.
 Rows after `to` are removed before duplicate-revision and candle validation, so
 a future-only conflict cannot alter or abort a historical result. In-cutoff
 malformed candles and conflicting same-bucket revisions fail closed instead of
-being discarded. Future-only timeframes are omitted from manifest coverage.
+being discarded. Timeframes use strict `Nm`, `Nh`, or `Nd` syntax, and candle
+buckets must align to their declared timeframe. Future-only timeframes are
+omitted from manifest coverage.
 
 ## Episode lifecycle, reset, and rearm
 
@@ -369,7 +380,9 @@ next false -> true crossing
 
 A sustained true gate creates one episode, not one episode per candle. A single
 noisy false candle does not rearm unless it satisfies the full elapsed reset
-duration. Expiry also does not rearm while the gate remains true.
+duration. A missing expected scan candle changes the state to unknown and breaks
+the continuous-false reset clock. Expiry also does not rearm while the gate
+remains true.
 
 `RadarEpisode` is the immutable detection artifact. Its detection-time fields
 remain:
@@ -402,9 +415,12 @@ An episode stores trigger observations separately from descriptive context.
 - point-in-time MTF structure states;
 - descriptive context tags.
 
-The episode can also retain exact durable references to the lifecycle candidate,
-lifecycle snapshot, and latest structure observation known at detection. These
-are context only. The current context tags are descriptive and non-prescriptive;
+The episode can also retain exact durable references to the active lifecycle
+candidate, lifecycle snapshot, and latest structure observation known at
+detection. Active lifecycle context must match the series identity, lifecycle
+version/configuration, and execution timeframe in the manifest's strategy
+profile; candidate-less snapshots are not attached. These references are
+context only. The current context tags are descriptive and non-prescriptive;
 for example, `rebound_after_drawdown` does not make a trade eligible.
 
 ## Worked path: `100 -> 80 -> 92`
@@ -477,19 +493,22 @@ The identity model distinguishes a logical object from one exact revision:
   source inputs known for that revision.
 
 For a radar metric, logical identity includes its metric code, symbol, source,
-data origin, timeframe, window, and configuration hash. Its observation identity
-also includes the effective data cutoff, actual reference, calculated value,
-distribution statistics, input-candle hash, and data-quality notes. The request
-time is audit metadata; it does not create a new metric revision while the
-effective completed-candle inputs remain unchanged.
+data origin, timeframe, configured window, and configuration hash. The aggregate
+maximum-window metric omits its changing winner from logical identity; the
+winner remains revision data. Observation identity also includes the effective
+data cutoff, actual reference, calculated value, distribution statistics,
+input-candle hash, input publication times, and data-quality notes. Request
+identity combines that observation ID with the actual `requestedAsOf` cutoff.
 
 Consequences:
 
 - identical input and cutoff produce identical objects and IDs;
 - a later effective data cutoff produces a new metric observation ID;
-- repeated higher-timeframe requests before its next close reuse the same ID;
+- repeated higher-timeframe requests before its next close reuse the same
+  observation ID but receive distinct request IDs;
 - changed cutoff-resolved candle values produce a new observation ID while the
   metric's logical ID remains stable;
+- a corrected candle affects only requests at or after its supplied `knownAt`;
 - changed detector configuration produces a new logical ID;
 - conflicting same-bucket candles are rejected instead of resolved by array
   order.
@@ -619,11 +638,11 @@ chart component or mutate the input series.
 
 ## Known limitations and caller obligations
 
-- Candle rows do not yet carry a historical revision `knownAt`. The caller must
-  provide history already resolved to the revision that was knowable at the
-  requested cutoff. The scanner can detect conflicting same-bucket rows and can
-  hash changed inputs, but it cannot reconstruct which corrected candle revision
-  was historically visible.
+- Correction-aware replay requires the upstream history adapter to supply each
+  historical candle revision with its actual `knownAt`. Omitted values mean the
+  row is immutable and known at close. A finalized candle array without revision
+  publication history cannot reconstruct which earlier value was visible at a
+  past cutoff.
 - A scan must include enough pre-roll to establish historical distributions and
   a genuine prior false gate. Beginning with an already-true gate and no earlier
   state cannot prove the actual crossing time.

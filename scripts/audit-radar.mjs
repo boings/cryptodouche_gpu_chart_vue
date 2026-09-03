@@ -294,7 +294,7 @@ function lifecycleSnapshot(symbol, asOf, state, price, suffix = "primary") {
     lifecycleVersion: "impulse_fade_v1.lifecycle.1",
     lifecycleConfigHash,
     asOf,
-    executionTimeframe: "1h",
+    executionTimeframe: "15m",
     state,
     currentState: state,
     stateSince: asOf,
@@ -310,7 +310,7 @@ function lifecycleSnapshot(symbol, asOf, state, price, suffix = "primary") {
       symbol,
       source: "bybit",
       venue: "bybit",
-      executionTimeframe: "1h",
+      executionTimeframe: "15m",
       detectedAt: asOf,
       detectionEventTime: asOf,
       detectionMetrics: {

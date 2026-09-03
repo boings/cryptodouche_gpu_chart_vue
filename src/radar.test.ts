@@ -24,7 +24,7 @@ import {
 
 const HOUR = 3_600;
 const DAY = 86_400;
-const START = 1_700_000_000;
+const START = 1_699_992_000;
 
 function candle(bucket: number, close: number): CandleRecord {
   return {
@@ -132,13 +132,14 @@ function scan(
 function lifecycleSnapshot(
   overrides: Partial<SetupStateSnapshot> = {},
 ): SetupStateSnapshot {
+  const lifecycleConfigHash = DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE.lifecycleConfigHash;
   return {
     strategy: "pumpFade",
     setupFamily: "impulse_fade_v1",
     lifecycleVersion: "impulse_fade_v1.lifecycle.1",
-    lifecycleConfigHash: "test-lifecycle-config",
+    lifecycleConfigHash,
     asOf: START + 2 * HOUR,
-    executionTimeframe: "1h",
+    executionTimeframe: "15m",
     state: "developing",
     currentState: "developing",
     stateSince: START + 2 * HOUR,
@@ -146,7 +147,25 @@ function lifecycleSnapshot(
     reason: "test",
     checks: [],
     updatedTs: START + 2 * HOUR,
-    candidate: null,
+    candidate: {
+      id: "candidate:fil",
+      setupFamily: "impulse_fade_v1",
+      lifecycleVersion: "impulse_fade_v1.lifecycle.1",
+      lifecycleConfigHash,
+      symbol: "FILUSDT",
+      source: "bybit",
+      venue: "bybit",
+      executionTimeframe: "15m",
+      detectedAt: START + HOUR,
+      detectionEventTime: START,
+      detectionMetrics: { returnPct: null, percentile: null, zScore: null, atrExtension: null },
+      initialMtfContext: [],
+      episodeHigh: 120,
+      episodeHighTime: START + HOUR,
+      currentState: "developing",
+      stateSince: START + HOUR,
+      terminalAt: null,
+    },
     evidence: [],
     transitions: [],
     pendingConditions: [],
@@ -205,7 +224,7 @@ describe("path-aware radar scanning", () => {
   it("records a qualifying 4h move when its net 24h path is negative", () => {
     const candles = [
       candle(START - 20 * HOUR, 115),
-      candle(START, 100),
+      ...Array.from({ length: 8 }, (_, index) => candle(START - (4 - index) * HOUR, 100)),
       candle(START + 4 * HOUR, 110),
     ];
     const result = scan(
@@ -236,8 +255,13 @@ describe("path-aware radar scanning", () => {
       {
         "1h": [
           candle(START - 4 * HOUR, 100),
+          candle(START - 3 * HOUR, 100),
+          candle(START - 2 * HOUR, 100),
+          candle(START - HOUR, 100),
           candle(START, 100),
+          candle(START + HOUR, 101),
           candle(START + 2 * HOUR, 102),
+          candle(START + 3 * HOUR, 104),
           candle(START + 4 * HOUR, 110),
         ],
       },
@@ -263,6 +287,40 @@ describe("path-aware radar scanning", () => {
         (item) => item.metricCode === "maximum_window_return" && item.window === 4 * HOUR,
       ),
     ).toBe(true);
+  });
+
+  it("keeps one maximum-window logical ID when the winning window changes", () => {
+    const detector: MaximumWindowReturnDetector = {
+      id: "maximum-local-return",
+      type: "maximumWindowReturn",
+      windowsSeconds: [HOUR, 2 * HOUR],
+      minimumReturnPct: 100,
+      minimumPercentile: null,
+      minimumZScore: null,
+      minimumSampleCount: 0,
+      historyLookbackSeconds: 90 * DAY,
+      maximumReferenceStalenessSeconds: null,
+    };
+    const result = scan(
+      {
+        "1h": [
+          candle(START - 2 * HOUR, 100),
+          candle(START - HOUR, 100),
+          candle(START, 100),
+          candle(START + HOUR, 110),
+          candle(START + 2 * HOUR, 120),
+        ],
+      },
+      { moveDetectors: [detector] },
+      START + 3 * HOUR,
+    );
+    const aggregate = result.observations.filter(
+      (item) => item.metricCode === "maximum_window_return" && item.effectiveAsOf >= START + 2 * HOUR,
+    );
+
+    expect(aggregate.map((item) => item.window)).toEqual([HOUR, 2 * HOUR]);
+    expect(new Set(aggregate.map((item) => item.logicalObjectId)).size).toBe(1);
+    expect(new Set(aggregate.map((item) => item.observationId)).size).toBe(2);
   });
 
   it("does not use a higher-timeframe candle until that candle closes", () => {
@@ -418,6 +476,30 @@ describe("path-aware radar scanning", () => {
     ]);
     expect(result.episodes[0].id).not.toBe(result.episodes[1].id);
     expect(result.episodeStatusObservations.some((item) => item.reason === "radarGateReset")).toBe(true);
+  });
+
+  it("does not infer a continuous false reset across missing scan candles", () => {
+    const result = scan(
+      {
+        "1h": [
+          candle(START, 100),
+          candle(START + HOUR, 120),
+          candle(START + 2 * HOUR, 100),
+          candle(START + 10 * HOUR, 100),
+          candle(START + 11 * HOUR, 120),
+        ],
+      },
+      {
+        moveDetectors: [
+          troughDetector({ lookbackSeconds: 2 * HOUR, maximumTroughAgeSeconds: 2 * HOUR }),
+        ],
+        resetPolicy: { minimumFalseDurationSeconds: 4 * HOUR },
+      },
+      START + 12 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(1);
+    expect(result.episodeStatusObservations.some((item) => item.reason === "radarGateReset")).toBe(false);
   });
 
   it("does not use a trough older than the configured maximum age", () => {
@@ -739,6 +821,56 @@ describe("path-aware radar scanning", () => {
     expect(correctedObservation.observationId).not.toBe(firstObservation.observationId);
   });
 
+  it("applies candle corrections only after their publication cutoff", () => {
+    const original = { ...candle(START, 100), knownAt: START + HOUR };
+    const correction = { ...candle(START, 90), knownAt: START + 3 * HOUR, ver: 2 };
+    const history = [
+      candle(START - HOUR, 100),
+      original,
+      correction,
+      candle(START + HOUR, 110),
+      candle(START + 2 * HOUR, 110),
+    ];
+    const beforeCorrection = scan(
+      { "1h": history },
+      {},
+      START + 2 * HOUR,
+    );
+    const physicallyTruncated = scan(
+      { "1h": history.filter((item) => item !== correction) },
+      {},
+      START + 2 * HOUR,
+    );
+    const afterCorrection = scan(
+      { "1h": history },
+      {},
+      START + 3 * HOUR,
+    );
+    const before = beforeCorrection.observations.find(
+      (item) =>
+        item.metricCode === "rolling_trough_runup" &&
+        item.requestedAsOf === START + 2 * HOUR,
+    )!;
+    const after = afterCorrection.observations.find(
+      (item) =>
+        item.metricCode === "rolling_trough_runup" &&
+        item.requestedAsOf === START + 3 * HOUR,
+    )!;
+    const preservedBeforeRequest = afterCorrection.observations.find(
+      (item) => item.requestId === before.requestId,
+    );
+
+    expect(beforeCorrection).toEqual(physicallyTruncated);
+    expect(preservedBeforeRequest).toEqual(before);
+    expect(before.value).toBeCloseTo(10);
+    expect(before.knownAt).toBe(START + 2 * HOUR);
+    expect(after.value).toBeCloseTo((110 / 90 - 1) * 100);
+    expect(after.knownAt).toBe(START + 3 * HOUR);
+    expect(after.logicalObjectId).toBe(before.logicalObjectId);
+    expect(after.observationId).not.toBe(before.observationId);
+    expect(afterCorrection.episodes[0].detectedAt).toBe(START + 3 * HOUR);
+  });
+
   it("rejects conflicting same-bucket candles instead of using array order", () => {
     expect(() =>
       scan(
@@ -820,10 +952,18 @@ describe("path-aware radar scanning", () => {
     const ids = result.gateEvaluations
       .filter((item) => item.asOf >= START + 8 * HOUR)
       .map((item) => item.detectorResults[0].observationIds[0]);
-    const observation = result.observations.find((item) => item.observationId === ids[0])!;
+    const requests = result.observations.filter((item) => item.observationId === ids[0]);
 
     expect(new Set(ids).size).toBe(1);
-    expect(observation.effectiveAsOf).toBe(START + 8 * HOUR);
+    expect(requests.map((item) => item.requestedAsOf)).toEqual([
+      START + 8 * HOUR,
+      START + 9 * HOUR,
+      START + 10 * HOUR,
+      START + 11 * HOUR,
+    ]);
+    expect(new Set(requests.map((item) => item.requestId)).size).toBe(4);
+    expect(requests.every((item) => item.effectiveAsOf === START + 8 * HOUR)).toBe(true);
+    expect(requests.every((item) => item.knownAt === START + 8 * HOUR)).toBe(true);
 
     const revised = fourHourCandles.map((item, index) =>
       index === fourHourCandles.length - 1 ? { ...item, ver: 2 } : item,
@@ -898,11 +1038,11 @@ describe("path-aware radar scanning", () => {
         id: "candidate:wrong",
         setupFamily: "impulse_fade_v1",
         lifecycleVersion: "impulse_fade_v1.lifecycle.1",
-        lifecycleConfigHash: "test-lifecycle-config",
+        lifecycleConfigHash: DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE.lifecycleConfigHash,
         symbol: "ARBUSDT",
         source: "bybit",
         venue: "bybit",
-        executionTimeframe: "1h",
+        executionTimeframe: "15m",
         detectedAt: START + HOUR,
         detectionEventTime: START,
         detectionMetrics: { returnPct: null, percentile: null, zScore: null, atrExtension: null },
@@ -930,6 +1070,36 @@ describe("path-aware radar scanning", () => {
         },
       }),
     ).toThrow("Conflicting lifecycle snapshots");
+  });
+
+  it("binds active lifecycle context to the manifest strategy profile", () => {
+    const candles = [candle(START, 100), candle(START + HOUR, 120)];
+    const mismatchedConfig = "different-lifecycle-config";
+    const mismatched = lifecycleSnapshot({
+      lifecycleConfigHash: mismatchedConfig,
+      candidate: {
+        ...lifecycleSnapshot().candidate!,
+        lifecycleConfigHash: mismatchedConfig,
+      },
+    });
+    expect(() =>
+      scan({ "1h": candles }, {}, START + 2 * HOUR, {
+        lifecycleHistory: { FILUSDT: [mismatched] },
+      }),
+    ).toThrow("manifest strategy profile");
+
+    const ignoredCandidateLess = lifecycleSnapshot({
+      lifecycleConfigHash: mismatchedConfig,
+      candidate: null,
+    });
+    const result = scan({ "1h": candles }, {}, START + 2 * HOUR, {
+      lifecycleHistory: { FILUSDT: [ignoredCandidateLess] },
+    });
+    expect(result.episodes[0]).toMatchObject({
+      initialLifecycleCandidateId: null,
+      initialLifecycleState: null,
+      initialLifecycleStateRef: null,
+    });
   });
 
   it("keeps execution venue eligibility independent of the candle source", () => {
@@ -1084,5 +1254,27 @@ describe("path-aware radar scanning", () => {
   it("rejects malformed candles at or before the cutoff", () => {
     const malformed = { ...candle(START, 100), h: 90 };
     expect(() => scan({ "1h": [malformed] }, {}, START + HOUR)).toThrow("Invalid candle");
+  });
+
+  it("rejects permissive timeframe aliases and misaligned candle buckets", () => {
+    const profile = createRadarSelectionProfile(profileDefinition());
+    const invalidTimeframe = {
+      ...profile,
+      scanTimeframe: "1hour",
+    } as typeof profile;
+    invalidTimeframe.canonicalConfigHash = radarSelectionProfileHash(invalidTimeframe);
+    expect(() =>
+      scanRadarEpisodes({
+        candlesBySymbolAndTimeframe: {},
+        selectionProfile: invalidTimeframe,
+        from: START,
+        to: START + HOUR,
+      }),
+    ).toThrow("scanTimeframe must be valid");
+
+    const misaligned = candle(START + 1, 100);
+    expect(() => scan({ "1h": [misaligned] }, {}, START + 2 * HOUR)).toThrow(
+      "Invalid candle",
+    );
   });
 });
