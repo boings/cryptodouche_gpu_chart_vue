@@ -1889,9 +1889,24 @@ const setupState = computed(() => {
     return null;
   }
   const latestCandle = state.candles[state.candles.length - 1] ?? null;
+  const marketStructure = currentMarketStructure();
+  const appearance = resolvedAppearance.value;
   return computeSetupState({
+    candles: state.candles,
+    symbol: displaySymbol.value,
+    source: candidateMetricsForChart.value?.source ?? "chart",
+    venue: props.exchange ?? "",
+    executionTimeframe: displayTimeframe.value,
+    extensionOptions: {
+      windowSeconds: appearance.extensionWindowHours * 60 * 60,
+      historyDays: appearance.extensionHistoryDays,
+      minSamples: appearance.extensionMinSamples,
+      emaPeriod: appearance.extensionEmaPeriod,
+      atrPeriod: appearance.extensionAtrPeriod,
+    },
     extension: setupExtensionMetrics.value,
-    structure: currentMarketStructure().summary,
+    marketStructure,
+    structure: marketStructure.summary,
     htfStructures: mtfStructureEntries.value,
     srZones: setupSupportResistanceZones.value,
     rsDivergences: setupRelativeStrengthDivergences.value,
@@ -1909,10 +1924,60 @@ const setupStateText = computed(() => {
 const setupStateTitle = computed(() => {
   const snapshot = setupState.value;
   if (!snapshot) return "";
-  return [
-    snapshot.reason,
-    ...snapshot.checks.map((check) => `${check.label}: ${check.status} - ${check.detail}`),
-  ].join("\n");
+  const candidate = snapshot.candidate;
+  if (!candidate) {
+    return [
+      "Impulse Fade v1",
+      snapshot.reason,
+      ...snapshot.dataQuality.map((note) => `Data: ${note}`),
+      ...snapshot.checks.map((check) => `${check.label}: ${check.status} - ${check.detail}`),
+    ].join("\n");
+  }
+
+  const asOf = snapshot.asOf ?? candidate.detectedAt;
+  const lines = [
+    "Impulse Fade v1",
+    `Detected: ${formatSetupTooltipTime(candidate.detectedAt)}`,
+    `Age: ${formatSetupTooltipDuration(asOf - candidate.detectedAt)}`,
+    `State: ${snapshot.label}`,
+    `State since: ${formatSetupTooltipTime(snapshot.stateSince ?? candidate.stateSince)}`,
+  ];
+
+  if (snapshot.activeBreakLevel) {
+    lines.push(
+      `Break level: ${formatPrice(snapshot.activeBreakLevel.level)} (${snapshot.activeBreakLevel.sourceTimeframe})`,
+    );
+  }
+  if (snapshot.retestLevel) {
+    lines.push(`Retest level: ${formatPrice(snapshot.retestLevel.level)}`);
+  }
+  if (snapshot.invalidationReason) lines.push(`Invalidation: ${snapshot.invalidationReason}`);
+  if (snapshot.expiryReason) lines.push(`Expiry: ${snapshot.expiryReason}`);
+
+  const eventEvidence = snapshot.evidence.filter((item) => item.code !== "candidate_detected");
+  lines.push("", "Evidence:");
+  if (eventEvidence.length) {
+    lines.push(...eventEvidence.map(formatSetupEvidenceTitle));
+  } else {
+    lines.push("- Candidate gate crossed; no post-detection deterioration yet");
+  }
+
+  if (snapshot.pendingConditions.length) {
+    lines.push("", "Pending:");
+    lines.push(...snapshot.pendingConditions.map((item) => `- ${item}`));
+  }
+
+  if (snapshot.confluence.length) {
+    lines.push("", "Confluence:");
+    lines.push(...snapshot.confluence.slice(0, 4).map((item) => `- ${item.label}: ${item.detail}`));
+  }
+
+  if (snapshot.dataQuality.length) {
+    lines.push("", "Data quality:");
+    lines.push(...snapshot.dataQuality.map((note) => `- ${note}`));
+  }
+
+  return lines.join("\n");
 });
 const setupStateClass = computed(() => ({
   developing: setupState.value?.state === "developing",
@@ -1920,6 +1985,7 @@ const setupStateClass = computed(() => ({
   waiting: setupState.value?.state === "waitingForRetest",
   entry: setupState.value?.state === "entryCandidate",
   invalidated: setupState.value?.state === "invalidated",
+  expired: setupState.value?.state === "expired",
 }));
 const openOnChartClickActive = computed(
   () => Boolean(props.openOnChartClick && !anchoredVwapPickMode.value),
@@ -6191,6 +6257,40 @@ function formatExtensionWindow(seconds: number) {
   if (seconds % 3_600 === 0 && seconds <= 72 * 3_600) return `${seconds / 3_600}h`;
   if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
   return `${Math.round(seconds / 60)}m`;
+}
+
+function formatSetupTooltipTime(ts: number) {
+  if (!Number.isFinite(ts)) return "Unknown";
+  return new Date(ts * 1000).toLocaleString("en-US", {
+    month: "short",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+    timeZone: "UTC",
+    timeZoneName: "short",
+  });
+}
+
+function formatSetupTooltipDuration(seconds: number) {
+  const safe = Math.max(0, Math.round(seconds));
+  const days = Math.floor(safe / 86_400);
+  const hours = Math.floor((safe % 86_400) / 3_600);
+  const minutes = Math.floor((safe % 3_600) / 60);
+  if (days > 0) return `${days}d ${hours}h`;
+  if (hours > 0) return `${hours}h ${minutes}m`;
+  if (minutes > 0) return `${minutes}m`;
+  return `${safe}s`;
+}
+
+function formatSetupEvidenceTitle(item: {
+  explanation: string;
+  eventTime: number;
+  knownAt: number;
+  sourceTimeframe: string;
+}) {
+  return `- ${item.explanation} · event ${formatSetupTooltipTime(
+    item.eventTime,
+  )} · known ${formatSetupTooltipTime(item.knownAt)} · ${item.sourceTimeframe}`;
 }
 
 function formatAnchorDate(ts: number) {

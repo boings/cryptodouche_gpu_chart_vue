@@ -1,4 +1,6 @@
 import type { CandleRecord } from "./types";
+export declare const IMPULSE_FADE_SETUP_FAMILY: "impulse_fade_v1";
+export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
 export interface SupportResistanceZone {
     kind: "support" | "resistance";
     low: number;
@@ -8,6 +10,8 @@ export interface SupportResistanceZone {
     score: number;
     strength: number;
     lastX: number;
+    eventTime: number;
+    knownAt: number;
     source: "swing";
     structures: SwingPointStructure[];
 }
@@ -44,6 +48,8 @@ export interface SwingPoint {
     bucket: number;
     price: number;
     atr: number | null;
+    eventTime: number;
+    knownAt: number;
 }
 export interface StructureBreak {
     kind: StructureBreakKind;
@@ -56,6 +62,8 @@ export interface StructureBreak {
     level: number;
     sourceSwingX: number;
     sourceSwingPrice: number;
+    eventTime: number;
+    knownAt: number;
 }
 export interface MarketStructureOptions {
     lookback?: number;
@@ -88,6 +96,8 @@ export interface StructureActiveLevel {
     x: number;
     ts: number;
     bucket: number;
+    eventTime: number;
+    knownAt: number;
     sourceSwing: SwingPoint;
 }
 export interface RelativeStrengthDivergence {
@@ -107,6 +117,8 @@ export interface RelativeStrengthDivergence {
     sourceBreak: StructureBreak | null;
     priceStructureState: StructureSummaryState;
     rsStructureState: StructureSummaryState;
+    eventTime: number;
+    knownAt: number;
 }
 export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
     minDeltaPct?: number;
@@ -156,8 +168,10 @@ export interface AnchoredVwapSignal {
     bucket: number;
     price: number;
     vwap: number;
+    eventTime: number;
+    knownAt: number;
 }
-export type SetupStateName = "notCandidate" | "developing" | "deteriorating" | "waitingForRetest" | "entryCandidate" | "invalidated";
+export type SetupStateName = "notCandidate" | "developing" | "deteriorating" | "waitingForRetest" | "entryCandidate" | "invalidated" | "expired";
 export type SetupStateCheckStatus = "pass" | "pending" | "fail";
 export interface SetupExtensionMetrics {
     returnPct?: number | null;
@@ -172,7 +186,15 @@ export interface SetupStateCheck {
     detail: string;
 }
 export interface SetupStateOptions {
+    candles?: CandleRecord[];
+    symbol?: string;
+    source?: string;
+    venue?: string;
+    executionTimeframe?: string;
+    asOf?: number | null;
+    extensionOptions?: ExtensionSnapshotOptions;
     extension?: SetupExtensionMetrics | null;
+    marketStructure?: MarketStructureState | null;
     structure?: MarketStructureSummary | null;
     htfStructures?: Array<{
         timeframe: string;
@@ -186,14 +208,95 @@ export interface SetupStateOptions {
     latestTs?: number | null;
     resistanceNearPct?: number;
     retestNearPct?: number;
+    retestToleranceBps?: number;
+    retestToleranceAtr?: number;
+    invalidationBps?: number;
+    maxCandidateAgeSeconds?: number;
 }
 export interface SetupStateSnapshot {
     strategy: "pumpFade";
+    setupFamily: SetupFamily;
+    asOf: number | null;
+    executionTimeframe: string;
     state: SetupStateName;
+    currentState: SetupStateName;
+    stateSince: number | null;
     label: string;
     reason: string;
     checks: SetupStateCheck[];
     updatedTs: number | null;
+    candidate: SetupCandidateEpisode | null;
+    evidence: SetupStateEvidence[];
+    transitions: SetupStateTransition[];
+    pendingConditions: string[];
+    activeBreakLevel: SetupLifecycleLevel | null;
+    retestLevel: SetupLifecycleLevel | null;
+    confluence: SetupConfluenceItem[];
+    invalidationReason: string | null;
+    expiryReason: string | null;
+    dataQuality: string[];
+}
+export interface SetupCandidateEpisode {
+    id: string;
+    setupFamily: SetupFamily;
+    symbol: string;
+    source: string;
+    venue: string;
+    executionTimeframe: string;
+    detectedAt: number;
+    detectionEventTime: number;
+    detectionMetrics: SetupExtensionMetrics;
+    initialMtfContext: SetupMtfContextSnapshot[];
+    episodeHigh: number | null;
+    episodeHighTime: number | null;
+    currentState: SetupStateName;
+    stateSince: number;
+    terminalAt: number | null;
+}
+export interface SetupMtfContextSnapshot {
+    timeframe: string;
+    state: StructureSummaryState;
+    trend: StructureDirection | "neutral";
+    transitionDirection: StructureDirection | null;
+    updatedTs: number | null;
+}
+export interface SetupStateEvidence {
+    id: string;
+    code: string;
+    explanation: string;
+    eventTime: number;
+    knownAt: number;
+    sourceTimeframe: string;
+    price?: number | null;
+    level?: number | null;
+    value?: number | null;
+    relatedEventId?: string;
+    contributesTo?: SetupStateName;
+}
+export interface SetupStateTransition {
+    from: SetupStateName;
+    to: SetupStateName;
+    knownAt: number;
+    evidenceIds: string[];
+    evidenceCodes: string[];
+    explanation: string;
+}
+export interface SetupLifecycleLevel {
+    level: number;
+    sourceTimeframe: string;
+    eventTime: number;
+    knownAt: number;
+    evidenceId: string;
+}
+export interface SetupConfluenceItem {
+    code: string;
+    label: string;
+    detail: string;
+    eventTime?: number | null;
+    knownAt?: number | null;
+    sourceTimeframe?: string;
+    level?: number | null;
+    value?: number | null;
 }
 export declare function computeSmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeEmaLine(candles: CandleRecord[], period?: number): Float32Array;

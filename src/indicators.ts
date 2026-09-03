@@ -1,5 +1,9 @@
 import type { CandleRecord } from "./types";
 
+export const IMPULSE_FADE_SETUP_FAMILY = "impulse_fade_v1" as const;
+
+export type SetupFamily = typeof IMPULSE_FADE_SETUP_FAMILY;
+
 export interface SupportResistanceZone {
   kind: "support" | "resistance";
   low: number;
@@ -9,6 +13,8 @@ export interface SupportResistanceZone {
   score: number;
   strength: number;
   lastX: number;
+  eventTime: number;
+  knownAt: number;
   source: "swing";
   structures: SwingPointStructure[];
 }
@@ -66,6 +72,8 @@ export interface SwingPoint {
   bucket: number;
   price: number;
   atr: number | null;
+  eventTime: number;
+  knownAt: number;
 }
 
 export interface StructureBreak {
@@ -79,6 +87,8 @@ export interface StructureBreak {
   level: number;
   sourceSwingX: number;
   sourceSwingPrice: number;
+  eventTime: number;
+  knownAt: number;
 }
 
 export interface MarketStructureOptions {
@@ -115,6 +125,8 @@ export interface StructureActiveLevel {
   x: number;
   ts: number;
   bucket: number;
+  eventTime: number;
+  knownAt: number;
   sourceSwing: SwingPoint;
 }
 
@@ -135,6 +147,8 @@ export interface RelativeStrengthDivergence {
   sourceBreak: StructureBreak | null;
   priceStructureState: StructureSummaryState;
   rsStructureState: StructureSummaryState;
+  eventTime: number;
+  knownAt: number;
 }
 
 export interface RelativeStrengthDivergenceOptions extends MarketStructureOptions {
@@ -191,6 +205,8 @@ export interface AnchoredVwapSignal {
   bucket: number;
   price: number;
   vwap: number;
+  eventTime: number;
+  knownAt: number;
 }
 
 export type SetupStateName =
@@ -199,7 +215,8 @@ export type SetupStateName =
   | "deteriorating"
   | "waitingForRetest"
   | "entryCandidate"
-  | "invalidated";
+  | "invalidated"
+  | "expired";
 
 export type SetupStateCheckStatus = "pass" | "pending" | "fail";
 
@@ -224,7 +241,15 @@ export interface SetupStateCheck {
 }
 
 export interface SetupStateOptions {
+  candles?: CandleRecord[];
+  symbol?: string;
+  source?: string;
+  venue?: string;
+  executionTimeframe?: string;
+  asOf?: number | null;
+  extensionOptions?: ExtensionSnapshotOptions;
   extension?: SetupExtensionMetrics | null;
+  marketStructure?: MarketStructureState | null;
   structure?: MarketStructureSummary | null;
   htfStructures?: Array<{ timeframe: string; summary: MarketStructureSummary }>;
   srZones?: SupportResistanceZone[];
@@ -235,15 +260,102 @@ export interface SetupStateOptions {
   latestTs?: number | null;
   resistanceNearPct?: number;
   retestNearPct?: number;
+  retestToleranceBps?: number;
+  retestToleranceAtr?: number;
+  invalidationBps?: number;
+  maxCandidateAgeSeconds?: number;
 }
 
 export interface SetupStateSnapshot {
   strategy: "pumpFade";
+  setupFamily: SetupFamily;
+  asOf: number | null;
+  executionTimeframe: string;
   state: SetupStateName;
+  currentState: SetupStateName;
+  stateSince: number | null;
   label: string;
   reason: string;
   checks: SetupStateCheck[];
   updatedTs: number | null;
+  candidate: SetupCandidateEpisode | null;
+  evidence: SetupStateEvidence[];
+  transitions: SetupStateTransition[];
+  pendingConditions: string[];
+  activeBreakLevel: SetupLifecycleLevel | null;
+  retestLevel: SetupLifecycleLevel | null;
+  confluence: SetupConfluenceItem[];
+  invalidationReason: string | null;
+  expiryReason: string | null;
+  dataQuality: string[];
+}
+
+export interface SetupCandidateEpisode {
+  id: string;
+  setupFamily: SetupFamily;
+  symbol: string;
+  source: string;
+  venue: string;
+  executionTimeframe: string;
+  detectedAt: number;
+  detectionEventTime: number;
+  detectionMetrics: SetupExtensionMetrics;
+  initialMtfContext: SetupMtfContextSnapshot[];
+  episodeHigh: number | null;
+  episodeHighTime: number | null;
+  currentState: SetupStateName;
+  stateSince: number;
+  terminalAt: number | null;
+}
+
+export interface SetupMtfContextSnapshot {
+  timeframe: string;
+  state: StructureSummaryState;
+  trend: StructureDirection | "neutral";
+  transitionDirection: StructureDirection | null;
+  updatedTs: number | null;
+}
+
+export interface SetupStateEvidence {
+  id: string;
+  code: string;
+  explanation: string;
+  eventTime: number;
+  knownAt: number;
+  sourceTimeframe: string;
+  price?: number | null;
+  level?: number | null;
+  value?: number | null;
+  relatedEventId?: string;
+  contributesTo?: SetupStateName;
+}
+
+export interface SetupStateTransition {
+  from: SetupStateName;
+  to: SetupStateName;
+  knownAt: number;
+  evidenceIds: string[];
+  evidenceCodes: string[];
+  explanation: string;
+}
+
+export interface SetupLifecycleLevel {
+  level: number;
+  sourceTimeframe: string;
+  eventTime: number;
+  knownAt: number;
+  evidenceId: string;
+}
+
+export interface SetupConfluenceItem {
+  code: string;
+  label: string;
+  detail: string;
+  eventTime?: number | null;
+  knownAt?: number | null;
+  sourceTimeframe?: string;
+  level?: number | null;
+  value?: number | null;
 }
 
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
@@ -473,13 +585,17 @@ export function computeExtensionSnapshot(
 
 export function computeSetupState(options: SetupStateOptions = {}): SetupStateSnapshot {
   const latestPrice = normalizedNullableNumber(options.latestPrice);
-  const structure = options.structure ?? null;
+  const marketStructure = options.marketStructure ?? null;
+  const structure = options.structure ?? marketStructure?.summary ?? null;
   const htfStructures = options.htfStructures ?? [];
   const srZones = options.srZones ?? [];
   const latestTs =
     normalizedNullableNumber(options.latestTs) ??
+    latestKnownAt(options.candles ?? []) ??
     normalizedNullableNumber(structure?.updatedTs) ??
     null;
+  const asOf = normalizedNullableNumber(options.asOf) ?? latestTs;
+  const executionTimeframe = options.executionTimeframe ?? "chart";
   const resistanceNearPct = clampNumberOption(options.resistanceNearPct, 0, 10, 1.5);
   const retestNearPct = clampNumberOption(options.retestNearPct, 0, 10, 0.8);
 
@@ -494,28 +610,6 @@ export function computeSetupState(options: SetupStateOptions = {}): SetupStateSn
   const retest = setupRetestCheck(structure, srZones, latestPrice, retestNearPct);
   const invalidated = setupInvalidated(extension, htfResistance, structure, latestPrice);
 
-  let state: SetupStateName = "notCandidate";
-  if (extension.status !== "pass") {
-    state = "notCandidate";
-  } else if (invalidated) {
-    state = "invalidated";
-  } else if (
-    structureShift.status === "pass" &&
-    retest.status === "pass" &&
-    (rsWeakness.status === "pass" || avwapFailure.status === "pass")
-  ) {
-    state = "entryCandidate";
-  } else if (structureShift.status === "pass") {
-    state = "waitingForRetest";
-  } else if (
-    (rsWeakness.status === "pass" || avwapFailure.status === "pass") &&
-    hasContextForDeveloping(htfResistance, htfStructures)
-  ) {
-    state = "deteriorating";
-  } else if (hasContextForDeveloping(htfResistance, htfStructures)) {
-    state = "developing";
-  }
-
   const checks = [
     extension,
     htfResistance,
@@ -524,13 +618,678 @@ export function computeSetupState(options: SetupStateOptions = {}): SetupStateSn
     avwapFailure,
     retest,
   ];
+  const base = {
+    checks,
+    asOf,
+    updatedTs: latestTs,
+    executionTimeframe,
+  };
+  const fallbackState = snapshotSetupState({
+    extension,
+    htfResistance,
+    htfStructures,
+    rsWeakness,
+    structureShift,
+    avwapFailure,
+    retest,
+    invalidated,
+  });
+
+  if (options.candles?.length && asOf != null) {
+    return computeImpulseFadeLifecycle({
+      ...options,
+      asOf,
+      latestPrice,
+      marketStructure,
+      structure,
+      htfStructures,
+      srZones,
+      checks,
+      executionTimeframe,
+    });
+  }
+
+  return snapshotFallbackSetupState({
+    ...base,
+    state: fallbackState,
+    reason: setupStateReason(fallbackState, checks),
+    dataQuality: ["Chronological setup lifecycle requires candle history"],
+  });
+}
+
+interface ExtensionGatePoint {
+  index: number;
+  candle: CandleRecord;
+  eventTime: number;
+  knownAt: number;
+  metrics: SetupExtensionMetrics;
+  pass: boolean;
+  rollingReturnCount: number;
+}
+
+type SetupLifecycleEventKind =
+  | "deterioration"
+  | "bearishBreak"
+  | "retest"
+  | "invalidation"
+  | "expiry";
+
+interface SetupLifecycleEvent extends SetupStateEvidence {
+  lifecycleKind: SetupLifecycleEventKind;
+  sortPriority: number;
+  breakLevel?: SetupLifecycleLevel;
+}
+
+interface ComputeImpulseFadeLifecycleOptions extends SetupStateOptions {
+  asOf: number;
+  latestPrice: number | null;
+  marketStructure: MarketStructureState | null;
+  structure: MarketStructureSummary | null;
+  htfStructures: Array<{ timeframe: string; summary: MarketStructureSummary }>;
+  srZones: SupportResistanceZone[];
+  checks: SetupStateCheck[];
+  executionTimeframe: string;
+}
+
+function computeImpulseFadeLifecycle(
+  options: ComputeImpulseFadeLifecycleOptions,
+): SetupStateSnapshot {
+  const candles = options.candles ?? [];
+  const extensionOptions = options.extensionOptions ?? {};
+  const gateSeries = buildExtensionGateSeries(candles, extensionOptions, options.asOf);
+  const dataQuality = setupDataQualityNotes(gateSeries, extensionOptions);
+  let selectedGate = selectLifecycleCandidateGate(gateSeries, options);
+
+  if (!selectedGate && setupExtensionGatePass(options.extension ?? null)) {
+    const latest = latestKnownCandle(candles, options.asOf);
+    if (latest) {
+      selectedGate = {
+        index: latest.index,
+        candle: latest.candle,
+        eventTime: candleEventTime(latest.candle),
+        knownAt: Math.min(options.asOf, candleKnownAt(candles, latest.index)),
+        metrics: setupMetricsFromPartial(options.extension ?? null),
+        pass: true,
+        rollingReturnCount: 0,
+      };
+      dataQuality.push(
+        "Candidate gate used latest shared metrics because chart history had no passing gate edge",
+      );
+    }
+  }
+
+  if (!selectedGate) {
+    return snapshotFallbackSetupState({
+      checks: options.checks,
+      asOf: options.asOf,
+      updatedTs: options.asOf,
+      executionTimeframe: options.executionTimeframe,
+      state: "notCandidate",
+      reason: "No active Impulse Fade v1 candidate",
+      dataQuality,
+    });
+  }
+
+  return evaluateImpulseFadeCandidate(selectedGate, options, options.asOf, dataQuality);
+}
+
+function buildExtensionGateSeries(
+  candles: CandleRecord[],
+  options: ExtensionSnapshotOptions,
+  asOf: number,
+): ExtensionGatePoint[] {
+  const gates: ExtensionGatePoint[] = [];
+  for (let index = 0; index < candles.length; index += 1) {
+    const candle = candles[index];
+    const knownAt = candleKnownAt(candles, index);
+    if (knownAt > asOf) continue;
+    const snapshot = computeExtensionSnapshot(candles.slice(0, index + 1), options);
+    const metrics = setupMetricsFromExtensionSnapshot(snapshot);
+    gates.push({
+      index,
+      candle,
+      eventTime: candleEventTime(candle),
+      knownAt,
+      metrics,
+      pass: setupExtensionGatePass(metrics),
+      rollingReturnCount: snapshot.rollingReturnCount,
+    });
+  }
+  return gates;
+}
+
+function selectLifecycleCandidateGate(
+  gateSeries: ExtensionGatePoint[],
+  options: ComputeImpulseFadeLifecycleOptions,
+) {
+  const edges: ExtensionGatePoint[] = [];
+  let previousPass = false;
+  for (const gate of gateSeries) {
+    if (gate.pass && !previousPass) edges.push(gate);
+    previousPass = gate.pass;
+  }
+  if (!edges.length) return null;
+
+  let selected = edges[0];
+  for (const edge of edges.slice(1)) {
+    const prior = evaluateImpulseFadeCandidate(selected, options, edge.knownAt, []);
+    const terminalAt = prior.candidate?.terminalAt ?? null;
+    if (
+      terminalAt != null &&
+      gateSeries.some((gate) => gate.knownAt > terminalAt && gate.knownAt < edge.knownAt && !gate.pass)
+    ) {
+      selected = edge;
+    }
+  }
+  return selected;
+}
+
+function evaluateImpulseFadeCandidate(
+  gate: ExtensionGatePoint,
+  options: ComputeImpulseFadeLifecycleOptions,
+  asOf: number,
+  dataQuality: string[],
+): SetupStateSnapshot {
+  const symbol = (options.symbol ?? "UNKNOWN").toUpperCase();
+  const source = options.source ?? "chart";
+  const venue = options.venue ?? "";
+  const executionTimeframe = options.executionTimeframe;
+  const initialMtfContext = (options.htfStructures ?? []).map((entry) => ({
+    timeframe: entry.timeframe,
+    state: entry.summary.state,
+    trend: entry.summary.trend,
+    transitionDirection: entry.summary.transitionDirection,
+    updatedTs: entry.summary.updatedTs,
+  }));
+  const candidateId = deterministicSetupCandidateId({
+    setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    symbol,
+    source,
+    venue,
+    executionTimeframe,
+    detectedAt: gate.knownAt,
+  });
+  const evidence: SetupStateEvidence[] = [
+    {
+      id: setupEventId("candidate_detected", executionTimeframe, gate.eventTime, gate.knownAt),
+      code: "candidate_detected",
+      explanation: "Impulse Fade v1 extension gate crossed from false to true",
+      eventTime: gate.eventTime,
+      knownAt: gate.knownAt,
+      sourceTimeframe: executionTimeframe,
+      price: gate.candle.c,
+      contributesTo: "developing",
+    },
+  ];
+  const transitions: SetupStateTransition[] = [
+    {
+      from: "notCandidate",
+      to: "developing",
+      knownAt: gate.knownAt,
+      evidenceIds: [evidence[0].id],
+      evidenceCodes: [evidence[0].code],
+      explanation: "Candidate episode detected",
+    },
+  ];
+  const confluence = collectSetupConfluence(options, gate, asOf);
+  const events = collectImpulseFadeLifecycleEvents(gate, options, asOf);
+
+  let state: SetupStateName = "developing";
+  let stateSince = gate.knownAt;
+  let terminalAt: number | null = null;
+  let activeBreakLevel: SetupLifecycleLevel | null = null;
+  let retestLevel: SetupLifecycleLevel | null = null;
+  let invalidationReason: string | null = null;
+  let expiryReason: string | null = null;
+
+  for (const event of events) {
+    if (terminalAt != null) break;
+    if (event.knownAt < gate.knownAt || event.knownAt > asOf) continue;
+
+    if (event.lifecycleKind === "deterioration") {
+      evidence.push({ ...event, contributesTo: "deteriorating" });
+      if (state === "developing") {
+        transitions.push(setupTransition(state, "deteriorating", event));
+        state = "deteriorating";
+        stateSince = event.knownAt;
+      }
+      continue;
+    }
+
+    if (event.lifecycleKind === "bearishBreak") {
+      evidence.push({ ...event, contributesTo: "waitingForRetest" });
+      if (state === "developing" || state === "deteriorating") {
+        transitions.push(setupTransition(state, "waitingForRetest", event));
+        state = "waitingForRetest";
+        stateSince = event.knownAt;
+        activeBreakLevel = event.breakLevel ?? null;
+      }
+      continue;
+    }
+
+    if (event.lifecycleKind === "retest") {
+      if (
+        state === "waitingForRetest" &&
+        activeBreakLevel &&
+        event.relatedEventId === activeBreakLevel.evidenceId &&
+        event.knownAt > activeBreakLevel.knownAt
+      ) {
+        evidence.push({ ...event, contributesTo: "entryCandidate" });
+        transitions.push(setupTransition(state, "entryCandidate", event));
+        state = "entryCandidate";
+        stateSince = event.knownAt;
+        retestLevel = event.breakLevel ?? activeBreakLevel;
+      }
+      continue;
+    }
+
+    if (event.lifecycleKind === "invalidation") {
+      if (state === "deteriorating" || state === "waitingForRetest" || state === "entryCandidate") {
+        evidence.push({ ...event, contributesTo: "invalidated" });
+        transitions.push(setupTransition(state, "invalidated", event));
+        state = "invalidated";
+        stateSince = event.knownAt;
+        terminalAt = event.knownAt;
+        invalidationReason = event.explanation;
+      }
+      continue;
+    }
+
+    if (event.lifecycleKind === "expiry" && state !== "entryCandidate") {
+      evidence.push({ ...event, contributesTo: "expired" });
+      transitions.push(setupTransition(state, "expired", event));
+      state = "expired";
+      stateSince = event.knownAt;
+      terminalAt = event.knownAt;
+      expiryReason = event.explanation;
+    }
+  }
+
+  const episodeHigh = episodeHighSnapshot(options.candles ?? [], gate.eventTime, asOf);
+  const candidate: SetupCandidateEpisode = {
+    id: candidateId,
+    setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    symbol,
+    source,
+    venue,
+    executionTimeframe,
+    detectedAt: gate.knownAt,
+    detectionEventTime: gate.eventTime,
+    detectionMetrics: gate.metrics,
+    initialMtfContext,
+    episodeHigh: episodeHigh?.price ?? null,
+    episodeHighTime: episodeHigh?.eventTime ?? null,
+    currentState: state,
+    stateSince,
+    terminalAt,
+  };
+
   return {
     strategy: "pumpFade",
+    setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    asOf,
+    executionTimeframe,
     state,
+    currentState: state,
+    stateSince,
     label: setupStateLabel(state),
-    reason: setupStateReason(state, checks),
-    checks,
-    updatedTs: latestTs,
+    reason: setupStateReasonFromLifecycle(state, evidence, transitions, invalidationReason, expiryReason),
+    checks: options.checks,
+    updatedTs: asOf,
+    candidate,
+    evidence: evidence.sort((a, b) => a.knownAt - b.knownAt || a.eventTime - b.eventTime),
+    transitions,
+    pendingConditions: setupPendingConditions(state, activeBreakLevel),
+    activeBreakLevel,
+    retestLevel,
+    confluence,
+    invalidationReason,
+    expiryReason,
+    dataQuality,
+  };
+}
+
+function collectImpulseFadeLifecycleEvents(
+  gate: ExtensionGatePoint,
+  options: ComputeImpulseFadeLifecycleOptions,
+  asOf: number,
+): SetupLifecycleEvent[] {
+  const events: SetupLifecycleEvent[] = [];
+  const executionTimeframe = options.executionTimeframe;
+
+  for (const event of options.rsDivergences ?? []) {
+    if (event.direction !== "bearish") continue;
+    const knownAt = setupEventKnownAt(event);
+    if (knownAt <= gate.knownAt || knownAt > asOf) continue;
+    const code =
+      event.signal === "break"
+        ? "rs_break_bearish"
+        : event.signal === "lead"
+          ? "rs_lead_bearish"
+          : "rs_div_bearish";
+    events.push({
+      id: setupEventId(code, executionTimeframe, event.eventTime, knownAt, event.x),
+      code,
+      explanation: `${event.label}: bearish relative-strength deterioration`,
+      eventTime: event.eventTime,
+      knownAt,
+      sourceTimeframe: executionTimeframe,
+      price: event.price,
+      value: event.rs,
+      lifecycleKind: "deterioration",
+      sortPriority: 10,
+    });
+  }
+
+  for (const signal of options.anchoredVwapSignals ?? []) {
+    const knownAt = setupEventKnownAt(signal);
+    if (signal.kind !== "failedReclaim" || knownAt <= gate.knownAt || knownAt > asOf) {
+      continue;
+    }
+    events.push({
+      id: setupEventId("avwap_failed_reclaim", executionTimeframe, signal.eventTime, knownAt, signal.x),
+      code: "avwap_failed_reclaim",
+      explanation: "AVWAP failed reclaim confirmed after candidate detection",
+      eventTime: signal.eventTime,
+      knownAt,
+      sourceTimeframe: executionTimeframe,
+      price: signal.price,
+      level: signal.vwap,
+      lifecycleKind: "deterioration",
+      sortPriority: 20,
+    });
+  }
+
+  const structureBreaks = setupStructureBreaks(options);
+  const bearishBreaks: SetupLifecycleEvent[] = [];
+  for (const item of structureBreaks) {
+    const knownAt = setupEventKnownAt(item);
+    if (item.direction !== "bearish" || knownAt <= gate.knownAt || knownAt > asOf) continue;
+    const code =
+      item.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break";
+    const eventId = setupEventId(code, executionTimeframe, item.eventTime, knownAt, item.x);
+    const breakLevel = {
+      level: item.level,
+      sourceTimeframe: executionTimeframe,
+      eventTime: item.eventTime,
+      knownAt,
+      evidenceId: eventId,
+    };
+    const event: SetupLifecycleEvent = {
+      id: eventId,
+      code,
+      explanation: `${item.label} down through ${formatSetupPrice(item.level)}`,
+      eventTime: item.eventTime,
+      knownAt,
+      sourceTimeframe: executionTimeframe,
+      level: item.level,
+      lifecycleKind: "bearishBreak",
+      sortPriority: 30,
+      breakLevel,
+    };
+    bearishBreaks.push(event);
+    events.push(event);
+  }
+
+  for (const event of bearishBreaks) {
+    const retest = findRetestRejectionEvent(gate, event, options, asOf);
+    if (retest) events.push(retest);
+  }
+
+  for (const item of structureBreaks) {
+    const knownAt = setupEventKnownAt(item);
+    if (
+      item.kind !== "StructureBreak" ||
+      item.direction !== "bullish" ||
+      knownAt <= gate.knownAt ||
+      knownAt > asOf
+    ) {
+      continue;
+    }
+    const sourceCandle = (options.candles ?? [])[item.index];
+    const highBefore = episodeHighSnapshot(options.candles ?? [], gate.eventTime, knownAt - 1);
+    const invalidationBps = clampNumberOption(options.invalidationBps, 0, 1000, 10);
+    if (
+      !sourceCandle ||
+      highBefore?.price == null ||
+      sourceCandle.c <= highBefore.price * (1 + invalidationBps / 10000)
+    ) {
+      continue;
+    }
+    events.push({
+      id: setupEventId("bullish_continuation_invalidation", executionTimeframe, item.eventTime, knownAt, item.x),
+      code: "bullish_continuation_invalidation",
+      explanation: `Bullish continuation closed beyond episode high ${formatSetupPrice(highBefore.price)}`,
+      eventTime: item.eventTime,
+      knownAt,
+      sourceTimeframe: executionTimeframe,
+      price: sourceCandle.c,
+      level: highBefore.price,
+      lifecycleKind: "invalidation",
+      sortPriority: 50,
+    });
+  }
+
+  const maxAge = clampIntegerOption(
+    options.maxCandidateAgeSeconds,
+    60,
+    30 * 86_400,
+    72 * 60 * 60,
+  );
+  const expiresAt = gate.knownAt + maxAge;
+  if (expiresAt <= asOf) {
+    events.push({
+      id: setupEventId("candidate_expired", executionTimeframe, gate.eventTime, expiresAt),
+      code: "candidate_expired",
+      explanation: `Candidate did not reach entry state within ${formatSetupDuration(maxAge)}`,
+      eventTime: expiresAt,
+      knownAt: expiresAt,
+      sourceTimeframe: executionTimeframe,
+      lifecycleKind: "expiry",
+      sortPriority: 90,
+    });
+  }
+
+  return events.sort(
+    (a, b) =>
+      a.knownAt - b.knownAt ||
+      a.eventTime - b.eventTime ||
+      a.sortPriority - b.sortPriority ||
+      a.code.localeCompare(b.code),
+  );
+}
+
+function findRetestRejectionEvent(
+  gate: ExtensionGatePoint,
+  breakEvent: SetupLifecycleEvent,
+  options: ComputeImpulseFadeLifecycleOptions,
+  asOf: number,
+): SetupLifecycleEvent | null {
+  const candles = options.candles ?? [];
+  const breakLevel = breakEvent.breakLevel;
+  if (!breakLevel || !Number.isFinite(breakLevel.level)) return null;
+  const retestToleranceBps = clampNumberOption(options.retestToleranceBps, 0, 1000, 35);
+  const retestToleranceAtr = clampNumberOption(options.retestToleranceAtr, 0, 10, 0.25);
+  const atrPeriod = clampIntegerOption(options.extensionOptions?.atrPeriod, 2, 100, 14);
+  const atrByIndex = atrValues(candles, atrPeriod);
+
+  for (let index = 0; index < candles.length; index += 1) {
+    const candle = candles[index];
+    const knownAt = candleKnownAt(candles, index);
+    if (knownAt <= breakEvent.knownAt || knownAt <= gate.knownAt || knownAt > asOf) continue;
+    const atr = atrByIndex[index] ?? 0;
+    const tolerance = Math.max(
+      breakLevel.level * (retestToleranceBps / 10000),
+      Number.isFinite(atr) ? atr * retestToleranceAtr : 0,
+    );
+    const touched =
+      candle.h >= breakLevel.level - tolerance && candle.l <= breakLevel.level + tolerance;
+    const rejected = touched && candle.c < breakLevel.level && candle.c <= candle.o;
+    if (!rejected) continue;
+    return {
+      id: setupEventId(
+        "bearish_retest_rejection",
+        breakLevel.sourceTimeframe,
+        candleEventTime(candle),
+        knownAt,
+        index,
+      ),
+      code: "bearish_retest_rejection",
+      explanation: `Bearish rejection after retest of ${formatSetupPrice(breakLevel.level)}`,
+      eventTime: candleEventTime(candle),
+      knownAt,
+      sourceTimeframe: breakLevel.sourceTimeframe,
+      price: candle.c,
+      level: breakLevel.level,
+      relatedEventId: breakLevel.evidenceId,
+      lifecycleKind: "retest",
+      sortPriority: 40,
+      breakLevel,
+    };
+  }
+  return null;
+}
+
+function collectSetupConfluence(
+  options: ComputeImpulseFadeLifecycleOptions,
+  gate: ExtensionGatePoint,
+  asOf: number,
+): SetupConfluenceItem[] {
+  const confluence: SetupConfluenceItem[] = [];
+  const resistance = nearestResistanceZone(
+    options.srZones.filter((zone) => setupEventKnownAt(zone) <= asOf),
+    options.latestPrice,
+    clampNumberOption(options.resistanceNearPct, 0, 10, 1.5),
+  );
+  if (resistance) {
+    confluence.push({
+      code: "near_htf_resistance",
+      label: "HTF resistance",
+      detail: `Near R ${formatSetupPrice(resistance.low)}-${formatSetupPrice(resistance.high)}`,
+      eventTime: resistance.eventTime,
+      knownAt: resistance.knownAt,
+      sourceTimeframe: "MTF",
+      level: resistance.center,
+    });
+  }
+
+  const avwapLoss = [...(options.anchoredVwapSignals ?? [])]
+    .filter((signal) => signal.kind === "loss" && setupEventKnownAt(signal) > gate.knownAt)
+    .sort((a, b) => setupEventKnownAt(b) - setupEventKnownAt(a))[0];
+  if (avwapLoss && setupEventKnownAt(avwapLoss) <= asOf) {
+    confluence.push({
+      code: "avwap_loss_context",
+      label: "AVWAP loss",
+      detail: "Weak context only",
+      eventTime: avwapLoss.eventTime,
+      knownAt: avwapLoss.knownAt,
+      sourceTimeframe: options.executionTimeframe,
+      level: avwapLoss.vwap,
+    });
+  }
+
+  const avwapDistance = normalizedNullableNumber(options.avwapDistancePct);
+  if (avwapDistance != null) {
+    confluence.push({
+      code: "avwap_distance",
+      label: "AVWAP distance",
+      detail: `${formatSetupSigned(avwapDistance, 1)}% from AVWAP`,
+      value: avwapDistance,
+      sourceTimeframe: options.executionTimeframe,
+    });
+  }
+
+  for (const entry of options.htfStructures) {
+    if (entry.summary.state === "neutral") continue;
+    confluence.push({
+      code: "mtf_structure_context",
+      label: `${entry.timeframe} structure`,
+      detail: formatSetupStructure(entry.summary),
+      eventTime: entry.summary.updatedTs,
+      knownAt: entry.summary.updatedTs,
+      sourceTimeframe: entry.timeframe,
+    });
+  }
+
+  return confluence;
+}
+
+function setupStructureBreaks(options: ComputeImpulseFadeLifecycleOptions): StructureBreak[] {
+  const breaks = options.marketStructure?.breaks?.length
+    ? options.marketStructure.breaks
+    : options.structure?.lastBreak
+      ? [options.structure.lastBreak]
+      : [];
+  const seen = new Set<string>();
+  return breaks.filter((item) => {
+    const key = `${item.kind}:${item.direction}:${item.x}:${item.level}:${setupEventKnownAt(item)}`;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
+function snapshotSetupState(options: {
+  extension: SetupStateCheck;
+  htfResistance: SetupStateCheck;
+  htfStructures: Array<{ timeframe: string; summary: MarketStructureSummary }>;
+  rsWeakness: SetupStateCheck;
+  structureShift: SetupStateCheck;
+  avwapFailure: SetupStateCheck;
+  retest: SetupStateCheck;
+  invalidated: boolean;
+}): SetupStateName {
+  if (options.extension.status !== "pass") return "notCandidate";
+  if (options.invalidated) return "invalidated";
+  if (
+    options.structureShift.status === "pass" &&
+    options.retest.status === "pass" &&
+    (options.rsWeakness.status === "pass" || options.avwapFailure.status === "pass")
+  ) {
+    return "entryCandidate";
+  }
+  if (options.structureShift.status === "pass") return "waitingForRetest";
+  if (
+    (options.rsWeakness.status === "pass" || options.avwapFailure.status === "pass") &&
+    hasContextForDeveloping(options.htfResistance, options.htfStructures)
+  ) {
+    return "deteriorating";
+  }
+  if (hasContextForDeveloping(options.htfResistance, options.htfStructures)) return "developing";
+  return "notCandidate";
+}
+
+function snapshotFallbackSetupState(options: {
+  checks: SetupStateCheck[];
+  asOf: number | null;
+  updatedTs: number | null;
+  executionTimeframe: string;
+  state: SetupStateName;
+  reason: string;
+  dataQuality?: string[];
+}): SetupStateSnapshot {
+  return {
+    strategy: "pumpFade",
+    setupFamily: IMPULSE_FADE_SETUP_FAMILY,
+    asOf: options.asOf,
+    executionTimeframe: options.executionTimeframe,
+    state: options.state,
+    currentState: options.state,
+    stateSince: options.asOf,
+    label: setupStateLabel(options.state),
+    reason: options.reason,
+    checks: options.checks,
+    updatedTs: options.updatedTs,
+    candidate: null,
+    evidence: [],
+    transitions: [],
+    pendingConditions: setupPendingConditions(options.state, null),
+    activeBreakLevel: null,
+    retestLevel: null,
+    confluence: [],
+    invalidationReason: options.state === "invalidated" ? options.reason : null,
+    expiryReason: options.state === "expired" ? options.reason : null,
+    dataQuality: options.dataQuality ?? [],
   };
 }
 
@@ -606,22 +1365,25 @@ export function computeAnchoredVwapSignals(
     const vwap = line[pointIndex + 1];
     const source = candleByX.get(x);
     if (!source || !validPositivePrice(vwap) || !validPositivePrice(source.candle.c)) continue;
+    const knownAt = candleKnownAt(candles, source.index);
 
     const relation: "above" | "below" | null =
       source.candle.c > vwap ? "above" : source.candle.c < vwap ? "below" : null;
     if (!relation) continue;
 
     if (previousRelation === "above" && relation === "below") {
-      signals.push(createAnchoredVwapSignal("loss", source.index, source.candle, vwap));
+      signals.push(createAnchoredVwapSignal("loss", source.index, source.candle, vwap, knownAt));
     } else if (previousRelation === "below" && relation === "above") {
-      signals.push(createAnchoredVwapSignal("reclaim", source.index, source.candle, vwap));
+      signals.push(createAnchoredVwapSignal("reclaim", source.index, source.candle, vwap, knownAt));
     } else if (
       previousRelation === "below" &&
       relation === "below" &&
       source.candle.h >= vwap &&
       source.candle.c < vwap
     ) {
-      signals.push(createAnchoredVwapSignal("failedReclaim", source.index, source.candle, vwap));
+      signals.push(
+        createAnchoredVwapSignal("failedReclaim", source.index, source.candle, vwap, knownAt),
+      );
     }
 
     previousRelation = relation;
@@ -649,11 +1411,12 @@ export function computeSwingPoints(
     const candle = source[index];
     const sourceIndex = startIndex + index;
     const atr = atrByIndex[sourceIndex] ?? null;
+    const knownAt = candleKnownAt(candles, sourceIndex + pivotStrength);
     if (isPivotHigh(source, index, pivotStrength)) {
-      raw.push(createSwingPoint("SwingHigh", sourceIndex, candle, candle.h, atr));
+      raw.push(createSwingPoint("SwingHigh", sourceIndex, candle, candle.h, atr, knownAt));
     }
     if (isPivotLow(source, index, pivotStrength)) {
-      raw.push(createSwingPoint("SwingLow", sourceIndex, candle, candle.l, atr));
+      raw.push(createSwingPoint("SwingLow", sourceIndex, candle, candle.l, atr, knownAt));
     }
   }
 
@@ -695,7 +1458,12 @@ export function computeMarketStructure(
   let trend: MarketStructureState["trend"] = "neutral";
 
   for (let index = 0; index < candles.length; index += 1) {
-    while (swingIndex < swings.length && swings[swingIndex].index < index) {
+    const knownAt = candleKnownAt(candles, index);
+    while (
+      swingIndex < swings.length &&
+      swings[swingIndex].index < index &&
+      swings[swingIndex].knownAt <= knownAt
+    ) {
       const swing = swings[swingIndex];
       if (swing.kind === "SwingHigh") activeHigh = swing;
       else activeLow = swing;
@@ -705,13 +1473,13 @@ export function computeMarketStructure(
     const candle = candles[index];
     if (activeHigh && !brokenHighs.has(activeHigh.x) && candle.c > activeHigh.price) {
       const kind: StructureBreakKind = trend === "bearish" ? "StructureShift" : "StructureBreak";
-      breaks.push(createStructureBreak(kind, "bullish", index, candle, activeHigh));
+      breaks.push(createStructureBreak(kind, "bullish", index, candle, activeHigh, knownAt));
       brokenHighs.add(activeHigh.x);
       trend = "bullish";
     }
     if (activeLow && !brokenLows.has(activeLow.x) && candle.c < activeLow.price) {
       const kind: StructureBreakKind = trend === "bullish" ? "StructureShift" : "StructureBreak";
-      breaks.push(createStructureBreak(kind, "bearish", index, candle, activeLow));
+      breaks.push(createStructureBreak(kind, "bearish", index, candle, activeLow, knownAt));
       brokenLows.add(activeLow.x);
       trend = "bearish";
     }
@@ -1046,6 +1814,219 @@ export function lineToBytes(line: Float32Array): Uint8Array {
   return new Uint8Array(line.buffer);
 }
 
+function setupMetricsFromPartial(metrics: SetupExtensionMetrics | null): SetupExtensionMetrics {
+  return {
+    returnPct: normalizedNullableNumber(metrics?.returnPct),
+    percentile: normalizedNullableNumber(metrics?.percentile),
+    zScore: normalizedNullableNumber(metrics?.zScore),
+    atrExtension: normalizedNullableNumber(metrics?.atrExtension),
+  };
+}
+
+function setupMetricsFromExtensionSnapshot(snapshot: ExtensionSnapshot): SetupExtensionMetrics {
+  return {
+    returnPct: normalizedNullableNumber(snapshot.returnPct),
+    percentile: normalizedNullableNumber(snapshot.percentile),
+    zScore: normalizedNullableNumber(snapshot.zScore),
+    atrExtension: normalizedNullableNumber(snapshot.atrExtension),
+  };
+}
+
+function setupExtensionGatePass(extension: SetupExtensionMetrics | null) {
+  const metrics = setupMetricsFromPartial(extension);
+  return (
+    (metrics.returnPct != null && metrics.returnPct >= 8) ||
+    (metrics.percentile != null && metrics.percentile >= 95) ||
+    (metrics.zScore != null && metrics.zScore >= 2) ||
+    (metrics.atrExtension != null && metrics.atrExtension >= 2)
+  );
+}
+
+function setupDataQualityNotes(
+  gates: ExtensionGatePoint[],
+  options: ExtensionSnapshotOptions,
+) {
+  const notes: string[] = [];
+  const minSamples = clampIntegerOption(options.minSamples, 1, 10_000, 20);
+  const latest = gates[gates.length - 1] ?? null;
+  if (!latest) {
+    notes.push("No candle history was available at the requested asOf time");
+  } else if (latest.rollingReturnCount < minSamples) {
+    notes.push(
+      `Rolling-return history has ${latest.rollingReturnCount}/${minSamples} samples for percentile and Z-score`,
+    );
+  }
+  return notes;
+}
+
+function setupTransition(
+  from: SetupStateName,
+  to: SetupStateName,
+  event: SetupStateEvidence,
+): SetupStateTransition {
+  return {
+    from,
+    to,
+    knownAt: event.knownAt,
+    evidenceIds: [event.id],
+    evidenceCodes: [event.code],
+    explanation: event.explanation,
+  };
+}
+
+function setupStateReasonFromLifecycle(
+  state: SetupStateName,
+  evidence: SetupStateEvidence[],
+  transitions: SetupStateTransition[],
+  invalidationReason: string | null,
+  expiryReason: string | null,
+) {
+  if (state === "notCandidate") return "No active Impulse Fade v1 candidate";
+  if (state === "invalidated") return invalidationReason ?? "Continuation invalidated the fade setup";
+  if (state === "expired") return expiryReason ?? "Candidate expired before progressing";
+  const lastTransition = transitions[transitions.length - 1];
+  if (lastTransition && lastTransition.to === state) return lastTransition.explanation;
+  const stateEvidence = evidence.filter((item) => item.contributesTo === state);
+  const latestEvidence = stateEvidence[stateEvidence.length - 1];
+  return latestEvidence?.explanation ?? setupStateLabel(state);
+}
+
+function setupPendingConditions(
+  state: SetupStateName,
+  activeBreakLevel: SetupLifecycleLevel | null,
+) {
+  switch (state) {
+    case "developing":
+      return [
+        "Post-detection RS weakness, AVWAP failed reclaim, or bearish structure break",
+      ];
+    case "deteriorating":
+      return ["Confirmed bearish structure break on the execution timeframe"];
+    case "waitingForRetest":
+      return [
+        activeBreakLevel
+          ? `Retest ${formatSetupPrice(activeBreakLevel.level)} and confirm bearish rejection`
+          : "Retest the broken structure level and confirm bearish rejection",
+      ];
+    case "entryCandidate":
+      return ["Discretionary review; no simulated trade is generated yet"];
+    case "notCandidate":
+      return ["Candidate extension gate must cross from false to true"];
+    case "invalidated":
+    case "expired":
+      return [];
+  }
+}
+
+function deterministicSetupCandidateId(options: {
+  setupFamily: SetupFamily;
+  symbol: string;
+  source: string;
+  venue: string;
+  executionTimeframe: string;
+  detectedAt: number;
+}) {
+  return [
+    options.setupFamily,
+    options.symbol,
+    options.source,
+    options.venue,
+    options.executionTimeframe,
+    String(options.detectedAt),
+  ]
+    .map((part) => String(part || "na").toLowerCase().replace(/[^a-z0-9_.-]+/g, "-"))
+    .join(":");
+}
+
+function setupEventId(
+  code: string,
+  sourceTimeframe: string,
+  eventTime: number,
+  knownAt: number,
+  salt?: string | number | null,
+) {
+  return [code, sourceTimeframe, eventTime, knownAt, salt ?? ""]
+    .map((part) => String(part).toLowerCase().replace(/[^a-z0-9_.-]+/g, "-"))
+    .join(":");
+}
+
+function episodeHighSnapshot(candles: CandleRecord[], detectedEventTime: number, asOf: number) {
+  let best: { price: number; eventTime: number } | null = null;
+  for (let index = 0; index < candles.length; index += 1) {
+    const candle = candles[index];
+    const eventTime = candleEventTime(candle);
+    if (eventTime < detectedEventTime || candleKnownAt(candles, index) > asOf) continue;
+    if (!Number.isFinite(candle.h)) continue;
+    if (!best || candle.h > best.price) best = { price: candle.h, eventTime };
+  }
+  return best;
+}
+
+function latestKnownAt(candles: CandleRecord[]) {
+  if (!candles.length) return null;
+  return candleKnownAt(candles, candles.length - 1);
+}
+
+function latestKnownCandle(candles: CandleRecord[], asOf: number) {
+  for (let index = candles.length - 1; index >= 0; index -= 1) {
+    if (candleKnownAt(candles, index) <= asOf) return { candle: candles[index], index };
+  }
+  return null;
+}
+
+function candleEventTime(candle: CandleRecord) {
+  const ts = normalizedNullableNumber(candle.ts);
+  if (ts != null) return ts;
+  const bucket = normalizedNullableNumber(candle.bucket);
+  return bucket ?? 0;
+}
+
+function candleKnownAt(candles: CandleRecord[], index: number) {
+  const candle = candles[index];
+  if (!candle) return 0;
+  const start = normalizedNullableNumber(candle.bucket) ?? candleEventTime(candle);
+  return start + inferredCandleSeconds(candles, index);
+}
+
+function inferredCandleSeconds(candles: CandleRecord[], index: number) {
+  const current = normalizedNullableNumber(candles[index]?.bucket) ?? candleEventTime(candles[index]);
+  const next = normalizedNullableNumber(candles[index + 1]?.bucket);
+  if (next != null && next > current) return next - current;
+  const previous = normalizedNullableNumber(candles[index - 1]?.bucket);
+  if (previous != null && current > previous) return current - previous;
+  return 1;
+}
+
+function setupEventKnownAt(event: {
+  knownAt?: number | null;
+  eventTime?: number | null;
+  ts?: number | null;
+  bucket?: number | null;
+}) {
+  return (
+    normalizedNullableNumber(event.knownAt) ??
+    normalizedNullableNumber(event.eventTime) ??
+    normalizedNullableNumber(event.ts) ??
+    normalizedNullableNumber(event.bucket) ??
+    0
+  );
+}
+
+function formatSetupStructure(summary: MarketStructureSummary) {
+  if (summary.state === "transitional" && summary.transitionDirection) {
+    return `Transitional ${summary.transitionDirection}`;
+  }
+  return summary.state;
+}
+
+function formatSetupDuration(seconds: number) {
+  const safe = Math.max(0, Math.round(seconds));
+  if (safe >= 86_400) return `${Math.round(safe / 86_400)}d`;
+  if (safe >= 3_600) return `${Math.round(safe / 3_600)}h`;
+  if (safe >= 60) return `${Math.round(safe / 60)}m`;
+  return `${safe}s`;
+}
+
 function validPositivePrice(value: number) {
   return Number.isFinite(value) && value > 0;
 }
@@ -1061,11 +2042,7 @@ function setupExtensionCheck(extension: SetupExtensionMetrics | null): SetupStat
     zScore == null ? null : `Z ${formatSetupSigned(zScore, 1)}`,
     percentile == null ? null : `Pctl ${Math.round(percentile)}`,
   ].filter((item): item is string => Boolean(item));
-  const pass =
-    (returnPct != null && returnPct >= 8) ||
-    (percentile != null && percentile >= 95) ||
-    (zScore != null && zScore >= 2) ||
-    (atrExtension != null && atrExtension >= 2);
+  const pass = setupExtensionGatePass({ returnPct, percentile, zScore, atrExtension });
 
   return {
     key: "extension",
@@ -1234,6 +2211,8 @@ function setupStateLabel(state: SetupStateName) {
       return "Entry Candidate";
     case "invalidated":
       return "Invalidated";
+    case "expired":
+      return "Expired";
     case "notCandidate":
       return "Not Candidate";
   }
@@ -1242,6 +2221,7 @@ function setupStateLabel(state: SetupStateName) {
 function setupStateReason(state: SetupStateName, checks: SetupStateCheck[]) {
   if (state === "notCandidate") return "Waiting for extension context";
   if (state === "invalidated") return "Continuation invalidated the fade setup";
+  if (state === "expired") return "Candidate expired before progressing";
   const passed = checks.filter((check) => check.status === "pass").map((check) => check.label);
   return passed.length ? passed.join(" + ") : setupStateLabel(state);
 }
@@ -1345,6 +2325,7 @@ function createAnchoredVwapSignal(
   index: number,
   candle: CandleRecord,
   vwap: number,
+  knownAt: number,
 ): AnchoredVwapSignal {
   return {
     kind,
@@ -1360,6 +2341,8 @@ function createAnchoredVwapSignal(
     bucket: candle.bucket,
     price: candle.c,
     vwap,
+    eventTime: candleEventTime(candle),
+    knownAt,
   };
 }
 
@@ -1399,6 +2382,7 @@ function createSwingPoint(
   candle: CandleRecord,
   price: number,
   atr: number | null,
+  knownAt: number,
 ): SwingPoint {
   return {
     kind,
@@ -1410,6 +2394,8 @@ function createSwingPoint(
     bucket: candle.bucket,
     price,
     atr,
+    eventTime: candleEventTime(candle),
+    knownAt,
   };
 }
 
@@ -1443,6 +2429,7 @@ function createStructureBreak(
   index: number,
   candle: CandleRecord,
   sourceSwing: SwingPoint,
+  knownAt: number,
 ): StructureBreak {
   return {
     kind,
@@ -1455,6 +2442,8 @@ function createStructureBreak(
     level: sourceSwing.price,
     sourceSwingX: sourceSwing.x,
     sourceSwingPrice: sourceSwing.price,
+    eventTime: candleEventTime(candle),
+    knownAt,
   };
 }
 
@@ -1487,6 +2476,8 @@ function createRelativeStrengthDivergence(
     sourceBreak: null,
     priceStructureState,
     rsStructureState,
+    eventTime: swing.eventTime,
+    knownAt: Math.max(swing.knownAt, previousSwing.knownAt),
   };
 }
 
@@ -1518,6 +2509,8 @@ function createRelativeStrengthBreakSignal(
     sourceBreak,
     priceStructureState,
     rsStructureState,
+    eventTime: sourceBreak.eventTime,
+    knownAt: sourceBreak.knownAt,
   };
 }
 
@@ -1648,6 +2641,8 @@ function createStructureActiveLevel(
     x: sourceSwing.x,
     ts: sourceSwing.ts,
     bucket: sourceSwing.bucket,
+    eventTime: sourceSwing.eventTime,
+    knownAt: sourceSwing.knownAt,
     sourceSwing,
   };
 }
@@ -1739,6 +2734,8 @@ function addZonePivot(
       score: 1 + recencyScore,
       strength: 1 + recencyScore,
       lastX: swing.x,
+      eventTime: swing.eventTime,
+      knownAt: swing.knownAt,
       source: "swing",
       structures: [swing.structure],
     });
@@ -1751,6 +2748,8 @@ function addZonePivot(
   existing.score += 1 + recencyScore;
   existing.strength = existing.score;
   existing.lastX = Math.max(existing.lastX, swing.x);
+  existing.eventTime = Math.max(existing.eventTime, swing.eventTime);
+  existing.knownAt = Math.max(existing.knownAt, swing.knownAt);
   existing.structures.push(swing.structure);
   const nextHalfSpan = Math.max(existing.center * (thicknessBps / 10000), Number.EPSILON);
   existing.low = Math.min(existing.low, existing.center - nextHalfSpan, low);

@@ -90,6 +90,8 @@ function swing(
     bucket: index * 60,
     price,
     atr: null,
+    eventTime: index * 60,
+    knownAt: (index + 1) * 60,
   };
 }
 
@@ -135,12 +137,16 @@ function resistanceZone(low = 99, high = 102): SupportResistanceZone {
     score: 8,
     strength: 8,
     lastX: 20,
+    eventTime: 1200,
+    knownAt: 1260,
     source: "swing",
     structures: ["HigherHigh"],
   };
 }
 
-function bearishRsEvent(): RelativeStrengthDivergence {
+function bearishRsEvent(
+  overrides: Partial<RelativeStrengthDivergence> = {},
+): RelativeStrengthDivergence {
   return {
     kind: "bearishHigh",
     signal: "divergence",
@@ -158,8 +164,32 @@ function bearishRsEvent(): RelativeStrengthDivergence {
     sourceBreak: null,
     priceStructureState: "bullish",
     rsStructureState: "bearish",
+    eventTime: 1200,
+    knownAt: 1260,
+    ...overrides,
   };
 }
+
+function lifecycleCandles() {
+  return [
+    timeCandle(0, 0, 100, 1),
+    timeCandle(1, 60, 101, 1),
+    timeCandle(2, 120, 102, 1),
+    timeCandle(3, 180, 103, 1),
+    timeCandle(4, 240, 112, 6),
+    timeCandle(5, 300, 109, 5),
+    timeCandle(6, 360, 108, 5),
+    timeCandle(7, 420, 107, 5),
+  ];
+}
+
+const lifecycleExtensionOptions = {
+  windowSeconds: 60,
+  historyDays: 1,
+  minSamples: 1,
+  emaPeriod: 2,
+  atrPeriod: 2,
+};
 
 describe("gpu chart indicators", () => {
   it("computes anchored VWAP from the selected bucket", () => {
@@ -309,6 +339,8 @@ describe("gpu chart indicators", () => {
       level: 96,
       sourceSwingX: 10,
       sourceSwingPrice: 95,
+      eventTime: 1080,
+      knownAt: 1140,
     };
 
     const waiting = computeSetupState({
@@ -327,6 +359,144 @@ describe("gpu chart indicators", () => {
 
     expect(waiting.state).toBe("waitingForRetest");
     expect(retesting.state).toBe("entryCandidate");
+  });
+
+  it("creates a deterministic Impulse Fade episode on an extension false-to-true edge", () => {
+    const setup = computeSetupState({
+      candles: lifecycleCandles(),
+      symbol: "filusdt",
+      source: "external",
+      venue: "bybit",
+      executionTimeframe: "1h",
+      extensionOptions: lifecycleExtensionOptions,
+      latestPrice: 108,
+    });
+
+    expect(setup.setupFamily).toBe("impulse_fade_v1");
+    expect(setup.state).toBe("developing");
+    expect(setup.candidate?.id).toBe("impulse_fade_v1:filusdt:external:bybit:1h:300");
+    expect(setup.candidate?.detectedAt).toBe(300);
+    expect(setup.candidate?.detectionEventTime).toBe(240);
+    expect(setup.transitions.map((item) => `${item.from}->${item.to}`)).toEqual([
+      "notCandidate->developing",
+    ]);
+  });
+
+  it("ignores deterioration evidence that was known before candidate detection", () => {
+    const setup = computeSetupState({
+      candles: lifecycleCandles(),
+      symbol: "FILUSDT",
+      executionTimeframe: "1h",
+      extensionOptions: lifecycleExtensionOptions,
+      latestPrice: 108,
+      rsDivergences: [
+        bearishRsEvent({ x: 3, eventTime: 180, knownAt: 240 }),
+        bearishRsEvent({ x: 6, eventTime: 360, knownAt: 420 }),
+      ],
+    });
+
+    expect(setup.candidate?.detectedAt).toBe(300);
+    expect(setup.state).toBe("deteriorating");
+    expect(setup.evidence.map((item) => item.code)).toEqual([
+      "candidate_detected",
+      "rs_div_bearish",
+    ]);
+    expect(setup.evidence[1]?.knownAt).toBe(420);
+  });
+
+  it("evaluates setup evidence with an asOf cutoff", () => {
+    const setup = computeSetupState({
+      candles: lifecycleCandles(),
+      symbol: "FILUSDT",
+      executionTimeframe: "1h",
+      extensionOptions: lifecycleExtensionOptions,
+      asOf: 360,
+      latestPrice: 109,
+      rsDivergences: [bearishRsEvent({ x: 6, eventTime: 360, knownAt: 420 })],
+    });
+
+    expect(setup.candidate?.detectedAt).toBe(300);
+    expect(setup.state).toBe("developing");
+    expect(setup.evidence.map((item) => item.code)).toEqual(["candidate_detected"]);
+  });
+
+  it("waits for a later retest after a bearish structure break", () => {
+    const candles = lifecycleCandles();
+    candles[6] = {
+      ...candles[6],
+      o: 109.5,
+      h: 110.1,
+      l: 106.8,
+      c: 108,
+    };
+    const marketStructure = structureState("transitional", [
+      swing(4, "SwingHigh", 114, "HigherHigh"),
+      swing(5, "SwingLow", 110, "HigherLow"),
+    ], "bearish");
+    const breakEvent = {
+      kind: "StructureShift" as const,
+      direction: "bearish" as const,
+      label: "Shift" as const,
+      index: 5,
+      x: 5,
+      ts: 300,
+      bucket: 300,
+      level: 110,
+      sourceSwingX: 5,
+      sourceSwingPrice: 110,
+      eventTime: 300,
+      knownAt: 360,
+    };
+    marketStructure.breaks = [breakEvent];
+    marketStructure.summary.lastBreak = breakEvent;
+
+    const setup = computeSetupState({
+      candles,
+      symbol: "FILUSDT",
+      executionTimeframe: "1h",
+      extensionOptions: lifecycleExtensionOptions,
+      asOf: 420,
+      latestPrice: 108,
+      marketStructure,
+      structure: marketStructure.summary,
+    });
+
+    expect(setup.state).toBe("entryCandidate");
+    expect(setup.activeBreakLevel?.level).toBe(110);
+    expect(setup.retestLevel?.level).toBe(110);
+    expect(setup.transitions.map((item) => item.to)).toEqual([
+      "developing",
+      "waitingForRetest",
+      "entryCandidate",
+    ]);
+  });
+
+  it("expires candidates that do not progress within elapsed time", () => {
+    const setup = computeSetupState({
+      candles: lifecycleCandles(),
+      symbol: "FILUSDT",
+      executionTimeframe: "1h",
+      extensionOptions: lifecycleExtensionOptions,
+      asOf: 480,
+      latestPrice: 107,
+      maxCandidateAgeSeconds: 120,
+    });
+
+    expect(setup.state).toBe("expired");
+    expect(setup.candidate?.terminalAt).toBe(420);
+    expect(setup.expiryReason).toContain("within 2m");
+  });
+
+  it("stamps pivots at their event time and confirms them after right-side candles", () => {
+    const swings = computeSwingPoints(structureCandles(), {
+      pivotStrength: 1,
+      atrPeriod: 3,
+      minMoveAtr: 0,
+      maxSwings: 20,
+    });
+
+    expect(swings[0]?.eventTime).toBe(swings[0]?.ts);
+    expect(swings[0]?.knownAt).toBeGreaterThan(swings[0]?.eventTime ?? 0);
   });
 
   it("computes relative cumulative return anchored at zero", () => {
