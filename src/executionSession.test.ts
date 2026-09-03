@@ -23,7 +23,10 @@ import {
   serializeExecutionSession,
   simulateExecutionToHorizon,
 } from "./executionSession";
-import type { ReplayDecisionFrame, ReplaySession } from "./replaySession";
+import { revealExecutionOutcome } from "./executionReveal";
+import { REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION } from "./replay";
+import type { ReplayDecisionFrame, ReplayOutcomeEnvelope, ReplaySession } from "./replaySession";
+import { canonicalHash } from "./serialization";
 import type { StrategyProfile } from "./strategy";
 import { tradePlanId, type TargetPlan, type TradePlan } from "./tradePlanning";
 
@@ -251,6 +254,54 @@ describe("deterministic execution session", () => {
     expect(publicJson).not.toContain("execution-result");
     expect(publicJson).not.toContain("actualNetPnl");
     expect(publicJson).not.toContain("fills");
+  });
+
+  it("reveals execution only after the replay outcome boundary has opened", async () => {
+    const loaded = await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.8, 0.78, 0.795), candle(1, 0.8, 0.83, 0.79, 0.82)],
+    });
+    const execution = simulateExecutionToHorizon(loaded);
+    const outcomeDefinition = {
+      schemaVersion: REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION,
+      sessionId: loaded.replaySession.id,
+      manifestId: "manifest:execution-test",
+      revealedAt: decisionTime + 10,
+      revealedBeforeDecisionCompletion: false,
+      outcome: {
+        futureCandlesByTimeframe: {},
+        lifecycleTimeline: [],
+        radarTerminalResult: null,
+        maximumFavorablePriceExcursionFromDetected: null,
+        maximumAdversePriceExcursionFromDetected: null,
+        lifecycleStateTimestamps: {},
+        dataQualityNotes: [],
+      },
+    };
+    const replayOutcomeEnvelope: ReplayOutcomeEnvelope = {
+      ...outcomeDefinition,
+      id: `replay-outcome:${canonicalHash(outcomeDefinition).slice("fnv1a64:".length)}`,
+    };
+    expect(() => revealExecutionOutcome({
+      replaySession: loaded.replaySession,
+      replayOutcomeEnvelope,
+      executionSession: execution,
+      revealedAt: decisionTime + 10,
+    })).toThrow("explicit reveal boundary");
+
+    const revealedReplay = {
+      ...loaded.replaySession,
+      state: "Revealed",
+      revealedOutcomeEnvelopeId: replayOutcomeEnvelope.id,
+    } as ReplaySession;
+    const revealed = revealExecutionOutcome({
+      replaySession: revealedReplay,
+      replayOutcomeEnvelope,
+      executionSession: execution,
+      revealedAt: decisionTime + 10,
+    });
+    expect(revealed.executionResult.id).toBe(execution.result?.id);
+    expect(revealed.executionEvents).toEqual(execution.executionEvents);
   });
 });
 

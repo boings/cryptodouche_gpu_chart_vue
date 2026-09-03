@@ -29,6 +29,8 @@ export const EXECUTION_EVENT_SCHEMA_VERSION = "execution-event.1" as const;
 export const EXECUTION_RESULT_SCHEMA_VERSION = "execution-result.1" as const;
 export const EXECUTION_DATA_BUNDLE_SCHEMA_VERSION = "execution-data-bundle.1" as const;
 export const EXECUTION_CANDLE_SCHEMA_VERSION = "execution-candle.1" as const;
+export const EXECUTION_TRADE_SCHEMA_VERSION = "execution-trade.1" as const;
+export const EXECUTION_QUOTE_SCHEMA_VERSION = "execution-quote.1" as const;
 export const EXECUTION_PATH_RESOLUTION_SCHEMA_VERSION = "execution-path-resolution.1" as const;
 export const VENUE_EXECUTION_RULES_SCHEMA_VERSION = "venue-execution-rules.1" as const;
 export const VENUE_FEE_SCHEDULE_SCHEMA_VERSION = "venue-fee-schedule.1" as const;
@@ -221,6 +223,7 @@ export interface CreateFundingObservationInput {
 }
 
 export interface ExecutionTradeObservation {
+  schemaVersion: typeof EXECUTION_TRADE_SCHEMA_VERSION;
   id: string;
   venue: string;
   symbol: string;
@@ -232,11 +235,31 @@ export interface ExecutionTradeObservation {
 }
 
 export interface ExecutionQuoteObservation {
+  schemaVersion: typeof EXECUTION_QUOTE_SCHEMA_VERSION;
   id: string;
   venue: string;
   symbol: string;
   eventTime: number;
   knownAt: number;
+  bid: number;
+  ask: number;
+}
+
+export interface CreateExecutionTradeInput {
+  venue: string;
+  symbol: string;
+  eventTime: number;
+  knownAt?: number;
+  price: number;
+  quantity: number;
+  side: "buy" | "sell";
+}
+
+export interface CreateExecutionQuoteInput {
+  venue: string;
+  symbol: string;
+  eventTime: number;
+  knownAt?: number;
   bid: number;
   ask: number;
 }
@@ -659,6 +682,60 @@ export function executionCandleFromReplay(
     c: candle.c,
     vBase: candle.vBase,
     sourceObservationId: candle.observationId,
+  });
+}
+
+export function createExecutionTradeObservation(
+  input: CreateExecutionTradeInput,
+): ExecutionTradeObservation {
+  assertTimestamp(input.eventTime, "trade eventTime");
+  const knownAt = input.knownAt ?? input.eventTime;
+  assertTimestamp(knownAt, "trade knownAt");
+  if (knownAt < input.eventTime) throw new RangeError("Trade knownAt cannot precede eventTime");
+  if (!Number.isFinite(input.price) || input.price <= 0) throw new RangeError("Trade price must be positive");
+  if (!Number.isFinite(input.quantity) || input.quantity <= 0) throw new RangeError("Trade quantity must be positive");
+  const definition = {
+    schemaVersion: EXECUTION_TRADE_SCHEMA_VERSION,
+    venue: input.venue,
+    symbol: input.symbol.toUpperCase(),
+    eventTime: input.eventTime,
+    knownAt,
+    price: input.price,
+    quantity: input.quantity,
+    side: input.side,
+  };
+  return immutableJsonClone({
+    ...definition,
+    id: `execution-trade:${canonicalHash(definition).slice("fnv1a64:".length)}`,
+  });
+}
+
+export function createExecutionQuoteObservation(
+  input: CreateExecutionQuoteInput,
+): ExecutionQuoteObservation {
+  assertTimestamp(input.eventTime, "quote eventTime");
+  const knownAt = input.knownAt ?? input.eventTime;
+  assertTimestamp(knownAt, "quote knownAt");
+  if (knownAt < input.eventTime) throw new RangeError("Quote knownAt cannot precede eventTime");
+  if (
+    !Number.isFinite(input.bid) ||
+    !Number.isFinite(input.ask) ||
+    input.bid <= 0 ||
+    input.ask <= 0 ||
+    input.bid > input.ask
+  ) throw new RangeError("Quote requires positive bid <= ask");
+  const definition = {
+    schemaVersion: EXECUTION_QUOTE_SCHEMA_VERSION,
+    venue: input.venue,
+    symbol: input.symbol.toUpperCase(),
+    eventTime: input.eventTime,
+    knownAt,
+    bid: input.bid,
+    ask: input.ask,
+  };
+  return immutableJsonClone({
+    ...definition,
+    id: `execution-quote:${canonicalHash(definition).slice("fnv1a64:".length)}`,
   });
 }
 
@@ -1299,6 +1376,10 @@ function validateTimedExecutionData(
       item.knownAt < item.eventTime ||
       ids.has(item.id)
     ) throw new Error(`Invalid or duplicate execution observation ${item.id}`);
+    const canonicalId = "price" in item
+      ? createExecutionTradeObservation(item).id
+      : createExecutionQuoteObservation(item).id;
+    if (item.id !== canonicalId) throw new Error(`Execution observation identity mismatch ${item.id}`);
     ids.add(item.id);
   }
   for (const item of funding) {

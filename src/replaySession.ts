@@ -1872,6 +1872,12 @@ function assertNoFutureOutcomePayload(value: unknown) {
     "maximumAdversePriceExcursionFromDetected",
     "radarTerminalResult",
     "lifecycleStateTimestamps",
+    "executionResult",
+    "executionEvents",
+    "fills",
+    "actualNetPnl",
+    "maximumAdverseExcursion",
+    "maximumFavorableExcursion",
   ]);
   const visit = (entry: unknown) => {
     if (!entry || typeof entry !== "object") return;
