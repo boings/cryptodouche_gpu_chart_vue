@@ -654,7 +654,6 @@ function candidateMetricsAt(
     metrics.effectiveAsOf > asOf ||
     metrics.symbol.toUpperCase() !== symbol.toUpperCase() ||
     metrics.marketType.toLowerCase() !== "perp" ||
-    (candidate != null && metrics.source !== candidate.source) ||
     (candidate?.venue && metrics.exchange.toLowerCase() !== candidate.venue.toLowerCase())
   ) {
     return null;

@@ -11,6 +11,7 @@ import {
   createImpulseFadeResearchProfile,
   strategyProfileHash,
 } from "./strategy";
+import type { CandidateMetrics } from "./types";
 
 const asOf = 1_700_000_000;
 
@@ -104,6 +105,43 @@ function minimalSnapshotInput(
     relativeStrengthEvents: [],
     visibleOrSelectedReferenceLevels: [],
     dataQualityNotes: [],
+  };
+}
+
+function candidateMetrics(source: CandidateMetrics["source"] = "external"): CandidateMetrics {
+  return {
+    symbol: "FILUSDT",
+    exchange: "bybit",
+    marketType: "perp",
+    source,
+    baseTimeframe: "1h",
+    requestedAsOf: asOf,
+    effectiveAsOf: asOf,
+    sampleCount: 100,
+    historyCoverage: {
+      requestedStartTs: asOf - 180 * 86_400,
+      requestedEndTs: asOf,
+      availableStartTs: asOf - 180 * 86_400,
+      availableEndTs: asOf,
+      coveredSeconds: 180 * 86_400,
+      requestedSeconds: 180 * 86_400,
+      coverageRatio: 1,
+    },
+    insufficientDataReasons: [],
+    extension: {
+      windowSeconds: 86_400,
+      historyDays: 180,
+      sampleCount: 100,
+      latestTs: asOf,
+      referenceTs: asOf - 86_400,
+      latestClose: 1,
+      referenceClose: 0.8,
+      returnPct: 25,
+      percentile: 99,
+      zScore: 3,
+    },
+    timeframeExtensions: {},
+    updatedAt: asOf,
   };
 }
 
@@ -253,6 +291,21 @@ describe("Impulse Fade strategy profile and decision snapshots", () => {
     expect(first.strategyProfileHash).toBe(DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE.profileHash);
     expect(Object.isFrozen(first)).toBe(true);
     expect(Object.isFrozen(first.candidateEpisode)).toBe(true);
+  });
+
+  it("distinguishes metric data origin from exchange stream provenance", () => {
+    const exchangeLifecycle = lifecycle();
+    if (!exchangeLifecycle.candidate) throw new Error("fixture candidate is required");
+    exchangeLifecycle.candidate.source = "bybit";
+    const snapshot = createDecisionSnapshot({
+      ...minimalSnapshotInput(exchangeLifecycle),
+      source: "bybit",
+      candidateMetrics: candidateMetrics("external"),
+    });
+
+    expect(snapshot.candidateMetrics?.source).toBe("external");
+    expect(snapshot.candidateMetrics?.exchange).toBe("bybit");
+    expect(snapshot.candidateEpisode?.source).toBe("bybit");
   });
 
   it("does not mutate a prior snapshot when live lifecycle state advances", () => {
