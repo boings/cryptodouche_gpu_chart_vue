@@ -250,6 +250,8 @@ export interface RadarEpisode {
     scanTimeframe: string;
     triggeringDetectorIds: string[];
     triggeringObservations: RadarMetricObservation[];
+    selectionGateEvaluationId: string;
+    hardGateResults: RadarHardGateResult[];
     contextObservations: RadarMetricObservation[];
     selectionAnchor: RadarSelectionAnchor | null;
     pathContext: RadarPathContext;
@@ -309,6 +311,7 @@ export interface ReplayCaseManifest {
         completedCandleCount: number;
     }>;
     initialRadarObservations: RadarMetricObservation[];
+    initialHardGateResults: RadarHardGateResult[];
     initialLifecycleState: string | null;
     initialLifecycleStateRef: DurableObjectReference | null;
     executionVenueEligibility: ExecutionVenueEligibilityObservation;

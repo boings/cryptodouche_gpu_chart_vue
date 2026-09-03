@@ -311,6 +311,8 @@ export interface RadarEpisode {
   scanTimeframe: string;
   triggeringDetectorIds: string[];
   triggeringObservations: RadarMetricObservation[];
+  selectionGateEvaluationId: string;
+  hardGateResults: RadarHardGateResult[];
   contextObservations: RadarMetricObservation[];
   selectionAnchor: RadarSelectionAnchor | null;
   pathContext: RadarPathContext;
@@ -375,6 +377,7 @@ export interface ReplayCaseManifest {
     }
   >;
   initialRadarObservations: RadarMetricObservation[];
+  initialHardGateResults: RadarHardGateResult[];
   initialLifecycleState: string | null;
   initialLifecycleStateRef: DurableObjectReference | null;
   executionVenueEligibility: ExecutionVenueEligibilityObservation;
@@ -742,6 +745,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           asOf,
           profile: input.selectionProfile,
           detectorEvaluations,
+          selectionEvaluation: evaluation,
           venueEligibility,
           lifecycleHistory: input.lifecycleHistory?.[seriesKey] ?? [],
           structureHistory: input.structureHistory ?? [],
@@ -1081,6 +1085,7 @@ function createRadarEpisode(input: {
   asOf: number;
   profile: RadarSelectionProfile;
   detectorEvaluations: DetectorEvaluationInternal[];
+  selectionEvaluation: RadarGateEvaluation;
   venueEligibility: ExecutionVenueEligibilityObservation;
   lifecycleHistory: readonly SetupStateSnapshot[];
   structureHistory: readonly RadarStructureObservation[];
@@ -1089,7 +1094,7 @@ function createRadarEpisode(input: {
   const triggeringObservations = dedupeObservations(
     passing.flatMap((item) =>
       item.observations.filter((observation) =>
-        item.result.observationIds.includes(observation.observationId),
+        observation.observationId === item.result.winningObservationId,
       ),
     ),
   );
@@ -1181,6 +1186,8 @@ function createRadarEpisode(input: {
     scanTimeframe: input.profile.scanTimeframe,
     triggeringDetectorIds: passing.map((item) => item.result.detectorId),
     triggeringObservations,
+    selectionGateEvaluationId: input.selectionEvaluation.id,
+    hardGateResults: input.selectionEvaluation.hardGateResults,
     contextObservations,
     selectionAnchor: anchor,
     pathContext,
@@ -1219,9 +1226,9 @@ function createReplayCaseManifest(
   profile: RadarSelectionProfile,
   strategyProfile: StrategyProfile,
 ): ReplayCaseManifest {
-  const availableTimeframes = Object.keys(series.candlesByTimeframe).sort(compareTimeframes);
+  const inputTimeframes = Object.keys(series.candlesByTimeframe).sort(compareTimeframes);
   const dataCoverageByTimeframe = Object.fromEntries(
-    availableTimeframes.map((timeframe) => {
+    inputTimeframes.map((timeframe) => {
       const candles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, episode.detectedAt);
       return [
         timeframe,
@@ -1233,6 +1240,9 @@ function createReplayCaseManifest(
         },
       ];
     }),
+  );
+  const availableTimeframes = inputTimeframes.filter(
+    (timeframe) => dataCoverageByTimeframe[timeframe].completedCandleCount > 0,
   );
   const definition = {
     schemaVersion: REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
@@ -1253,6 +1263,7 @@ function createReplayCaseManifest(
     preRollRequirements: preRollRequirements(profile),
     dataCoverageByTimeframe,
     initialRadarObservations: episode.contextObservations,
+    initialHardGateResults: episode.hardGateResults,
     initialLifecycleState: episode.initialLifecycleState,
     initialLifecycleStateRef: episode.initialLifecycleStateRef,
     executionVenueEligibility: episode.executionVenueEligibility,

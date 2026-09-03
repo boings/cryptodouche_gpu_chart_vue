@@ -77,6 +77,15 @@ export type DecisionReferenceKind = "swing" | "structureLevel" | "supportZone" |
 export interface DecisionReferenceSource {
     objectType: string;
     objectId: string;
+    observationId: string;
+    snapshot: {
+        [key: string]: JsonValue;
+    };
+}
+export interface DecisionReferenceSourceInput {
+    objectType: string;
+    objectId: string;
+    observationId?: string;
     snapshot: {
         [key: string]: JsonValue;
     };
@@ -170,8 +179,9 @@ export interface CreateDecisionReferenceLevelInput {
     sourceTimeframe?: string | null;
     eventTime: number;
     knownAt: number;
-    sourceObject: DecisionReferenceSource;
+    sourceObject: DecisionReferenceSourceInput;
 }
+export declare function decisionReferenceObservationId(source: Omit<DecisionReferenceSource, "observationId"> | DecisionReferenceSourceInput): string;
 export declare function strategyProfileHash(profile: StrategyProfile | StrategyProfileDefinition): string;
 export declare function createStrategyProfile(definition: StrategyProfileDefinition): StrategyProfile;
 export interface ImpulseFadeResearchProfileOverrides {

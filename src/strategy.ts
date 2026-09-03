@@ -131,6 +131,14 @@ export type DecisionReferenceKind =
 export interface DecisionReferenceSource {
   objectType: string;
   objectId: string;
+  observationId: string;
+  snapshot: { [key: string]: JsonValue };
+}
+
+export interface DecisionReferenceSourceInput {
+  objectType: string;
+  objectId: string;
+  observationId?: string;
   snapshot: { [key: string]: JsonValue };
 }
 
@@ -230,7 +238,17 @@ export interface CreateDecisionReferenceLevelInput {
   sourceTimeframe?: string | null;
   eventTime: number;
   knownAt: number;
-  sourceObject: DecisionReferenceSource;
+  sourceObject: DecisionReferenceSourceInput;
+}
+
+export function decisionReferenceObservationId(
+  source: Omit<DecisionReferenceSource, "observationId"> | DecisionReferenceSourceInput,
+) {
+  return `decision-reference-observation:${canonicalHash({
+    objectType: source.objectType,
+    objectId: source.objectId,
+    snapshot: source.snapshot,
+  }).slice("fnv1a64:".length)}`;
 }
 
 export function strategyProfileHash(
@@ -449,6 +467,13 @@ export function createDecisionReferenceLevel(
   if (input.knownAt < input.eventTime) {
     throw new RangeError("Reference knownAt cannot precede eventTime");
   }
+  const observationId = decisionReferenceObservationId(input.sourceObject);
+  if (
+    input.sourceObject.observationId != null &&
+    input.sourceObject.observationId !== observationId
+  ) {
+    throw new Error("Decision reference source observation failed deterministic verification");
+  }
   return immutableJsonClone({
     id: input.id,
     kind: input.kind,
@@ -458,7 +483,10 @@ export function createDecisionReferenceLevel(
     sourceTimeframe: input.sourceTimeframe ?? null,
     eventTime: input.eventTime,
     knownAt: input.knownAt,
-    sourceObject: input.sourceObject,
+    sourceObject: {
+      ...input.sourceObject,
+      observationId,
+    },
   });
 }
 

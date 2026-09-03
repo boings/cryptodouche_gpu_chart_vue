@@ -85,6 +85,32 @@ function lifecycle(state: SetupStateSnapshot["currentState"] = "entryCandidate")
 }
 
 describe("Impulse Fade strategy profile and decision snapshots", () => {
+  it("assigns exact revision identity to frozen structural references", () => {
+    const reference = createDecisionReferenceLevel({
+      id: "zone-1",
+      kind: "resistanceZone",
+      price: 105,
+      rangeLow: 104,
+      rangeHigh: 106,
+      sourceTimeframe: "4h",
+      eventTime: asOf - 7_200,
+      knownAt: asOf - 3_600,
+      sourceObject: {
+        objectType: "SupportResistanceZone",
+        objectId: "zone-1",
+        snapshot: { low: 104, high: 106, strength: 8.1 },
+      },
+    });
+
+    expect(reference.sourceObject.observationId).toMatch(/^decision-reference-observation:/);
+    expect(() =>
+      createDecisionReferenceLevel({
+        ...reference,
+        sourceObject: { ...reference.sourceObject, observationId: "tampered" },
+      }),
+    ).toThrow("deterministic verification");
+  });
+
   it("exposes a stable, self-hashed research profile with explicit timeframe roles", () => {
     const profile = DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE;
 
