@@ -182,6 +182,7 @@ export interface ReplayCandleRecord {
   vQuote: number | null;
   knownAt: number;
   revision: number | null;
+  correctionPublishedAt: number | null;
 }
 
 export interface CreateReplayCandleInput {
@@ -197,6 +198,7 @@ export interface CreateReplayCandleInput {
   vQuote?: number | null;
   knownAt?: number;
   revision?: number | null;
+  correctionPublishedAt?: number | null;
 }
 
 export interface ReplayAnalysisStateObservation {
@@ -530,9 +532,20 @@ export function createReplayCandleRecord(input: CreateReplayCandleInput): Replay
     throw new RangeError("Candle high/low do not contain open and close");
   }
   const closeTime = input.openTime + timeframeSeconds;
-  const knownAt = input.knownAt ?? closeTime;
+  const knownAt = input.knownAt ?? input.correctionPublishedAt ?? closeTime;
   if (!Number.isFinite(knownAt) || knownAt < closeTime) {
     throw new RangeError("Candle knownAt cannot precede its close");
+  }
+  if (
+    input.correctionPublishedAt != null &&
+    (!Number.isFinite(input.correctionPublishedAt) ||
+      input.correctionPublishedAt < closeTime ||
+      input.correctionPublishedAt > knownAt)
+  ) {
+    throw new RangeError("Correction publication time must fall between closeTime and knownAt");
+  }
+  if (input.revision != null && (!Number.isInteger(input.revision) || input.revision < 0)) {
+    throw new RangeError("Candle revision must be a non-negative integer");
   }
   const definition = {
     logicalCandleId: replayCandleLogicalId(input),
@@ -549,6 +562,7 @@ export function createReplayCandleRecord(input: CreateReplayCandleInput): Replay
     vQuote: input.vQuote ?? null,
     knownAt,
     revision: input.revision ?? null,
+    correctionPublishedAt: input.correctionPublishedAt ?? null,
   };
   return immutableJsonClone({ ...definition, observationId: replayCandleObservationId(definition) });
 }
@@ -668,7 +682,7 @@ export async function loadReplayCase(input: LoadReplayCaseInput): Promise<Replay
         }) ?? []
       : [];
     candlesByTimeframe[timeframe] = validateReplayCandles(
-      [...history, ...revisions],
+      [...history, ...revisions].filter((candle) => candle.knownAt <= horizon),
       manifest,
       timeframe,
       analysisStart,
@@ -825,6 +839,18 @@ function validateRadarEpisode(manifest: ReplayCaseManifest, episode: RadarEpisod
   ) {
     throw new Error("RadarEpisode sidecar does not match the ReplayCaseManifest");
   }
+  const causalTimestamps = [
+    ...episode.triggeringObservations.flatMap((item) => [item.effectiveAsOf, item.knownAt]),
+    ...episode.contextObservations.flatMap((item) => [item.effectiveAsOf, item.knownAt]),
+    ...episode.hardGateEvidence.map((item) => item.knownAt),
+    episode.selectionAnchor?.timestamp,
+    episode.initialLifecycleCandidateRef?.knownAt,
+    episode.initialLifecycleStateRef?.knownAt,
+    ...Object.values(episode.initialMtfStructure).map((item) => item.knownAt),
+  ].filter((value): value is number => value != null);
+  if (causalTimestamps.some((value) => !Number.isFinite(value) || value > manifest.startAsOf)) {
+    throw new Error("RadarEpisode contains evidence unavailable at replay start");
+  }
 }
 
 function validateReplayCandles(
@@ -886,11 +912,12 @@ function validateAnalysisStateHistory(
     }
     byKnownAt.set(item.knownAt, item);
   }
-  return immutableJsonClone(sorted);
+  return immutableJsonClone([...byKnownAt.values()]);
 }
 
 function validateKnownEvents(events: ReplayKnownEvent[]): ReplayKnownEvent[] {
   const result = [...events].sort((left, right) => left.knownAt - right.knownAt || left.id.localeCompare(right.id));
+  const byId = new Map<string, ReplayKnownEvent>();
   for (const event of result) {
     if (
       event.schemaVersion !== REPLAY_KNOWN_EVENT_SCHEMA_VERSION ||
@@ -899,8 +926,13 @@ function validateKnownEvents(events: ReplayKnownEvent[]): ReplayKnownEvent[] {
     ) {
       throw new Error("Replay known event failed deterministic verification");
     }
+    const existing = byId.get(event.id);
+    if (existing && canonicalSerialize(existing) !== canonicalSerialize(event)) {
+      throw new Error(`Conflicting replay known event ${event.id}`);
+    }
+    byId.set(event.id, event);
   }
-  return immutableJsonClone(result);
+  return immutableJsonClone([...byId.values()]);
 }
 
 function replayCandleToCandle(candle: ReplayCandleRecord): CandleRecord {
