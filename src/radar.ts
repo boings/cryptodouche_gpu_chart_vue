@@ -1,5 +1,10 @@
 import { candleCloseTime, IMPULSE_FADE_LIFECYCLE_VERSION, type SetupFamily, type SetupStateSnapshot } from "./indicators";
-import { timeframeToSeconds } from "./data";
+import {
+  candleRevisionKnownAt,
+  isStrictTimeframe,
+  selectCompletedCandleRevisionsAt,
+  strictTimeframeToSeconds,
+} from "./data";
 import {
   canonicalHash,
   canonicalSerialize,
@@ -1906,7 +1911,7 @@ function completedCandles(
   timeframe: string,
   asOf: number,
 ) {
-  return orderedCandles(cutoffCandleRevisions(candles, timeframe, asOf), timeframe);
+  return selectCompletedCandleRevisionsAt(candles, timeframe, asOf);
 }
 
 function cutoffCandleRevisions(
@@ -1914,7 +1919,7 @@ function cutoffCandleRevisions(
   timeframe: string,
   asOf: number,
 ) {
-  const timeframeSeconds = strictTimeframeSeconds(timeframe);
+  const timeframeSeconds = strictTimeframeToSeconds(timeframe);
   return candles.filter((item) => {
     if (!Number.isFinite(item.bucket)) {
       throw new RangeError("Candle bucket must be finite");
@@ -1926,40 +1931,6 @@ function cutoffCandleRevisions(
     }
     return candleRevisionKnownAt(item, timeframe) <= asOf;
   });
-}
-
-function orderedCandles(candles: readonly CandleRecord[], timeframe: string) {
-  const timeframeSeconds = strictTimeframeSeconds(timeframe);
-  const byBucket = new Map<number, CandleRecord>();
-  for (const candle of [...candles].sort((left, right) => left.bucket - right.bucket || left.ts - right.ts)) {
-    if (
-      !validCandle(candle) ||
-      candle.bucket % timeframeSeconds !== 0 ||
-      Math.floor(candle.ts / timeframeSeconds) * timeframeSeconds !== candle.bucket
-    ) {
-      throw new RangeError(`Invalid candle for bucket ${candle.bucket}`);
-    }
-    const closeTime = candle.bucket + timeframeSeconds;
-    const revisionKnownAt = candleRevisionKnownAt(candle, timeframe);
-    if (revisionKnownAt < closeTime) {
-      throw new RangeError(`Candle revision predates close for bucket ${candle.bucket}`);
-    }
-    const existing = byBucket.get(candle.bucket);
-    if (existing) {
-      const existingKnownAt = candleRevisionKnownAt(existing, timeframe);
-      if (
-        existingKnownAt === revisionKnownAt &&
-        canonicalCandle(existing, timeframe) !== canonicalCandle(candle, timeframe)
-      ) {
-        throw new Error(
-          `Conflicting candle revisions for bucket ${candle.bucket} at ${revisionKnownAt}`,
-        );
-      }
-      if (existingKnownAt > revisionKnownAt) continue;
-    }
-    byBucket.set(candle.bucket, candle);
-  }
-  return [...byBucket.values()].sort((left, right) => left.bucket - right.bucket);
 }
 
 function cutoffSeries(series: RadarSymbolSeries, asOf: number): RadarSymbolSeries {
@@ -2019,25 +1990,6 @@ function structureAt(
       ],
     ),
   );
-}
-
-function canonicalCandle(candle: CandleRecord, timeframe: string) {
-  return canonicalSerialize({
-    bucket: candle.bucket,
-    ts: candle.ts,
-    o: candle.o,
-    h: candle.h,
-    l: candle.l,
-    c: candle.c,
-    vBase: finite(candle.v_base) ? candle.v_base : null,
-    vQuote: finite(candle.v_quote) ? candle.v_quote : null,
-    ver: finite(candle.ver) ? candle.ver : null,
-    knownAt: candleRevisionKnownAt(candle, timeframe),
-  });
-}
-
-function candleRevisionKnownAt(candle: CandleRecord, timeframe: string) {
-  return candle.knownAt ?? candleCloseTime(candle, timeframe);
 }
 
 function latestAtOrBefore(candles: readonly CandleRecord[], target: number) {
@@ -2551,27 +2503,6 @@ function optionalMinimum(value: number | null, required: number | null) {
   return required == null || (value != null && value + 1e-12 >= required);
 }
 
-function validCandle(candle: CandleRecord) {
-  return (
-    Number.isFinite(candle.bucket) &&
-    Number.isFinite(candle.ts) &&
-    validPositive(candle.o) &&
-    validPositive(candle.h) &&
-    validPositive(candle.l) &&
-    validPositive(candle.c) &&
-    candle.h >= Math.max(candle.o, candle.c, candle.l) &&
-    candle.l <= Math.min(candle.o, candle.c, candle.h) &&
-    optionalNonnegative(candle.v_base) &&
-    optionalNonnegative(candle.v_quote) &&
-    optionalNonnegative(candle.ver) &&
-    optionalNonnegative(candle.knownAt)
-  );
-}
-
-function optionalNonnegative(value: number | undefined) {
-  return value == null || (Number.isFinite(value) && value >= 0);
-}
-
 function validPositive(value: number) {
   return Number.isFinite(value) && value > 0;
 }
@@ -2654,15 +2585,8 @@ function compareTimeframes(left: string, right: string) {
   return strictTimeframeSeconds(left) - strictTimeframeSeconds(right) || left.localeCompare(right);
 }
 
-function isStrictTimeframe(timeframe: string) {
-  return /^[1-9]\d*[mhd]$/.test(timeframe) && validPositive(timeframeToSeconds(timeframe));
-}
-
 function strictTimeframeSeconds(timeframe: string) {
-  if (!isStrictTimeframe(timeframe)) {
-    throw new RangeError(`Invalid radar timeframe ${timeframe}`);
-  }
-  return timeframeToSeconds(timeframe);
+  return strictTimeframeToSeconds(timeframe);
 }
 
 function profileRef(profile: RadarSelectionProfile) {

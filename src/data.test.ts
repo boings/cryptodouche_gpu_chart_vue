@@ -6,6 +6,8 @@ import {
   normalizeOhlcvPoint,
   packHistoricalCandles,
   prependHistoricalCandles,
+  selectCompletedCandleRevisionsAt,
+  strictTimeframeToSeconds,
 } from "./data";
 import {
   computeAtrLine,
@@ -32,6 +34,34 @@ import {
 } from "./viewport";
 
 describe("gpu chart data utilities", () => {
+  it("materializes only candle revisions known at the requested cutoff", () => {
+    const original = {
+      ts: 0,
+      bucket: 0,
+      x: 0,
+      o: 100,
+      h: 100,
+      l: 100,
+      c: 100,
+      knownAt: 60,
+    };
+    const correction = { ...original, o: 90, h: 90, l: 90, c: 90, knownAt: 180, ver: 2 };
+    const next = { ...original, ts: 60, bucket: 60, x: 1, c: 110, o: 110, h: 110, l: 110, knownAt: 120 };
+
+    expect(selectCompletedCandleRevisionsAt([original, correction, next], "1m", 120))
+      .toEqual([original, next]);
+    expect(selectCompletedCandleRevisionsAt([original, correction, next], "1m", 180))
+      .toEqual([correction, next]);
+  });
+
+  it("rejects ambiguous revisions and noncanonical timeframes", () => {
+    const original = { ts: 0, bucket: 0, x: 0, o: 100, h: 100, l: 100, c: 100 };
+    expect(() =>
+      selectCompletedCandleRevisionsAt([original, { ...original, c: 101, h: 101 }], "1m", 60),
+    ).toThrow("Conflicting candle revisions");
+    expect(() => strictTimeframeToSeconds("60")).toThrow("Invalid radar/replay timeframe");
+  });
+
   it("anchors firstBucket before deriving x indexes", () => {
     const state = packHistoricalCandles(
       [

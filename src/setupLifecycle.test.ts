@@ -182,6 +182,36 @@ describe("Impulse Fade lifecycle timeline", () => {
     });
   });
 
+  it("does not apply a candle correction before its knownAt", () => {
+    const original = { ...candle(4, 112, 6), knownAt: 300 };
+    const correction = { ...candle(4, 120, 8), knownAt: 420, ver: 2 };
+    const history = [...candles.slice(0, 4), original, correction, ...candles.slice(5)];
+    const beforeCorrection = evaluateImpulseFadeTimeline({
+      ...input,
+      candlesByTimeframe: { "1m": history },
+      to: 360,
+    });
+    const physicallyTruncated = evaluateImpulseFadeTimeline({
+      ...input,
+      candlesByTimeframe: { "1m": history.filter((item) => item !== correction) },
+      to: 360,
+    });
+    const afterCorrection = evaluateImpulseFadeTimeline({
+      ...input,
+      candlesByTimeframe: { "1m": history },
+      to: 420,
+    });
+    const withoutCorrection = evaluateImpulseFadeTimeline({
+      ...input,
+      candlesByTimeframe: { "1m": history.filter((item) => item !== correction) },
+      to: 420,
+    });
+
+    expect(beforeCorrection).toEqual(physicallyTruncated);
+    expect(afterCorrection.some((snapshot) => snapshot.asOf === 420)).toBe(true);
+    expect(afterCorrection).not.toEqual(withoutCorrection);
+  });
+
   it("does not reuse a pre-detection event that is confirmed later", () => {
     const trace = evaluateImpulseFadeTimeline({
       ...input,

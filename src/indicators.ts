@@ -1,4 +1,4 @@
-import { timeframeToSeconds } from "./data";
+import { selectCompletedCandleRevisionsAt, timeframeToSeconds } from "./data";
 import { canonicalHash } from "./serialization";
 import type { CandleRecord } from "./types";
 
@@ -1061,16 +1061,18 @@ export function candleCloseTime(
 
 function completedCandlesAt(
   candles: CandleRecord[],
-  timeframe: string | number,
+  timeframe: string,
   asOf: number,
 ) {
-  return candles.filter((candle) => candleCloseTime(candle, timeframe) <= asOf);
+  return selectCompletedCandleRevisionsAt(candles, timeframe, asOf);
 }
 
 function impulseFadeEvaluationPoints(options: ImpulseFadeTimelineOptions) {
   const points = new Set<number>();
   for (const [timeframe, candles] of Object.entries(options.candlesByTimeframe)) {
-    for (const candle of candles) points.add(candleCloseTime(candle, timeframe));
+    for (const candle of candles) {
+      points.add(candle.knownAt ?? candleCloseTime(candle, timeframe));
+    }
   }
   for (const observation of options.candidateMetrics ?? []) {
     points.add(normalizedNullableNumber(observation.knownAt) ?? observation.asOf);
@@ -2591,6 +2593,7 @@ function candleKnownAt(
 ) {
   const candle = candles[index];
   if (!candle) return 0;
+  if (candle.knownAt != null && Number.isFinite(candle.knownAt)) return candle.knownAt;
   if (timeframe != null && String(timeframe).trim() !== "chart") {
     return candleCloseTime(candle, timeframe);
   }

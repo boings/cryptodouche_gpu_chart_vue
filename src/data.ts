@@ -5,6 +5,7 @@ import type {
   OhlcvPoint,
   ViewBounds,
 } from "./types";
+import { canonicalSerialize } from "./serialization";
 
 const FLOATS_PER_CANDLE = 5;
 
@@ -18,6 +19,77 @@ export function timeframeToSeconds(timeframe: string | number): number {
   if (raw.endsWith("h")) return parseInt(raw, 10) * 60 * 60;
   if (raw.endsWith("d")) return parseInt(raw, 10) * 24 * 60 * 60;
   return parseInt(raw, 10) * 60;
+}
+
+export function isStrictTimeframe(timeframe: string): boolean {
+  if (!/^[1-9]\d*[mhd]$/.test(timeframe)) return false;
+  const value = Number.parseInt(timeframe, 10);
+  const multiplier = timeframe.endsWith("m")
+    ? 60
+    : timeframe.endsWith("h")
+      ? 3_600
+      : 86_400;
+  return Number.isSafeInteger(value) && Number.isSafeInteger(value * multiplier);
+}
+
+export function strictTimeframeToSeconds(timeframe: string): number {
+  if (!isStrictTimeframe(timeframe)) {
+    throw new RangeError(`Invalid radar/replay timeframe ${timeframe}`);
+  }
+  return timeframeToSeconds(timeframe);
+}
+
+export function candleRevisionKnownAt(candle: CandleRecord, timeframe: string): number {
+  return candle.knownAt ?? candle.bucket + strictTimeframeToSeconds(timeframe);
+}
+
+export function selectCompletedCandleRevisionsAt(
+  candles: readonly CandleRecord[],
+  timeframe: string,
+  asOf: number,
+): CandleRecord[] {
+  const timeframeSeconds = strictTimeframeToSeconds(timeframe);
+  const selected = new Map<number, CandleRecord>();
+  const eligible = candles.filter((candle) => {
+    if (!Number.isFinite(candle.bucket)) {
+      throw new RangeError("Candle bucket must be finite");
+    }
+    if (candle.bucket + timeframeSeconds > asOf) return false;
+    if (candle.knownAt != null && !Number.isFinite(candle.knownAt)) {
+      throw new RangeError(`Invalid candle revision time for bucket ${candle.bucket}`);
+    }
+    return candleRevisionKnownAt(candle, timeframe) <= asOf;
+  });
+
+  for (const candle of [...eligible].sort(
+    (left, right) => left.bucket - right.bucket || left.ts - right.ts,
+  )) {
+    if (
+      !validHistoricalCandle(candle) ||
+      candle.bucket % timeframeSeconds !== 0 ||
+      Math.floor(candle.ts / timeframeSeconds) * timeframeSeconds !== candle.bucket
+    ) {
+      throw new RangeError(`Invalid candle for bucket ${candle.bucket}`);
+    }
+    const knownAt = candleRevisionKnownAt(candle, timeframe);
+    if (knownAt < candle.bucket + timeframeSeconds) {
+      throw new RangeError(`Candle revision predates close for bucket ${candle.bucket}`);
+    }
+    const existing = selected.get(candle.bucket);
+    if (existing) {
+      const existingKnownAt = candleRevisionKnownAt(existing, timeframe);
+      if (
+        existingKnownAt === knownAt &&
+        canonicalHistoricalCandle(existing, timeframe) !==
+          canonicalHistoricalCandle(candle, timeframe)
+      ) {
+        throw new Error(`Conflicting candle revisions for bucket ${candle.bucket} at ${knownAt}`);
+      }
+      if (existingKnownAt > knownAt) continue;
+    }
+    selected.set(candle.bucket, candle);
+  }
+  return [...selected.values()].sort((left, right) => left.bucket - right.bucket);
 }
 
 export function normalizeRestTimeframe(timeframe: string | number): string {
@@ -400,6 +472,46 @@ function isStaleVersion(incoming: CandleRecord, existing: CandleRecord): boolean
 function finiteNumber(value: unknown): number | undefined {
   const num = typeof value === "number" ? value : typeof value === "string" ? Number(value) : NaN;
   return Number.isFinite(num) ? num : undefined;
+}
+
+function validHistoricalCandle(candle: CandleRecord) {
+  return (
+    Number.isFinite(candle.bucket) &&
+    Number.isFinite(candle.ts) &&
+    positiveFinite(candle.o) &&
+    positiveFinite(candle.h) &&
+    positiveFinite(candle.l) &&
+    positiveFinite(candle.c) &&
+    candle.h >= Math.max(candle.o, candle.c, candle.l) &&
+    candle.l <= Math.min(candle.o, candle.c, candle.h) &&
+    optionalNonnegativeFinite(candle.v_base) &&
+    optionalNonnegativeFinite(candle.v_quote) &&
+    optionalNonnegativeFinite(candle.ver) &&
+    optionalNonnegativeFinite(candle.knownAt)
+  );
+}
+
+function canonicalHistoricalCandle(candle: CandleRecord, timeframe: string) {
+  return canonicalSerialize({
+    bucket: candle.bucket,
+    ts: candle.ts,
+    o: candle.o,
+    h: candle.h,
+    l: candle.l,
+    c: candle.c,
+    vBase: finiteNumber(candle.v_base) ?? null,
+    vQuote: finiteNumber(candle.v_quote) ?? null,
+    ver: finiteNumber(candle.ver) ?? null,
+    knownAt: candleRevisionKnownAt(candle, timeframe),
+  });
+}
+
+function positiveFinite(value: number) {
+  return Number.isFinite(value) && value > 0;
+}
+
+function optionalNonnegativeFinite(value: number | undefined) {
+  return value == null || (Number.isFinite(value) && value >= 0);
 }
 
 function unwrapPayload(input: unknown): unknown {
