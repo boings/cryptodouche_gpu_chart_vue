@@ -378,4 +378,6 @@ export declare function createDurableObjectReference(input: {
 export declare function executionVenueEligibilityObservationId(observation: Omit<ExecutionVenueEligibilityObservation, "observationId"> | ExecutionVenueEligibilityObservation): string;
 export declare const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE: RadarSelectionProfile;
 export declare function scanRadarEpisodes(input: RadarScanInput): RadarScanResult;
+export declare function replayCaseManifestId(manifest: ReplayCaseManifest | Omit<ReplayCaseManifest, "id">): string;
+export declare function radarEpisodeObservationId(episode: RadarEpisode | Omit<RadarEpisode, "observationId">): string;
 export declare function canonicalRadarJson(value: unknown): string;

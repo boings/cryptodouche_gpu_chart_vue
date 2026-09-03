@@ -1,5 +1,9 @@
 import type { CandleRecord, GpuSeriesState, LiveMergeResult, OhlcvPoint, ViewBounds } from "./types";
 export declare function timeframeToSeconds(timeframe: string | number): number;
+export declare function isStrictTimeframe(timeframe: string): boolean;
+export declare function strictTimeframeToSeconds(timeframe: string): number;
+export declare function candleRevisionKnownAt(candle: CandleRecord, timeframe: string): number;
+export declare function selectCompletedCandleRevisionsAt(candles: readonly CandleRecord[], timeframe: string, asOf: number): CandleRecord[];
 export declare function normalizeRestTimeframe(timeframe: string | number): string;
 export declare function bucketStart(tsSec: number, timeframeSec: number): number;
 export declare function normalizeOhlcvPoint(input: unknown): OhlcvPoint | null;

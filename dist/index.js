@@ -1,6 +1,6 @@
 import { ref as u, defineComponent as pC, openBlock as b, createElementBlock as t, createElementVNode as n, withModifiers as S, Fragment as BA, renderList as IA, toDisplayString as z, computed as F, onMounted as xZ, onBeforeUnmount as LZ, watch as sQ, nextTick as jC, normalizeStyle as WQ, normalizeClass as mA, createCommentVNode as NA, createBlock as nC, Teleport as SZ, resolveDynamicComponent as vZ, mergeProps as KZ, withCtx as PZ } from "vue";
-import { normalizeRestTimeframe as RA, makeSyntheticCandles as uI, packHistoricalCandles as pB, candlesToBytes as MC, computeViewBounds as qZ, timeframeToSeconds as $Q, appendSyntheticCandle as XC, mergeLiveCandle as GC, computeCloseChangePct as _Z, lineToBytes as $Z, computeSmaLine as AN, computeEmaLine as QN, computeWmaLine as BN, computeAnchoredVwapLine as IN, computeBollingerBands as gN, computeStructureActiveLevels as CN, computeAnchoredVwapSignals as wC, computeRelativeStrengthDivergences as VC, computeSupportResistanceZones as UB, computeStochRsi as EN, computeRsiLine as cN, computeMacd as ZN, computeAtrLine as NN, computeRelativeCumulativeReturnLine as lN, computeExtensionSnapshot as dN, computeAnchoredVwapSnapshot as YN, candleCloseTime as hC, evaluateImpulseFadeSnapshot as mN, prependHistoricalCandles as OC, computeMarketStructure as aC } from "./core.js";
-import { CANDLE_TIMESTAMP_SEMANTICS as tY, DECISION_RECORD_SCHEMA_VERSION as RY, DECISION_SNAPSHOT_SCHEMA_VERSION as eY, DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE as sY, EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION as WY, EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE as kY, IMPULSE_FADE_CANDIDATE_GATE as yY, IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION as zY, IMPULSE_FADE_LIFECYCLE_VERSION as pY, IMPULSE_FADE_RESEARCH_PROFILE_ID as UY, IMPULSE_FADE_RESEARCH_PROFILE_VERSION as TY, IMPULSE_FADE_SETUP_FAMILY as HY, RADAR_EPISODE_SCHEMA_VERSION as uY, RADAR_METRIC_OBSERVATION_SCHEMA_VERSION as fY, RADAR_SCAN_RESULT_SCHEMA_VERSION as rY, RADAR_SELECTION_PROFILE_SCHEMA_VERSION as xY, RADAR_STATUS_OBSERVATION_SCHEMA_VERSION as LY, RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION as SY, RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION as vY, REPLAY_CASE_MANIFEST_SCHEMA_VERSION as KY, SIZING_MODEL_VERSION as PY, SIZING_RESULT_SCHEMA_VERSION as qY, STRATEGY_PROFILE_SCHEMA_VERSION as _Y, TRADE_PLAN_SCHEMA_VERSION as $Y, bucketStart as Am, calculateLinearPerpetualSizing as Qm, candleToBytes as Bm, canonicalHash as Im, canonicalRadarJson as gm, canonicalSerialize as Cm, computeSetupState as Em, computeSupportResistanceZonesFromSwings as cm, computeSwingPoints as Zm, createDecisionRecord as Nm, createDecisionReferenceLevel as lm, createDecisionSnapshot as dm, createDurableObjectReference as Ym, createExecutionVenueEligibilityObservation as mm, createImpulseFadeResearchProfile as om, createRadarSelectionProfile as im, createRadarStructureObservation as Dm, createStrategyProfile as jm, createTradePlan as nm, createUniverseMembershipObservation as Mm, decisionReferenceObservationId as Xm, decisionSnapshotId as Gm, decisionSnapshotReferenceLevels as wm, evaluateImpulseFadeTimeline as Vm, evaluateTradePlanCompliance as hm, executionVenueEligibilityObservationId as Om, immutableJsonClone as am, impulseFadeLifecycleConfigHash as Jm, normalizeOhlcvPoint as Fm, radarSelectionProfileHash as bm, radarStructureObservationId as tm, scanRadarEpisodes as Rm, strategyProfileHash as em, tradePlanId as sm, universeMembershipObservationId as Wm } from "./core.js";
+import { normalizeRestTimeframe as eA, makeSyntheticCandles as uI, packHistoricalCandles as pB, candlesToBytes as MC, computeViewBounds as qZ, timeframeToSeconds as $Q, appendSyntheticCandle as XC, mergeLiveCandle as GC, computeCloseChangePct as _Z, lineToBytes as $Z, computeSmaLine as AN, computeEmaLine as QN, computeWmaLine as BN, computeAnchoredVwapLine as IN, computeBollingerBands as gN, computeStructureActiveLevels as CN, computeAnchoredVwapSignals as VC, computeRelativeStrengthDivergences as wC, computeSupportResistanceZones as UB, computeStochRsi as EN, computeRsiLine as cN, computeMacd as ZN, computeAtrLine as NN, computeRelativeCumulativeReturnLine as lN, computeExtensionSnapshot as dN, computeAnchoredVwapSnapshot as YN, candleCloseTime as hC, evaluateImpulseFadeSnapshot as mN, prependHistoricalCandles as OC, computeMarketStructure as aC } from "./core.js";
+import { CANDLE_TIMESTAMP_SEMANTICS as tY, DECISION_RECORD_SCHEMA_VERSION as eY, DECISION_SNAPSHOT_SCHEMA_VERSION as RY, DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE as sY, EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION as WY, EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE as kY, IMPULSE_FADE_CANDIDATE_GATE as yY, IMPULSE_FADE_LIFECYCLE_CONFIG_VERSION as zY, IMPULSE_FADE_LIFECYCLE_VERSION as pY, IMPULSE_FADE_RESEARCH_PROFILE_ID as UY, IMPULSE_FADE_RESEARCH_PROFILE_VERSION as TY, IMPULSE_FADE_SETUP_FAMILY as HY, InMemoryReplayHistoricalDataAdapter as uY, InMemoryReplayOutcomeStore as fY, JsonReplayHistoricalDataAdapter as rY, RADAR_EPISODE_SCHEMA_VERSION as xY, RADAR_METRIC_OBSERVATION_SCHEMA_VERSION as LY, RADAR_SCAN_RESULT_SCHEMA_VERSION as SY, RADAR_SELECTION_PROFILE_SCHEMA_VERSION as vY, RADAR_STATUS_OBSERVATION_SCHEMA_VERSION as KY, RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION as PY, RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION as qY, REPLAY_ANALYSIS_STATE_SCHEMA_VERSION as _Y, REPLAY_CASE_MANIFEST_SCHEMA_VERSION as $Y, REPLAY_COMMAND_SCHEMA_VERSION as Am, REPLAY_DATA_BUNDLE_SCHEMA_VERSION as Qm, REPLAY_DECISION_FRAME_SCHEMA_VERSION as Bm, REPLAY_ENGINE_VERSION as Im, REPLAY_EVENT_SCHEMA_VERSION as gm, REPLAY_JSON_DATA_SCHEMA_VERSION as Cm, REPLAY_KNOWN_EVENT_SCHEMA_VERSION as Em, REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION as cm, REPLAY_SESSION_CONFIG_SCHEMA_VERSION as Zm, REPLAY_SESSION_SCHEMA_VERSION as Nm, REPLAY_WAKE_CONDITION_SCHEMA_VERSION as lm, REPLAY_WAKE_PLAN_SCHEMA_VERSION as dm, REPLAY_WAKE_RESULT_SCHEMA_VERSION as Ym, SIZING_MODEL_VERSION as mm, SIZING_RESULT_SCHEMA_VERSION as om, STRATEGY_PROFILE_SCHEMA_VERSION as im, TRADE_PLAN_SCHEMA_VERSION as Dm, applyReplayCommand as jm, bucketStart as nm, calculateLinearPerpetualSizing as Mm, candleRevisionKnownAt as Xm, candleToBytes as Gm, canonicalHash as Vm, canonicalRadarJson as wm, canonicalSerialize as hm, computeSetupState as Om, computeSupportResistanceZonesFromSwings as am, computeSwingPoints as Jm, createDecisionRecord as Fm, createDecisionReferenceLevel as bm, createDecisionSnapshot as tm, createDefaultReplaySessionConfig as em, createDurableObjectReference as Rm, createExecutionVenueEligibilityObservation as sm, createImpulseFadeResearchProfile as Wm, createRadarSelectionProfile as km, createRadarStructureObservation as ym, createReplayAnalysisStateObservation as zm, createReplayCandleRecord as pm, createReplayCommand as Um, createReplayKnownEvent as Tm, createReplaySession as Hm, createReplaySessionConfig as um, createReplayWakeCondition as fm, createReplayWakePlan as rm, createStrategyProfile as xm, createTradePlan as Lm, createUniverseMembershipObservation as Sm, decisionReferenceObservationId as vm, decisionSnapshotId as Km, decisionSnapshotReferenceLevels as Pm, deserializeReplaySession as qm, evaluateImpulseFadeTimeline as _m, evaluateTradePlanCompliance as $m, executionVenueEligibilityObservationId as Ao, immutableJsonClone as Qo, impulseFadeLifecycleConfigHash as Bo, isStrictTimeframe as Io, loadReplayCase as go, normalizeOhlcvPoint as Co, parseReplayJsonHistoricalDataFixture as Eo, radarEpisodeObservationId as co, radarSelectionProfileHash as Zo, radarStructureObservationId as No, reconstructReplaySession as lo, replayAnalysisStateObservationId as Yo, replayCandleLogicalId as mo, replayCandleObservationId as oo, replayCaseManifestId as io, replayDataFingerprintAt as Do, replayKnownEventId as jo, replaySessionConfigHash as no, replaySha256 as Mo, resumeReplaySession as Xo, scanRadarEpisodes as Go, selectCompletedCandleRevisionsAt as Vo, serializeReplaySession as wo, strategyProfileHash as ho, strictTimeframeToSeconds as Oo, tradePlanId as ao, universeMembershipObservationId as Jo } from "./core.js";
 const UC = "gpu_chart_appearance_v1", fB = 3, TC = [
   "sma",
   "ema",
@@ -230,7 +230,7 @@ const UC = "gpu_chart_appearance_v1", fB = 3, TC = [
   showVolume: !1,
   activeIndicatorPanes: []
 };
-function wQ(Z, I = "single") {
+function VQ(Z, I = "single") {
   const B = Z ?? {}, E = CB(I), o = {
     backgroundColor: y(B.backgroundColor, E.backgroundColor),
     upColor: y(B.upColor, E.upColor),
@@ -609,7 +609,7 @@ function wQ(Z, I = "single") {
     showRelativeReturn: k(B.showRelativeReturn, E.showRelativeReturn),
     showVolume: k(B.showVolume, E.showVolume)
   };
-  o.indicators = GN(B.indicators, o, E), wN(o);
+  o.indicators = GN(B.indicators, o, E), VN(o);
   const a = Array.isArray(B.activeIndicatorPanes);
   return o.activeIndicatorPanes = XN(
     B.activeIndicatorPanes,
@@ -628,13 +628,13 @@ function jN(Z = SB(), I = "single") {
   if (!Z) return CB(I);
   try {
     const B = Z.getItem(cg(I)) ?? (I === "single" ? Z.getItem(UC) : null);
-    return wQ(B ? JSON.parse(B) : null, I);
+    return VQ(B ? JSON.parse(B) : null, I);
   } catch {
     return CB(I);
   }
 }
 function nN(Z, I = SB(), B = "single") {
-  const E = wQ(Z, B);
+  const E = VQ(Z, B);
   return I == null || I.setItem(cg(B), JSON.stringify(E)), E;
 }
 function MN(Z = SB(), I = "single") {
@@ -698,8 +698,8 @@ function uC(Z, I) {
 function XN(Z, I) {
   const B = I.indicatorPaneMinimized ? [] : [I.activeIndicatorPane], E = Array.isArray(Z) ? Z : B, o = [];
   for (const a of E) {
-    const R = uC(a, I.activeIndicatorPane);
-    if (!(o.includes(R) || !Eg(I, R)) && (o.push(R), o.length >= fB))
+    const e = uC(a, I.activeIndicatorPane);
+    if (!(o.includes(e) || !Eg(I, e)) && (o.push(e), o.length >= fB))
       break;
   }
   return o;
@@ -723,7 +723,7 @@ function GN(Z, I, B) {
       )
     );
   }
-  const o = [], a = /* @__PURE__ */ new Set(), R = /* @__PURE__ */ new Set(), W = /* @__PURE__ */ new Set();
+  const o = [], a = /* @__PURE__ */ new Set(), e = /* @__PURE__ */ new Set(), W = /* @__PURE__ */ new Set();
   for (const p of Z) {
     if (!aN(p)) continue;
     const v = ON(p.type);
@@ -732,8 +732,8 @@ function GN(Z, I, B) {
       if (W.has(v)) continue;
       W.add(v);
     }
-    const qA = E.find((lA) => lA.type === v) ?? VN(v);
-    o.push(fI(p, qA, I, R)), a.add(v);
+    const qA = E.find((lA) => lA.type === v) ?? wN(v);
+    o.push(fI(p, qA, I, e)), a.add(v);
   }
   for (const p of E)
     a.has(p.type) || o.push(
@@ -747,12 +747,12 @@ function GN(Z, I, B) {
         },
         p,
         I,
-        R
+        e
       )
     );
   return o;
 }
-function wN(Z) {
+function VN(Z) {
   for (const I of TC) {
     const B = LB[I];
     Z.indicators.some((E) => E.type === I) && (Z[B] = Z.indicators.some(
@@ -765,12 +765,12 @@ function fI(Z, I, B, E) {
     o,
     typeof Z.id == "string" && Z.id.trim() ? Z.id.trim() : I.id,
     E
-  ), R = typeof Z.label == "string" && Z.label.trim() ? Z.label.trim() : void 0, W = {
+  ), e = typeof Z.label == "string" && Z.label.trim() ? Z.label.trim() : void 0, W = {
     id: a,
     type: o,
     enabled: k(Z.enabled, I.enabled),
     placement: fA[o],
-    ...R ? { label: R } : {}
+    ...e ? { label: e } : {}
   };
   if (GA(o)) {
     const p = Ig[o], v = gg[o];
@@ -778,7 +778,7 @@ function fI(Z, I, B, E) {
   }
   return W;
 }
-function VN(Z) {
+function wN(Z) {
   return {
     id: Z,
     type: Z,
@@ -832,7 +832,7 @@ function FA(Z) {
 function FN(Z) {
   rB.delete(Z);
 }
-const bN = 1, MQ = 60 * bN, GQ = 60 * MQ, wA = 24 * GQ, Ng = 2 * wA, tN = [
+const bN = 1, MQ = 60 * bN, GQ = 60 * MQ, VA = 24 * GQ, Ng = 2 * VA, tN = [
   1 * MQ,
   2 * MQ,
   5 * MQ,
@@ -844,13 +844,13 @@ const bN = 1, MQ = 60 * bN, GQ = 60 * MQ, wA = 24 * GQ, Ng = 2 * wA, tN = [
   4 * GQ,
   6 * GQ,
   12 * GQ,
-  1 * wA,
-  2 * wA,
-  3 * wA,
-  7 * wA,
-  14 * wA,
-  30 * wA
-], RN = [
+  1 * VA,
+  2 * VA,
+  3 * VA,
+  7 * VA,
+  14 * VA,
+  30 * VA
+], eN = [
   "Jan",
   "Feb",
   "Mar",
@@ -864,8 +864,8 @@ const bN = 1, MQ = 60 * bN, GQ = 60 * MQ, wA = 24 * GQ, Ng = 2 * wA, tN = [
   "Nov",
   "Dec"
 ];
-function eN(Z, I, B) {
-  return B >= 365 * wA ? Math.max(78 * I, Z * 6.1) : B >= Ng ? Math.max(58 * I, Z * 4.8) : Math.max(46 * I, Z * 4.2);
+function RN(Z, I, B) {
+  return B >= 365 * VA ? Math.max(78 * I, Z * 6.1) : B >= Ng ? Math.max(58 * I, Z * 4.8) : Math.max(46 * I, Z * 4.2);
 }
 function sN(Z, I, B = Z) {
   const E = kN(I, B), o = Math.max(E, Z);
@@ -875,17 +875,17 @@ function sN(Z, I, B = Z) {
 }
 function WN(Z, I, B) {
   const E = new Date(Z * 1e3);
-  return I >= 365 * wA || B >= 30 * wA ? `${xI(E)} ${E.getFullYear()}` : I >= Ng || B >= wA ? `${xI(E)} ${E.getDate()}` : yN(E) && I >= 18 * GQ ? `${xI(E)} ${E.getDate()}` : `${FC(E.getHours())}:${FC(E.getMinutes())}`;
+  return I >= 365 * VA || B >= 30 * VA ? `${xI(E)} ${E.getFullYear()}` : I >= Ng || B >= VA ? `${xI(E)} ${E.getDate()}` : yN(E) && I >= 18 * GQ ? `${xI(E)} ${E.getDate()}` : `${FC(E.getHours())}:${FC(E.getMinutes())}`;
 }
 function kN(Z, I) {
   const B = Math.max(1, Z);
-  return I >= 90 * wA ? Math.max(B, 7 * wA) : I >= Ng ? Math.max(B, wA) : B;
+  return I >= 90 * VA ? Math.max(B, 7 * VA) : I >= Ng ? Math.max(B, VA) : B;
 }
 function yN(Z) {
   return Z.getHours() === 0 && Z.getMinutes() === 0;
 }
 function xI(Z) {
-  return RN[Z.getMonth()] ?? "";
+  return eN[Z.getMonth()] ?? "";
 }
 function FC(Z) {
   return String(Z).padStart(2, "0");
@@ -903,7 +903,7 @@ function fN(Z, I = EB) {
 }
 function rN(Z, I, B) {
   if (!Number.isFinite(I.firstX) || !Number.isFinite(I.lastX)) return Z;
-  const E = Math.min(I.firstX, I.lastX), o = Math.max(I.firstX, I.lastX), a = Math.max(0, I.rightPaddingCandles ?? EB), R = o + a, W = Math.max(1, R - E), p = Math.min(
+  const E = Math.min(I.firstX, I.lastX), o = Math.max(I.firstX, I.lastX), a = Math.max(0, I.rightPaddingCandles ?? EB), e = o + a, W = Math.max(1, e - E), p = Math.min(
     Math.max(1, I.minVisibleCandles ?? zN),
     W
   ), v = Math.max(p, W), qA = Number.isFinite(Z.maxX - Z.minX) ? Z.maxX - Z.minX : p, lA = Math.min(v, Math.max(p, qA));
@@ -913,18 +913,18 @@ function rN(Z, I, B) {
     _ = B.x - AA * lA;
   } else
     _ = (Number.isFinite(Z.minX + Z.maxX) ? (Z.minX + Z.maxX) * 0.5 : E + W * 0.5) - lA * 0.5;
-  let VA = _ + lA;
-  _ < E && (_ = E, VA = _ + lA);
+  let wA = _ + lA;
+  _ < E && (_ = E, wA = _ + lA);
   const $ = o + Math.max(a, lA);
-  return VA > $ && (VA = $, _ = VA - lA), _ < E && (_ = E, VA = _ + lA), _ > o && (_ = Math.max(E, o), VA = _ + lA), { ...Z, minX: _, maxX: VA };
+  return wA > $ && (wA = $, _ = wA - lA), _ < E && (_ = E, wA = _ + lA), _ > o && (_ = Math.max(E, o), wA = _ + lA), { ...Z, minX: _, maxX: wA };
 }
 function xN(Z, I, B = UN) {
   if (!Z.length) return null;
   const E = Math.min(I.minX, I.maxX) - 0.5, o = Math.max(I.minX, I.maxX) + 0.5;
-  let a = 1 / 0, R = -1 / 0;
+  let a = 1 / 0, e = -1 / 0;
   for (const W of Z)
-    W.x < E || W.x > o || (Number.isFinite(W.l) && (a = Math.min(a, W.l)), Number.isFinite(W.h) && (R = Math.max(R, W.h)));
-  return !Number.isFinite(a) || !Number.isFinite(R) ? null : $N(a, R, B);
+    W.x < E || W.x > o || (Number.isFinite(W.l) && (a = Math.min(a, W.l)), Number.isFinite(W.h) && (e = Math.max(e, W.h)));
+  return !Number.isFinite(a) || !Number.isFinite(e) ? null : $N(a, e, B);
 }
 function LN(Z, I, B = bC) {
   if (!Number.isFinite(I.minY) || !Number.isFinite(I.maxY)) return Z;
@@ -979,20 +979,20 @@ function _N(Z, I, B) {
   };
 }
 function $N(Z, I, B) {
-  const E = (Z + I) * 0.5, o = Math.max(Math.abs(E) * 1e-3, 1e-9), a = Math.max(I - Z, o), R = E - a * 0.5, W = E + a * 0.5, p = a * Math.max(0, B);
+  const E = (Z + I) * 0.5, o = Math.max(Math.abs(E) * 1e-3, 1e-9), a = Math.max(I - Z, o), e = E - a * 0.5, W = E + a * 0.5, p = a * Math.max(0, B);
   return {
-    minY: R - p,
+    minY: e - p,
     maxY: W + p
   };
 }
 class pQ {
   static __wrap(I) {
     const B = Object.create(pQ.prototype);
-    return B.__wbg_ptr = I, eC.register(B, B.__wbg_ptr, B), B;
+    return B.__wbg_ptr = I, RC.register(B, B.__wbg_ptr, B), B;
   }
   __destroy_into_raw() {
     const I = this.__wbg_ptr;
-    return this.__wbg_ptr = 0, eC.unregister(this), I;
+    return this.__wbg_ptr = 0, RC.unregister(this), I;
   }
   free() {
     const I = this.__destroy_into_raw();
@@ -1049,8 +1049,8 @@ class pQ {
    * @param {number} bear_b
    * @param {number} bear_a
    */
-  set_candle_colors(I, B, E, o, a, R, W, p) {
-    s.gpuchart_set_candle_colors(this.__wbg_ptr, I, B, E, o, a, R, W, p);
+  set_candle_colors(I, B, E, o, a, e, W, p) {
+    s.gpuchart_set_candle_colors(this.__wbg_ptr, I, B, E, o, a, e, W, p);
   }
   /**
    * @param {number} r
@@ -1069,9 +1069,9 @@ class pQ {
    * @param {number} b
    * @param {number} a
    */
-  set_line_series(I, B, E, o, a, R) {
+  set_line_series(I, B, E, o, a, e) {
     const W = HB(B, s.__wbindgen_malloc), p = rA;
-    s.gpuchart_set_line_series(this.__wbg_ptr, I, W, p, E, o, a, R);
+    s.gpuchart_set_line_series(this.__wbg_ptr, I, W, p, E, o, a, e);
   }
   /**
    * @param {number} candle_px
@@ -1309,11 +1309,11 @@ function fC() {
       },
       __wbg_new_typed_cceaf62d8d95e9f2: function(I, B) {
         try {
-          var E = { a: I, b: B }, o = (R, W) => {
+          var E = { a: I, b: B }, o = (e, W) => {
             const p = E.a;
             E.a = 0;
             try {
-              return Il(p, E.b, R, W);
+              return Il(p, E.b, e, W);
             } finally {
               E.a = p;
             }
@@ -1356,8 +1356,8 @@ function fC() {
         return Promise.resolve(I);
       },
       __wbg_setBindGroup_9fdf11fd244aa68a: function() {
-        return iA(function(I, B, E, o, a, R, W) {
-          I.setBindGroup(B >>> 0, E, nl(o, a), R, W >>> 0);
+        return iA(function(I, B, E, o, a, e, W) {
+          I.setBindGroup(B >>> 0, E, nl(o, a), e, W >>> 0);
         }, arguments);
       },
       __wbg_setBindGroup_a7e88440d0ecac88: function(I, B, E) {
@@ -1450,7 +1450,7 @@ function fC() {
         I.color = B;
       },
       __wbg_set_compare_1e2214a402af6db3: function(I, B) {
-        I.compare = RC[B];
+        I.compare = eC[B];
       },
       __wbg_set_count_f285d8c62f4de679: function(I, B) {
         I.count = B >>> 0;
@@ -1471,7 +1471,7 @@ function fC() {
         I.depthClearValue = B;
       },
       __wbg_set_depth_compare_f18e709a5dc4a0b0: function(I, B) {
-        I.depthCompare = RC[B];
+        I.depthCompare = eC[B];
       },
       __wbg_set_depth_fail_op_45f4179ddfc376cd: function(I, B) {
         I.depthFailOp = SI[B];
@@ -1812,8 +1812,8 @@ function fC() {
         return I.width;
       },
       __wbg_writeBuffer_7d54524c36f1c7e2: function() {
-        return iA(function(I, B, E, o, a, R) {
-          I.writeBuffer(B, E, o, a, R);
+        return iA(function(I, B, E, o, a, e) {
+          I.writeBuffer(B, E, o, a, e);
         }, arguments);
       },
       __wbindgen_cast_0000000000000001: function(I, B) {
@@ -1843,7 +1843,7 @@ function Bl(Z, I, B) {
 function Il(Z, I, B, E) {
   s.wasm_bindgen_73c3b829c8926a09___convert__closures_____invoke___js_sys_760bbe21eff7d2d5___Function_fn_wasm_bindgen_73c3b829c8926a09___JsValue_____wasm_bindgen_73c3b829c8926a09___sys__Undefined___js_sys_760bbe21eff7d2d5___Function_fn_wasm_bindgen_73c3b829c8926a09___JsValue_____wasm_bindgen_73c3b829c8926a09___sys__Undefined_______true_(Z, I, B, E);
 }
-const tC = ["zero", "one", "src", "one-minus-src", "src-alpha", "one-minus-src-alpha", "dst", "one-minus-dst", "dst-alpha", "one-minus-dst-alpha", "src-alpha-saturated", "constant", "one-minus-constant", "src1", "one-minus-src1", "src1-alpha", "one-minus-src1-alpha"], gl = ["add", "subtract", "reverse-subtract", "min", "max"], Cl = ["uniform", "storage", "read-only-storage"], El = ["opaque", "premultiplied"], RC = ["never", "less", "equal", "less-equal", "greater", "not-equal", "greater-equal", "always"], cl = ["none", "front", "back"], Zl = ["ccw", "cw"], Nl = ["uint16", "uint32"], LI = ["load", "clear"], ll = ["low-power", "high-performance"], dl = ["point-list", "line-list", "line-strip", "triangle-list", "triangle-strip"], Yl = ["filtering", "non-filtering", "comparison"], SI = ["keep", "zero", "replace", "invert", "increment-clamp", "decrement-clamp", "increment-wrap", "decrement-wrap"], ml = ["write-only", "read-only", "read-write"], vI = ["store", "discard"], ol = ["all", "stencil-only", "depth-only"], kQ = ["r8unorm", "r8snorm", "r8uint", "r8sint", "r16uint", "r16sint", "r16float", "rg8unorm", "rg8snorm", "rg8uint", "rg8sint", "r32uint", "r32sint", "r32float", "rg16uint", "rg16sint", "rg16float", "rgba8unorm", "rgba8unorm-srgb", "rgba8snorm", "rgba8uint", "rgba8sint", "bgra8unorm", "bgra8unorm-srgb", "rgb9e5ufloat", "rgb10a2uint", "rgb10a2unorm", "rg11b10ufloat", "rg32uint", "rg32sint", "rg32float", "rgba16uint", "rgba16sint", "rgba16float", "rgba32uint", "rgba32sint", "rgba32float", "stencil8", "depth16unorm", "depth24plus", "depth24plus-stencil8", "depth32float", "depth32float-stencil8", "bc1-rgba-unorm", "bc1-rgba-unorm-srgb", "bc2-rgba-unorm", "bc2-rgba-unorm-srgb", "bc3-rgba-unorm", "bc3-rgba-unorm-srgb", "bc4-r-unorm", "bc4-r-snorm", "bc5-rg-unorm", "bc5-rg-snorm", "bc6h-rgb-ufloat", "bc6h-rgb-float", "bc7-rgba-unorm", "bc7-rgba-unorm-srgb", "etc2-rgb8unorm", "etc2-rgb8unorm-srgb", "etc2-rgb8a1unorm", "etc2-rgb8a1unorm-srgb", "etc2-rgba8unorm", "etc2-rgba8unorm-srgb", "eac-r11unorm", "eac-r11snorm", "eac-rg11unorm", "eac-rg11snorm", "astc-4x4-unorm", "astc-4x4-unorm-srgb", "astc-5x4-unorm", "astc-5x4-unorm-srgb", "astc-5x5-unorm", "astc-5x5-unorm-srgb", "astc-6x5-unorm", "astc-6x5-unorm-srgb", "astc-6x6-unorm", "astc-6x6-unorm-srgb", "astc-8x5-unorm", "astc-8x5-unorm-srgb", "astc-8x6-unorm", "astc-8x6-unorm-srgb", "astc-8x8-unorm", "astc-8x8-unorm-srgb", "astc-10x5-unorm", "astc-10x5-unorm-srgb", "astc-10x6-unorm", "astc-10x6-unorm-srgb", "astc-10x8-unorm", "astc-10x8-unorm-srgb", "astc-10x10-unorm", "astc-10x10-unorm-srgb", "astc-12x10-unorm", "astc-12x10-unorm-srgb", "astc-12x12-unorm", "astc-12x12-unorm-srgb"], il = ["float", "unfilterable-float", "depth", "sint", "uint"], KI = ["1d", "2d", "2d-array", "cube", "cube-array", "3d"], Dl = ["uint8", "uint8x2", "uint8x4", "sint8", "sint8x2", "sint8x4", "unorm8", "unorm8x2", "unorm8x4", "snorm8", "snorm8x2", "snorm8x4", "uint16", "uint16x2", "uint16x4", "sint16", "sint16x2", "sint16x4", "unorm16", "unorm16x2", "unorm16x4", "snorm16", "snorm16x2", "snorm16x4", "float16", "float16x2", "float16x4", "float32", "float32x2", "float32x3", "float32x4", "uint32", "uint32x2", "uint32x3", "uint32x4", "sint32", "sint32x2", "sint32x3", "sint32x4", "unorm10-10-10-2", "unorm8x4-bgra"], jl = ["vertex", "instance"], eC = typeof FinalizationRegistry > "u" ? { register: () => {
+const tC = ["zero", "one", "src", "one-minus-src", "src-alpha", "one-minus-src-alpha", "dst", "one-minus-dst", "dst-alpha", "one-minus-dst-alpha", "src-alpha-saturated", "constant", "one-minus-constant", "src1", "one-minus-src1", "src1-alpha", "one-minus-src1-alpha"], gl = ["add", "subtract", "reverse-subtract", "min", "max"], Cl = ["uniform", "storage", "read-only-storage"], El = ["opaque", "premultiplied"], eC = ["never", "less", "equal", "less-equal", "greater", "not-equal", "greater-equal", "always"], cl = ["none", "front", "back"], Zl = ["ccw", "cw"], Nl = ["uint16", "uint32"], LI = ["load", "clear"], ll = ["low-power", "high-performance"], dl = ["point-list", "line-list", "line-strip", "triangle-list", "triangle-strip"], Yl = ["filtering", "non-filtering", "comparison"], SI = ["keep", "zero", "replace", "invert", "increment-clamp", "decrement-clamp", "increment-wrap", "decrement-wrap"], ml = ["write-only", "read-only", "read-write"], vI = ["store", "discard"], ol = ["all", "stencil-only", "depth-only"], kQ = ["r8unorm", "r8snorm", "r8uint", "r8sint", "r16uint", "r16sint", "r16float", "rg8unorm", "rg8snorm", "rg8uint", "rg8sint", "r32uint", "r32sint", "r32float", "rg16uint", "rg16sint", "rg16float", "rgba8unorm", "rgba8unorm-srgb", "rgba8snorm", "rgba8uint", "rgba8sint", "bgra8unorm", "bgra8unorm-srgb", "rgb9e5ufloat", "rgb10a2uint", "rgb10a2unorm", "rg11b10ufloat", "rg32uint", "rg32sint", "rg32float", "rgba16uint", "rgba16sint", "rgba16float", "rgba32uint", "rgba32sint", "rgba32float", "stencil8", "depth16unorm", "depth24plus", "depth24plus-stencil8", "depth32float", "depth32float-stencil8", "bc1-rgba-unorm", "bc1-rgba-unorm-srgb", "bc2-rgba-unorm", "bc2-rgba-unorm-srgb", "bc3-rgba-unorm", "bc3-rgba-unorm-srgb", "bc4-r-unorm", "bc4-r-snorm", "bc5-rg-unorm", "bc5-rg-snorm", "bc6h-rgb-ufloat", "bc6h-rgb-float", "bc7-rgba-unorm", "bc7-rgba-unorm-srgb", "etc2-rgb8unorm", "etc2-rgb8unorm-srgb", "etc2-rgb8a1unorm", "etc2-rgb8a1unorm-srgb", "etc2-rgba8unorm", "etc2-rgba8unorm-srgb", "eac-r11unorm", "eac-r11snorm", "eac-rg11unorm", "eac-rg11snorm", "astc-4x4-unorm", "astc-4x4-unorm-srgb", "astc-5x4-unorm", "astc-5x4-unorm-srgb", "astc-5x5-unorm", "astc-5x5-unorm-srgb", "astc-6x5-unorm", "astc-6x5-unorm-srgb", "astc-6x6-unorm", "astc-6x6-unorm-srgb", "astc-8x5-unorm", "astc-8x5-unorm-srgb", "astc-8x6-unorm", "astc-8x6-unorm-srgb", "astc-8x8-unorm", "astc-8x8-unorm-srgb", "astc-10x5-unorm", "astc-10x5-unorm-srgb", "astc-10x6-unorm", "astc-10x6-unorm-srgb", "astc-10x8-unorm", "astc-10x8-unorm-srgb", "astc-10x10-unorm", "astc-10x10-unorm-srgb", "astc-12x10-unorm", "astc-12x10-unorm-srgb", "astc-12x12-unorm", "astc-12x12-unorm-srgb"], il = ["float", "unfilterable-float", "depth", "sint", "uint"], KI = ["1d", "2d", "2d-array", "cube", "cube-array", "3d"], Dl = ["uint8", "uint8x2", "uint8x4", "sint8", "sint8x2", "sint8x4", "unorm8", "unorm8x2", "unorm8x4", "snorm8", "snorm8x2", "snorm8x4", "uint16", "uint16x2", "uint16x4", "sint16", "sint16x2", "sint16x4", "unorm16", "unorm16x2", "unorm16x4", "snorm16", "snorm16x2", "snorm16x4", "float16", "float16x2", "float16x4", "float32", "float32x2", "float32x3", "float32x4", "uint32", "uint32x2", "uint32x3", "uint32x4", "sint32", "sint32x2", "sint32x3", "sint32x4", "unorm10-10-10-2", "unorm8x4-bgra"], jl = ["vertex", "instance"], RC = typeof FinalizationRegistry > "u" ? { register: () => {
 }, unregister: () => {
 } } : new FinalizationRegistry((Z) => s.__wbg_gpuchart_free(Z, 1));
 function PA(Z) {
@@ -1871,8 +1871,8 @@ function Bg(Z) {
     const o = Z.length;
     let a = "[";
     o > 0 && (a += Bg(Z[0]));
-    for (let R = 1; R < o; R++)
-      a += ", " + Bg(Z[R]);
+    for (let e = 1; e < o; e++)
+      a += ", " + Bg(Z[e]);
     return a += "]", a;
   }
   const B = /\[object ([^\]]+)\]/.exec(toString.call(Z));
@@ -1901,7 +1901,7 @@ function yQ() {
   return (XQ === null || XQ.buffer.detached === !0 || XQ.buffer.detached === void 0 && XQ.buffer !== s.memory.buffer) && (XQ = new DataView(s.memory.buffer)), XQ;
 }
 function QA(Z, I) {
-  return Vl(Z >>> 0, I);
+  return wl(Z >>> 0, I);
 }
 let BB = null;
 function Ml() {
@@ -1925,12 +1925,12 @@ function cQ(Z) {
 function Xl(Z, I, B) {
   const E = { a: Z, b: I, cnt: 1 }, o = (...a) => {
     E.cnt++;
-    const R = E.a;
+    const e = E.a;
     E.a = 0;
     try {
-      return B(R, E.b, ...a);
+      return B(e, E.b, ...a);
     } finally {
-      E.a = R, o._wbg_cb_unref();
+      E.a = e, o._wbg_cb_unref();
     }
   };
   return o._wbg_cb_unref = () => {
@@ -1948,18 +1948,18 @@ function qI(Z, I, B) {
   }
   let E = Z.length, o = I(E, 1) >>> 0;
   const a = zQ();
-  let R = 0;
-  for (; R < E; R++) {
-    const W = Z.charCodeAt(R);
+  let e = 0;
+  for (; e < E; e++) {
+    const W = Z.charCodeAt(e);
     if (W > 127) break;
-    a[o + R] = W;
+    a[o + e] = W;
   }
-  if (R !== E) {
-    R !== 0 && (Z = Z.slice(R)), o = B(o, E, E = R + Z.length * 3, 1) >>> 0;
-    const W = zQ().subarray(o + R, o + E), p = gB.encodeInto(Z, W);
-    R += p.written, o = B(o, E, R, 1) >>> 0;
+  if (e !== E) {
+    e !== 0 && (Z = Z.slice(e)), o = B(o, E, E = e + Z.length * 3, 1) >>> 0;
+    const W = zQ().subarray(o + e, o + E), p = gB.encodeInto(Z, W);
+    e += p.written, o = B(o, E, e, 1) >>> 0;
   }
-  return rA = R, o;
+  return rA = e, o;
 }
 function Gl(Z) {
   const I = s.__wbindgen_externrefs.get(Z);
@@ -1967,10 +1967,10 @@ function Gl(Z) {
 }
 let xB = new TextDecoder("utf-8", { ignoreBOM: !0, fatal: !0 });
 xB.decode();
-const wl = 2146435072;
+const Vl = 2146435072;
 let _I = 0;
-function Vl(Z, I) {
-  return _I += I, _I >= wl && (xB = new TextDecoder("utf-8", { ignoreBOM: !0, fatal: !0 }), xB.decode(), _I = I), xB.decode(zQ().subarray(Z, Z + I));
+function wl(Z, I) {
+  return _I += I, _I >= Vl && (xB = new TextDecoder("utf-8", { ignoreBOM: !0, fatal: !0 }), xB.decode(), _I = I), xB.decode(zQ().subarray(Z, Z + I));
 }
 const gB = new TextEncoder();
 "encodeInto" in gB || (gB.encodeInto = function(Z, I) {
@@ -2043,7 +2043,7 @@ function Fl() {
     () => al
   )), $I;
 }
-const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-grid" }, Rl = { class: "cdgc-label" }, el = ["value", "onInput"], sl = { class: "cdgc-appearance-number-grid" }, Wl = { class: "cdgc-range-label" }, kl = ["min", "max", "step", "value", "onInput"], yl = { class: "cdgc-toggle-grid" }, zl = ["checked", "onChange"], pl = { class: "cdgc-indicator-grid" }, Ul = { class: "cdgc-range-label" }, Tl = ["min", "max", "step", "value", "onInput"], Hl = { class: "cdgc-actions" }, ul = /* @__PURE__ */ pC({
+const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-grid" }, el = { class: "cdgc-label" }, Rl = ["value", "onInput"], sl = { class: "cdgc-appearance-number-grid" }, Wl = { class: "cdgc-range-label" }, kl = ["min", "max", "step", "value", "onInput"], yl = { class: "cdgc-toggle-grid" }, zl = ["checked", "onChange"], pl = { class: "cdgc-indicator-grid" }, Ul = { class: "cdgc-range-label" }, Tl = ["min", "max", "step", "value", "onInput"], Hl = { class: "cdgc-actions" }, ul = /* @__PURE__ */ pC({
   __name: "GpuChartAppearanceControls",
   props: {
     modelValue: {}
@@ -2075,7 +2075,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       { key: "fontSize", label: "Font Size", min: 10, max: 28, step: 1 },
       { key: "volumeHeightRatio", label: "Volume Height", min: 0.05, max: 0.35, step: 0.01 },
       { key: "volumeOpacity", label: "Volume Opacity", min: 0.05, max: 1, step: 0.05 }
-    ], R = [
+    ], e = [
       { key: "smaPeriod", label: "SMA Period", min: 2, max: 250, step: 1 },
       { key: "emaPeriod", label: "EMA Period", min: 2, max: 250, step: 1 },
       { key: "wmaPeriod", label: "WMA Period", min: 2, max: 250, step: 1 },
@@ -2109,12 +2109,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       lA({ [$]: AA.target.checked });
     }
     function lA($) {
-      E("update:modelValue", wQ({ ...B.modelValue, ...$ }));
+      E("update:modelValue", VQ({ ...B.modelValue, ...$ }));
     }
     function _($) {
       return $.target.value;
     }
-    function VA($) {
+    function wA($) {
       return B.modelValue[$];
     }
     return ($, AA) => (b(), t("details", bl, [
@@ -2129,13 +2129,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
             key: r.key,
             class: "cdgc-field"
           }, [
-            n("span", Rl, z(r.label), 1),
+            n("span", el, z(r.label), 1),
             n("input", {
               type: "color",
               class: "cdgc-color-input",
               value: Z.modelValue[r.key],
               onInput: (WA) => p(r.key, WA)
-            }, null, 40, el)
+            }, null, 40, Rl)
           ])), 64))
         ]),
         n("div", sl, [
@@ -2145,7 +2145,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           }, [
             n("span", Wl, [
               n("span", null, z(r.label), 1),
-              n("span", null, z(VA(r.key)), 1)
+              n("span", null, z(wA(r.key)), 1)
             ]),
             n("input", {
               type: "range",
@@ -2173,13 +2173,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           ])), 64))
         ]),
         n("div", pl, [
-          (b(), t(BA, null, IA(R, (r) => n("label", {
+          (b(), t(BA, null, IA(e, (r) => n("label", {
             key: r.key,
             class: "cdgc-field"
           }, [
             n("span", Ul, [
               n("span", null, z(r.label), 1),
-              n("span", null, z(VA(r.key)), 1)
+              n("span", null, z(wA(r.key)), 1)
             ]),
             n("input", {
               type: "range",
@@ -2221,13 +2221,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
 }, ld = { class: "gpu-chart-indicator-list" }, dd = ["checked", "onChange"], Yd = ["aria-label", "onClick"], md = { class: "gpu-chart-indicator-row-text" }, od = { class: "gpu-chart-indicator-row-label" }, id = { class: "gpu-chart-indicator-row-meta" }, Dd = { class: "gpu-chart-indicator-row-actions" }, jd = ["aria-label", "title", "onClick"], nd = ["aria-label", "title", "onClick"], Md = ["aria-label", "title", "onClick"], Xd = {
   key: 0,
   class: "gpu-chart-selected-indicator-settings"
-}, Gd = { class: "gpu-chart-selected-indicator-header" }, wd = {
+}, Gd = { class: "gpu-chart-selected-indicator-header" }, Vd = {
   key: 0,
   class: "gpu-chart-settings-grid compact"
-}, Vd = { class: "gpu-chart-settings-field" }, hd = ["value"], Od = { class: "gpu-chart-settings-field" }, ad = { class: "gpu-chart-settings-range-label" }, Jd = ["value"], Fd = {
+}, wd = { class: "gpu-chart-settings-field" }, hd = ["value"], Od = { class: "gpu-chart-settings-field" }, ad = { class: "gpu-chart-settings-range-label" }, Jd = ["value"], Fd = {
   key: 1,
   class: "gpu-chart-settings-grid compact"
-}, bd = ["value", "onInput"], td = { class: "gpu-chart-settings-range-label" }, Rd = ["min", "max", "step", "value", "onInput"], ed = ["checked", "onChange"], sd = {
+}, bd = ["value", "onInput"], td = { class: "gpu-chart-settings-range-label" }, ed = ["min", "max", "step", "value", "onInput"], Rd = ["checked", "onChange"], sd = {
   key: 0,
   class: "gpu-chart-avwap-actions"
 }, Wd = { class: "gpu-chart-avwap-anchor" }, kd = ["aria-pressed", "disabled", "onClick"], yd = { class: "gpu-chart-badge-row gpu-chart-badge-primary" }, zd = { class: "gpu-chart-symbol" }, pd = ["aria-expanded", "aria-label", "title"], Ud = {
@@ -2287,7 +2287,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       { key: "stochRsiKColor", label: "K Color" },
       { key: "stochRsiDColor", label: "D Color" },
       { key: "stochRsiRangeColor", label: "Range Color" }
-    ], R = [
+    ], e = [
       { key: "stochRsiRsiPeriod", label: "RSI Period", min: 2, max: 100, step: 1 },
       { key: "stochRsiPeriod", label: "Stoch Period", min: 2, max: 100, step: 1 },
       { key: "stochRsiKPeriod", label: "K Smooth", min: 1, max: 20, step: 1 },
@@ -2314,7 +2314,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       { key: "macdFastPeriod", label: "Fast EMA", min: 2, max: 100, step: 1 },
       { key: "macdSlowPeriod", label: "Slow EMA", min: 2, max: 200, step: 1 },
       { key: "macdSignalPeriod", label: "Signal EMA", min: 1, max: 100, step: 1 }
-    ], VA = [
+    ], wA = [
       { key: "macdSmooth", label: "Smooth Lines" }
     ], $ = [
       { key: "atrColor", label: "ATR Color" }
@@ -2333,7 +2333,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         label: "Stoch RSI",
         colorFields: a,
         toggleFields: W,
-        numberFields: R
+        numberFields: e
       },
       {
         id: "rsi",
@@ -2346,7 +2346,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         id: "macd",
         label: "MACD",
         colorFields: lA,
-        toggleFields: VA,
+        toggleFields: wA,
         numberFields: _
       },
       {
@@ -2550,7 +2550,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         placement: "lower",
         colorFields: a,
         toggleFields: W,
-        numberFields: R
+        numberFields: e
       },
       {
         type: "rsi",
@@ -2565,7 +2565,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         label: "MACD",
         placement: "lower",
         colorFields: lA,
-        toggleFields: VA,
+        toggleFields: wA,
         numberFields: _
       },
       {
@@ -2584,17 +2584,17 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         toggleFields: lg,
         numberFields: []
       }
-    ], w = Z, kA = I, cB = u(null), ZQ = u(null), xA = u(null), Yg = u(null), qC = u(null), UQ = u(!1), KB = u(null), PB = u(!1), ZB = u(null), NQ = u(null), yA = u(0), zA = u(0), mg = u(0), og = u(1), qB = u(!1), _A = u(wQ(w.appearance)), eA = u([
+    ], V = Z, kA = I, cB = u(null), ZQ = u(null), xA = u(null), Yg = u(null), qC = u(null), UQ = u(!1), KB = u(null), PB = u(!1), ZB = u(null), NQ = u(null), yA = u(0), zA = u(0), mg = u(0), og = u(1), qB = u(!1), _A = u(VQ(V.appearance)), RA = u([
       ..._A.value.activeIndicatorPanes
     ]), pA = u(
-      eA.value[0] ?? _A.value.activeIndicatorPane
+      RA.value[0] ?? _A.value.activeIndicatorPane
     ), NB = u(
-      _A.value.indicatorPaneMinimized || !eA.value.length
+      _A.value.indicatorPaneMinimized || !RA.value.length
     ), lB = u(
       FI(_A.value.stochRsiPaneHeight)
     ), _B = u(!1), $B = u(0), AI = u([]), UA = u(!1), QI = u(!1), hA = u(null), BI = u(!1), LA = u(!1), II = u(!1), bA = u(null), TA = u(null), gI = u(!1), dB = u("indicators"), TQ = u("ema"), YA = u(!1), HQ = u(0);
-    let U = null, l = null, L = null, i = { minX: 0, maxX: 1, minY: 0, maxY: 1 }, VQ = null, YB = null, uQ = null, mB = null, oB = [], iB = !1, gA = null, DB = !0, hQ = !1, fQ = !0, lQ = null, DA = null, tA = null, oA = null, CA = null, EA = null, CI = 0, $A = "", EI = 0, cI = "", SA = [], ig = 0;
-    const X = F(() => _A.value), Dg = F(() => !!w.showChartSettings), _C = F(() => {
+    let U = null, l = null, L = null, i = { minX: 0, maxX: 1, minY: 0, maxY: 1 }, wQ = null, YB = null, uQ = null, mB = null, oB = [], iB = !1, gA = null, DB = !0, hQ = !1, fQ = !0, lQ = null, DA = null, tA = null, oA = null, CA = null, EA = null, CI = 0, $A = "", EI = 0, cI = "", SA = [], ig = 0;
+    const X = F(() => _A.value), Dg = F(() => !!V.showChartSettings), _C = F(() => {
       const A = X.value, Q = Nc(A.indicators);
       return Zc(A.indicators).map((g) => ({
         id: g.id,
@@ -2648,13 +2648,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         "--gpu-chart-down-color": A.downColor
       };
     }), OQ = F(() => {
-      if (!w.showIndicatorPanes) return [];
+      if (!V.showIndicatorPanes) return [];
       const A = X.value;
       return dg.filter((Q) => K(Q.id, A));
     }), ZI = F(() => OQ.value.length > 0), YQ = F(() => {
       if (NB.value) return [];
       const A = new Set(OQ.value.map((Q) => Q.id));
-      return eA.value.filter((Q) => A.has(Q)).slice(0, fB);
+      return RA.value.filter((Q) => A.has(Q)).slice(0, fB);
     }), gE = F(() => {
       const A = new Map(OQ.value.map((Q) => [Q.id, Q]));
       return YQ.value.map((Q) => A.get(Q)).filter((Q) => !!Q);
@@ -2741,13 +2741,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         "--gpu-chart-indicator-panel-bg": O(A.tooltipBackgroundColor, 0.96),
         "--gpu-chart-indicator-border": O(A.gridColor, 0.68)
       };
-    }), sA = F(() => w.symbol.toUpperCase()), jA = F(() => RA(w.timeframe)), Mg = F(() => {
+    }), sA = F(() => V.symbol.toUpperCase()), jA = F(() => eA(V.timeframe)), Mg = F(() => {
       const A = [
         jA.value,
-        ...w.timeframeOptions.map((Q) => RA(Q))
+        ...V.timeframeOptions.map((Q) => eA(Q))
       ];
       return Array.from(new Set(A.filter(Boolean)));
-    }), oE = F(() => Mg.value.length > 1), iE = F(() => w.title || `${sA.value} ${jA.value}`), nB = F(() => ZB.value == null ? "" : aA(ZB.value)), MB = F(() => NQ.value == null ? "" : `${NQ.value > 0 ? "+" : ""}${NQ.value.toFixed(2)}%`), DE = F(() => ({
+    }), oE = F(() => Mg.value.length > 1), iE = F(() => V.title || `${sA.value} ${jA.value}`), nB = F(() => ZB.value == null ? "" : aA(ZB.value)), MB = F(() => NQ.value == null ? "" : `${NQ.value > 0 ? "+" : ""}${NQ.value.toFixed(2)}%`), DE = F(() => ({
       up: (NQ.value ?? 0) > 0,
       down: (NQ.value ?? 0) < 0
     })), Xg = F(() => {
@@ -2761,7 +2761,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         atrPeriod: A.extensionAtrPeriod
       });
     }), aQ = F(() => {
-      const A = w.candidateMetrics;
+      const A = V.candidateMetrics;
       return A && A.symbol.toUpperCase() === sA.value ? A : null;
     }), jE = F(
       () => {
@@ -2829,12 +2829,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         });
       }
       return Q;
-    }), wB = F(() => {
+    }), VB = F(() => {
       const A = GE.value;
       return A.length ? A.map(
         (Q) => `${qc(Q.timeframe)} ${Pc(Q.summary)}`
       ).join(" | ") : "";
-    }), wE = F(() => {
+    }), VE = F(() => {
       var Q;
       const A = ((Q = XE.value) == null ? void 0 : Q.state) ?? "neutral";
       return {
@@ -2843,7 +2843,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         transitional: A === "transitional",
         range: A === "range"
       };
-    }), VE = F(() => {
+    }), wE = F(() => {
       var c;
       if (zA.value, yA.value, HQ.value, !(l != null && l.candles.length)) return [];
       const A = X.value, Q = ((c = l.candles[l.candles.length - 1]) == null ? void 0 : c.c) ?? null, g = UB(l.candles, {
@@ -2867,7 +2867,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }), hE = F(() => {
       zA.value, yA.value;
       const A = X.value;
-      return !(l != null && l.candles.length) || !K("anchoredVwap", A) ? [] : wC(
+      return !(l != null && l.candles.length) || !K("anchoredVwap", A) ? [] : VC(
         l.candles,
         { anchorBucket: A.anchoredVwapAnchorBucket },
         A.anchoredVwapMaxSignals
@@ -2875,7 +2875,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }), OE = F(() => {
       zA.value, yA.value;
       const A = X.value;
-      return !(l != null && l.candles.length) || !(L != null && L.candles.length) ? [] : VC(
+      return !(l != null && l.candles.length) || !(L != null && L.candles.length) ? [] : wC(
         l.candles,
         L.candles,
         {
@@ -2902,7 +2902,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (!Q) return null;
       const g = hC(Q, jA.value), C = X.value, c = [
         sA.value,
-        w.exchange ?? "",
+        V.exchange ?? "",
         ((m = aQ.value) == null ? void 0 : m.source) ?? "chart",
         jA.value,
         l.firstBucket,
@@ -2920,10 +2920,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return YI = mN({
         symbol: sA.value,
         source: ((Y = aQ.value) == null ? void 0 : Y.source) ?? "chart",
-        venue: w.exchange ?? "",
+        venue: V.exchange ?? "",
         executionTimeframe: jA.value,
         candlesByTimeframe: N,
-        supportResistanceZones: VE.value,
+        supportResistanceZones: wE.value,
         relativeStrengthEvents: OE.value,
         avwapEvents: hE.value,
         to: g,
@@ -2937,7 +2937,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           }
         }
       }), Gg = c, YI;
-    }), VB = F(() => {
+    }), wB = F(() => {
       const A = QQ.value;
       return !A || A.state === "notCandidate" ? "" : `PUMP FADE ${A.label}`;
     }), aE = F(() => {
@@ -2975,32 +2975,32 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         invalidated: ((c = QQ.value) == null ? void 0 : c.state) === "invalidated",
         expired: ((N = QQ.value) == null ? void 0 : N.state) === "expired"
       };
-    }), wg = F(
-      () => !!(w.openOnChartClick && !YA.value)
-    ), FE = F(() => "div"), Vg = F(
+    }), Vg = F(
+      () => !!(V.openOnChartClick && !YA.value)
+    ), FE = F(() => "div"), wg = F(
       () => [
         iE.value,
         nB.value,
         MB.value,
         XB.value,
         GB.value,
-        wB.value,
-        VB.value
+        VB.value,
+        wB.value
       ].filter(Boolean).join(" ")
     ), bE = F(
-      () => !!(XB.value || GB.value || wB.value || VB.value)
+      () => !!(XB.value || GB.value || VB.value || wB.value)
     ), tE = F(() => ({
-      title: Vg.value,
-      "aria-label": Vg.value
+      title: wg.value,
+      "aria-label": wg.value
     })), nA = () => {
       U == null || U.render();
-    }, RE = F(() => {
+    }, eE = F(() => {
       const A = X.value.anchoredVwapAnchorBucket;
       if (A == null || !Number.isFinite(A)) return "No anchor";
       const Q = mC();
       return `Anchor ${TZ((Q == null ? void 0 : Q.ts) ?? A)}`;
     });
-    function eE(A) {
+    function RE(A) {
       if (hQ) {
         hQ = !1;
         return;
@@ -3009,37 +3009,37 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         ic(A);
         return;
       }
-      w.openOnChartClick && kA("open", LE());
+      V.openOnChartClick && kA("open", LE());
     }
     xZ(async () => {
       iB = !0, await sE();
     }), LZ(() => {
       var A;
-      iB = !1, ag(), xQ(), tg(), KQ(), tA == null || tA(), tA = null, oA == null || oA(), oA = null, CA == null || CA(), CA = null, EA == null || EA(), EA = null, oB.forEach((Q) => Q()), oB = [], VQ == null || VQ.disconnect(), VQ = null, FN(nA), (A = U == null ? void 0 : U.free) == null || A.call(U), U = null;
+      iB = !1, ag(), xQ(), tg(), KQ(), tA == null || tA(), tA = null, oA == null || oA(), oA = null, CA == null || CA(), CA = null, EA == null || EA(), EA = null, oB.forEach((Q) => Q()), oB = [], wQ == null || wQ.disconnect(), wQ = null, FN(nA), (A = U == null ? void 0 : U.free) == null || A.call(U), U = null;
     }), sQ(
       () => [
-        w.symbol,
-        w.exchange,
-        w.marketType,
-        w.timeframe,
-        w.limit,
-        w.synthetic,
-        w.candles,
-        w.dataAdapter,
-        w.srProjectionTimeframes
+        V.symbol,
+        V.exchange,
+        V.marketType,
+        V.timeframe,
+        V.limit,
+        V.synthetic,
+        V.candles,
+        V.dataAdapter,
+        V.srProjectionTimeframes
       ],
       () => {
         iB && U && Og();
       }
     ), sQ(
-      () => w.appearance,
+      () => V.appearance,
       (A) => {
-        const Q = wQ(A);
+        const Q = VQ(A);
         _A.value = Q, fg(Q);
       },
       { deep: !0 }
     ), sQ(
-      () => [w.showSma, w.showEma],
+      () => [V.showSma, V.showEma],
       () => {
         !U || !l || (SQ(), HA(), MA(), cA(gA), FA(nA));
       }
@@ -3050,13 +3050,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       },
       { deep: !0 }
     ), sQ(
-      () => w.timeSyncCommand,
+      () => V.timeSyncCommand,
       (A) => {
         Kg(A);
       },
       { deep: !0 }
     ), sQ(
-      () => w.showIndicatorPanes,
+      () => V.showIndicatorPanes,
       () => {
         U && (HA(), MA(), cA(gA), FA(nA));
       }
@@ -3069,9 +3069,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const A = ZQ.value, Q = xA.value;
       if (!(!A || !Q))
         try {
-          UQ.value = !0, BC(), U = await (await Fl()).create_chart(A), hg(), uc(A, Q), VQ = new ResizeObserver(() => {
-            BC(), U == null || U.resize(), UA.value && eg(), LA.value && hI(), HA(), MA(), cA(gA), FA(nA);
-          }), VQ.observe(A);
+          UQ.value = !0, BC(), U = await (await Fl()).create_chart(A), hg(), uc(A, Q), wQ = new ResizeObserver(() => {
+            BC(), U == null || U.resize(), UA.value && Rg(), LA.value && hI(), HA(), MA(), cA(gA), FA(nA);
+          }), wQ.observe(A);
           const C = () => {
             LA.value && hI();
           };
@@ -3092,16 +3092,16 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ag(), xQ(), tg(), KQ(), UQ.value = !0, zB(null), DB = !0, L = null, $A = "", nI();
       try {
         const A = PQ();
-        if (w.synthetic)
-          l = uI(w.symbol, A, w.timeframe);
-        else if (w.candles)
-          l = pB(w.candles, w.timeframe, A);
-        else if (w.dataAdapter) {
-          const Q = await w.dataAdapter.loadLatest(oQ({ limit: A }));
-          l = pB(Q, w.timeframe, A);
+        if (V.synthetic)
+          l = uI(V.symbol, A, V.timeframe);
+        else if (V.candles)
+          l = pB(V.candles, V.timeframe, A);
+        else if (V.dataAdapter) {
+          const Q = await V.dataAdapter.loadLatest(oQ({ limit: A }));
+          l = pB(Q, V.timeframe, A);
         } else
           throw new Error("No OHLCV data source provided");
-        await iI(A), yA.value = 0, XI(), GI(), U == null || U.push_ohlc(MC(l.candles)), SQ(), fQ = !0, PE(qZ(rc())), wI(), MA(), cA(null), FA(nA), Kg(w.timeSyncCommand), Jg(), w.synthetic ? xE() : await WE();
+        await iI(A), yA.value = 0, XI(), GI(), U == null || U.push_ohlc(MC(l.candles)), SQ(), fQ = !0, PE(qZ(rc())), VI(), MA(), cA(null), FA(nA), Kg(V.timeSyncCommand), Jg(), V.synthetic ? xE() : await WE();
       } catch (A) {
         zB(A instanceof Error ? A.message : "Failed to load OHLCV");
       } finally {
@@ -3110,8 +3110,8 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     async function WE() {
       var Q;
-      if (!w.symbol || w.synthetic || !((Q = w.dataAdapter) != null && Q.subscribe)) return;
-      YB = await w.dataAdapter.subscribe(oQ(), {
+      if (!V.symbol || V.synthetic || !((Q = V.dataAdapter) != null && Q.subscribe)) return;
+      YB = await V.dataAdapter.subscribe(oQ(), {
         onCandle: (g) => {
           SE(g), PB.value || _Q(!0);
         },
@@ -3133,9 +3133,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     async function mI() {
       var A;
-      if (!uQ && !(!l || !LQ() || w.synthetic || !((A = w.dataAdapter) != null && A.subscribe) || oI()))
+      if (!uQ && !(!l || !LQ() || V.synthetic || !((A = V.dataAdapter) != null && A.subscribe) || oI()))
         try {
-          uQ = await w.dataAdapter.subscribe(
+          uQ = await V.dataAdapter.subscribe(
             oQ({ symbol: mQ() }),
             {
               onCandle: vE,
@@ -3166,10 +3166,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return K("extensionContext", A);
     }
     function mQ() {
-      return zE(w.symbol);
+      return zE(V.symbol);
     }
     function oI() {
-      return w.symbol.toUpperCase() === mQ();
+      return V.symbol.toUpperCase() === mQ();
     }
     function zE(A) {
       const Q = A.toUpperCase();
@@ -3203,14 +3203,14 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       }
     }
     async function pE(A) {
-      if (w.synthetic)
-        return uI(mQ(), A, w.timeframe);
-      if (!w.dataAdapter)
+      if (V.synthetic)
+        return uI(mQ(), A, V.timeframe);
+      if (!V.dataAdapter)
         throw new Error("No BTC benchmark data source provided");
-      const Q = await w.dataAdapter.loadLatest(
+      const Q = await V.dataAdapter.loadLatest(
         oQ({ symbol: mQ(), limit: A })
       );
-      return pB(Q, w.timeframe, A);
+      return pB(Q, V.timeframe, A);
     }
     async function UE(A, Q, g) {
       var C;
@@ -3223,9 +3223,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           await iI(Math.max(g, l.candles.length));
           return;
         }
-        if ((C = w.dataAdapter) != null && C.loadRange)
+        if ((C = V.dataAdapter) != null && C.loadRange)
           try {
-            const c = await w.dataAdapter.loadRange(
+            const c = await V.dataAdapter.loadRange(
               oQ({
                 symbol: mQ(),
                 start: A,
@@ -3233,7 +3233,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
                 limit: g
               })
             );
-            OC(L, c, w.timeframe), $A = DI(Math.max(g, l.candles.length));
+            OC(L, c, V.timeframe), $A = DI(Math.max(g, l.candles.length));
           } catch (c) {
             console.warn(c instanceof Error ? c.message : "Failed to load older BTC benchmark");
           }
@@ -3243,9 +3243,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const Q = l == null ? void 0 : l.candles[l.candles.length - 1];
       return [
         mQ(),
-        w.exchange ?? "",
-        w.marketType ?? "",
-        RA(w.timeframe),
+        V.exchange ?? "",
+        V.marketType ?? "",
+        eA(V.timeframe),
         (l == null ? void 0 : l.firstBucket) ?? 0,
         (Q == null ? void 0 : Q.bucket) ?? 0,
         A
@@ -3274,17 +3274,17 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ), !1) : c.value.state.candles.length > 0).map((c) => c.value), HQ.value += 1, cI = Q, cA(gA));
     }
     async function TE(A, Q) {
-      if (w.synthetic)
-        return uI(w.symbol, Q, A);
-      if (!w.dataAdapter)
+      if (V.synthetic)
+        return uI(V.symbol, Q, A);
+      if (!V.dataAdapter)
         throw new Error("No projected S/R data source provided");
-      const g = await w.dataAdapter.loadLatest(oQ({ timeframe: A, limit: Q }));
+      const g = await V.dataAdapter.loadLatest(oQ({ timeframe: A, limit: Q }));
       return pB(g, A, Q);
     }
     function HE() {
-      const A = RA(w.timeframe), Q = $Q(A), g = X.value;
+      const A = eA(V.timeframe), Q = $Q(A), g = X.value;
       return Array.from(
-        new Set((w.srProjectionTimeframes ?? []).map((C) => RA(C)))
+        new Set((V.srProjectionTimeframes ?? []).map((C) => eA(C)))
       ).filter((C) => {
         const c = $Q(C);
         return C && C !== A && uE(C, g) && Number.isFinite(c) && Number.isFinite(Q) && c > Q;
@@ -3300,7 +3300,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return jI(Q) && fE(A, Q) || kI(Q) && yI(A, Q);
     }
     function fE(A, Q = X.value) {
-      switch (RA(A)) {
+      switch (eA(A)) {
         case "1h":
           return Q.showSrProjection1h;
         case "4h":
@@ -3312,7 +3312,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       }
     }
     function bg(A) {
-      const Q = X.value, g = Math.max(1, (l == null ? void 0 : l.timeframeSec) ?? $Q(w.timeframe)), C = Math.max(1, $Q(A)), c = bQ() * g * 8, N = Math.ceil(c / C), d = jI(Q) ? Q.srZoneLookback : 0, m = kI(Q) ? Q.marketStructureLookback : 0;
+      const Q = X.value, g = Math.max(1, (l == null ? void 0 : l.timeframeSec) ?? $Q(V.timeframe)), C = Math.max(1, $Q(A)), c = bQ() * g * 8, N = Math.ceil(c / C), d = jI(Q) ? Q.srZoneLookback : 0, m = kI(Q) ? Q.marketStructureLookback : 0;
       return Math.min(
         Ag,
         Math.max(80, d, m, N)
@@ -3321,10 +3321,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function rE(A) {
       const Q = l == null ? void 0 : l.candles[l.candles.length - 1];
       return [
-        w.symbol.toUpperCase(),
-        w.exchange ?? "",
-        w.marketType ?? "",
-        RA(w.timeframe),
+        V.symbol.toUpperCase(),
+        V.exchange ?? "",
+        V.marketType ?? "",
+        eA(V.timeframe),
         (l == null ? void 0 : l.firstBucket) ?? 0,
         (Q == null ? void 0 : Q.bucket) ?? 0,
         A.map((g) => `${g}:${bg(g)}`).join(",")
@@ -3338,7 +3338,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         if (!l) return;
         LQ() && L && L !== l && XC(L, hB());
         const A = $g(), Q = l.firstBucket;
-        Rg(XC(l, hB()), {
+        eg(XC(l, hB()), {
           previousFirstBucket: Q,
           wasFollowingLatest: A
         });
@@ -3349,7 +3349,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     async function MI() {
       var c;
-      if (!l || w.synthetic || !((c = w.dataAdapter) != null && c.loadRange) || qB.value || !DB)
+      if (!l || V.synthetic || !((c = V.dataAdapter) != null && c.loadRange) || qB.value || !DB)
         return;
       const A = l.candles[0];
       if (!A || i.minX > A.x + 1.5) return;
@@ -3360,8 +3360,8 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       }
       qB.value = !0;
       try {
-        const N = await w.dataAdapter.loadRange(oQ({ start: C, end: Q, limit: g })), d = l.firstBucket;
-        if (OC(l, N, w.timeframe) === 0) {
+        const N = await V.dataAdapter.loadRange(oQ({ start: C, end: Q, limit: g })), d = l.firstBucket;
+        if (OC(l, N, V.timeframe) === 0) {
           DB = !1;
           return;
         }
@@ -3376,26 +3376,26 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function oQ(A = {}) {
       return {
-        symbol: w.symbol.toUpperCase(),
-        exchange: w.exchange,
-        marketType: w.marketType,
-        timeframe: RA(w.timeframe),
+        symbol: V.symbol.toUpperCase(),
+        exchange: V.exchange,
+        marketType: V.marketType,
+        timeframe: eA(V.timeframe),
         limit: A.limit ?? QC(),
         ...A
       };
     }
     function LE() {
       return {
-        symbol: w.symbol.toUpperCase(),
-        exchange: w.exchange,
-        marketType: w.marketType,
-        timeframe: w.timeframe
+        symbol: V.symbol.toUpperCase(),
+        exchange: V.exchange,
+        marketType: V.marketType,
+        timeframe: V.timeframe
       };
     }
     function SE(A) {
       if (!l) return;
       const Q = $g(), g = l.firstBucket, C = GC(l, A, hB());
-      Rg(C, { previousFirstBucket: g, wasFollowingLatest: Q });
+      eg(C, { previousFirstBucket: g, wasFollowingLatest: Q });
     }
     function vE(A) {
       !L || L === l || GC(L, A, hB()).kind === "ignore" || cA(gA);
@@ -3403,7 +3403,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function hB() {
       return l ? Math.max(PQ(), l.candles.length + 1) : PQ();
     }
-    function Rg(A, Q = {}) {
+    function eg(A, Q = {}) {
       if (!l || !U || A.kind === "ignore") return;
       A.kind === "replace" && U.replace_at(A.position, A.bytes), A.kind === "append" && U.append_at(A.position, A.bytes), A.kind === "reset" && U.push_ohlc(A.bytes);
       const g = Q.wasFollowingLatest ?? !0;
@@ -3412,10 +3412,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         Number.isFinite(C) && (i.minX += C, i.maxX += C, DA && (DA.minX += C, DA.maxX += C));
       }
       if (yA.value += 1, XI(), GI(), SQ(), g && l.candles.length) {
-        const C = Math.max(1, i.maxX - i.minX), c = l.candles[l.candles.length - 1].x + RB(C);
+        const C = Math.max(1, i.maxX - i.minX), c = l.candles[l.candles.length - 1].x + eB(C);
         i.minX = c - C, i.maxX = c;
       }
-      HA(), eB(), MA(), cA(gA), FA(nA);
+      HA(), RB(), MA(), cA(gA), FA(nA);
     }
     function XI() {
       if (!(l != null && l.candles.length)) {
@@ -3445,7 +3445,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         d == null || C.length < 4 || Q.push({ slot: d, line: C, color: c, alpha: N });
       };
       for (const C of A.indicators) {
-        if (!C.enabled || !GA(C.type) || C.type === "sma" && !w.showSma || C.type === "ema" && !w.showEma) continue;
+        if (!C.enabled || !GA(C.type) || C.type === "sma" && !V.showSma || C.type === "ema" && !V.showEma) continue;
         const c = AB(A, C), N = TB(A, C);
         C.type === "sma" ? g(AN(l.candles, c), N) : C.type === "ema" ? g(QN(l.candles, c), N) : g(BN(l.candles, c), N);
       }
@@ -3466,21 +3466,21 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return Q;
     }
     function PE(A) {
-      const Q = xc(A), g = fN(A, RB(Q)), C = Math.max(1, g.maxX - g.minX);
+      const Q = xc(A), g = fN(A, eB(Q)), C = Math.max(1, g.maxX - g.minX);
       i = {
         minX: g.minX,
         maxX: g.minX + C,
         minY: A.minY,
         maxY: A.maxY
-      }, eB(), MA();
+      }, RB(), MA();
     }
     function MA() {
       mg.value = i.minX, og.value = i.maxX, U == null || U.set_view(i.minX, i.maxX, i.minY, i.maxY);
     }
     function HA(A = {}) {
-      return fQ ? wI(A) : !0;
+      return fQ ? VI(A) : !0;
     }
-    function wI(A = {}) {
+    function VI(A = {}) {
       if (!(l != null && l.candles.length)) return !0;
       const Q = xN(l.candles, i);
       if (!Q) return !0;
@@ -3494,7 +3494,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return c <= 0 ? A : SN(A, c / Q.height);
     }
     function _E() {
-      KQ(), fQ = !0, wI(), MA(), cA(gA), FA(nA);
+      KQ(), fQ = !0, VI(), MA(), cA(gA), FA(nA);
     }
     function $E(A = NI.value) {
       if (!A) return;
@@ -3503,12 +3503,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         BQ();
         return;
       }
-      VI(), UA.value = !0, eg();
+      wI(), UA.value = !0, Rg();
     }
     function BQ() {
       oA == null || oA(), UA.value = !1;
     }
-    function eg() {
+    function Rg() {
       hA.value || (hA.value = JI()), hA.value = FB(hA.value), jC(() => {
         !UA.value || !hA.value || (hA.value = FB(hA.value));
       });
@@ -3524,12 +3524,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function sg() {
       if (LA.value) {
-        VI();
+        wI();
         return;
       }
       BQ(), LA.value = !0, hI();
     }
-    function VI() {
+    function wI() {
       CA == null || CA(), EA == null || EA(), LA.value = !1;
     }
     function hI() {
@@ -3639,7 +3639,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         } : { ...d }
       );
       dA({ indicators: c }), C && !g && Sg(C) && vQ(
-        eA.value.filter((d) => d !== C)
+        RA.value.filter((d) => d !== C)
       );
     }
     function Yc(A, Q) {
@@ -3659,7 +3659,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         indicators: g,
         [LB[A]]: Q
       }), Sg(A) && vQ(
-        eA.value.filter((C) => C !== A)
+        RA.value.filter((C) => C !== A)
       );
     }
     function mc() {
@@ -3716,11 +3716,11 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function nc(A) {
       if (!GA(A)) return;
       const Q = X.value, g = {
-        id: wc(A, Q.indicators),
+        id: Vc(A, Q.indicators),
         type: A,
         enabled: !0,
         placement: fA[A],
-        period: Vc(A, Q),
+        period: wc(A, Q),
         color: hc(A, Q)
       };
       TQ.value = g.id;
@@ -3761,14 +3761,14 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       );
       dA({ indicators: g });
     }
-    function wc(A, Q) {
+    function Vc(A, Q) {
       let g = 2, C = `${A}-${g}`;
       const c = new Set(Q.map((N) => N.id));
       for (; c.has(C); )
         g += 1, C = `${A}-${g}`;
       return C;
     }
-    function Vc(A, Q) {
+    function wc(A, Q) {
       const g = new Set(
         Q.indicators.filter((N) => N.type === A).map((N) => AB(Q, N))
       ), C = E[A].find(
@@ -3798,7 +3798,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       dA({ [A]: Q.target.checked });
     }
     function Fc(A) {
-      const Q = RA(vA(A));
+      const Q = eA(vA(A));
       Q && Q !== jA.value && kA("update:timeframe", Q);
     }
     function bc() {
@@ -3808,13 +3808,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function tc() {
       kA(
         "save-appearance",
-        wQ({
+        VQ({
           ...X.value,
           ...Lg()
         })
       );
     }
-    function Rc(A) {
+    function ec(A) {
       if (A.button !== 0) return;
       EA == null || EA(), CA == null || CA(), II.value = !0;
       const Q = aB(), g = bA.value ?? OB(Q), C = A.clientX, c = A.clientY, N = document.body.style.cursor;
@@ -3831,7 +3831,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         window.removeEventListener("mousemove", d), window.removeEventListener("mouseup", m), document.body.style.cursor = N, II.value = !1, CA = null;
       }, window.addEventListener("mousemove", d), window.addEventListener("mouseup", m);
     }
-    function ec(A) {
+    function Rc(A) {
       if (A.button !== 0) return;
       CA == null || CA(), EA == null || EA(), gI.value = !0;
       const Q = aB(), g = bA.value ?? OB(Q), C = A.clientX, c = A.clientY, N = document.body.style.cursor;
@@ -3899,17 +3899,17 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function Wc(A = NI.value) {
       BQ(), vQ(
-        A ? eA.value.filter((Q) => Q !== A) : []
+        A ? RA.value.filter((Q) => Q !== A) : []
       );
     }
     function kc(A) {
       if (BQ(), pA.value = A, bB(A)) {
         vQ(
-          eA.value.filter((Q) => Q !== A)
+          RA.value.filter((Q) => Q !== A)
         );
         return;
       }
-      ng.value || vQ([...eA.value, A]);
+      ng.value || vQ([...RA.value, A]);
     }
     function yc(A) {
       const Q = xA.value;
@@ -3981,7 +3981,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ) : zC;
     }
     function fg(A) {
-      eA.value = [...A.activeIndicatorPanes], pA.value = A.activeIndicatorPanes[0] ?? A.activeIndicatorPane, NB.value = A.indicatorPaneMinimized || A.activeIndicatorPanes.length === 0, lB.value = FI(A.stochRsiPaneHeight);
+      RA.value = [...A.activeIndicatorPanes], pA.value = A.activeIndicatorPanes[0] ?? A.activeIndicatorPane, NB.value = A.indicatorPaneMinimized || A.activeIndicatorPanes.length === 0, lB.value = FI(A.stochRsiPaneHeight);
     }
     function bB(A) {
       return YQ.value.includes(A);
@@ -3991,7 +3991,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function vQ(A) {
       const Q = xg(A);
-      eA.value = Q, NB.value = Q.length === 0, Q.length && !Q.includes(pA.value) && (pA.value = Q[0] ?? pA.value), UA.value && !Q.includes(pA.value) && BQ();
+      RA.value = Q, NB.value = Q.length === 0, Q.length && !Q.includes(pA.value) && (pA.value = Q[0] ?? pA.value), UA.value && !Q.includes(pA.value) && BQ();
       const g = dA({});
       kA("save-appearance", g), HA(), MA(), cA(gA), FA(nA);
     }
@@ -4003,7 +4003,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return g;
     }
     function Lg() {
-      const A = xg(eA.value);
+      const A = xg(RA.value);
       return {
         activeIndicatorPane: pA.value,
         activeIndicatorPanes: A,
@@ -4021,7 +4021,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return ZI.value ? yC : 0;
     }
     function dA(A) {
-      const Q = wQ({
+      const Q = VQ({
         ...X.value,
         ...Lg(),
         ...A
@@ -4029,7 +4029,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return _A.value = Q, kA("update:appearance", Q), Q;
     }
     function Kg(A) {
-      !A || A.seq === ig || !U || !(l != null && l.candles.length) || (ig = A.seq, String(A.sourceId ?? "") !== String(w.syncId ?? "") && pc(A.window));
+      !A || A.seq === ig || !U || !(l != null && l.candles.length) || (ig = A.seq, String(A.sourceId ?? "") !== String(V.syncId ?? "") && pc(A.window));
     }
     function pc(A) {
       if (!(l != null && l.candles.length)) return;
@@ -4040,7 +4040,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         minX: Q.minX,
         maxX: Q.maxX
       });
-      Math.abs(g.minX - i.minX) <= uB && Math.abs(g.maxX - i.maxX) <= uB || (RI(g), MI());
+      Math.abs(g.minX - i.minX) <= uB && Math.abs(g.maxX - i.maxX) <= uB || (eI(g), MI());
     }
     function Uc(A) {
       kA("time-sync", A);
@@ -4061,7 +4061,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         const c = C.minX - g.minX;
         Number.isFinite(c) && c !== 0 && tI(C);
       }
-      RI(C);
+      eI(C);
     }
     function Hc(A, Q, g = {}) {
       if (!Number.isFinite(A) || A <= 0 || !(l != null && l.candles.length)) return;
@@ -4077,9 +4077,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         const D = Math.max(1e-9, Y.maxX - Y.minX) / N;
         Number.isFinite(D) && Math.abs(D - 1) > 1e-6 && tI(Y);
       }
-      RI(Y);
+      eI(Y);
     }
-    function RI(A) {
+    function eI(A) {
       DA = { minX: A.minX, maxX: A.maxX }, lQ == null && (lQ = requestAnimationFrame(Pg));
     }
     function Pg() {
@@ -4088,7 +4088,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         return;
       }
       const A = DA, Q = i.minX + (A.minX - i.minX) * kC, g = i.maxX + (A.maxX - i.maxX) * kC, C = Math.abs(A.minX - Q) <= uB && Math.abs(A.maxX - g) <= uB;
-      i.minX = C ? A.minX : Q, i.maxX = C ? A.maxX : g, eB();
+      i.minX = C ? A.minX : Q, i.maxX = C ? A.maxX : g, RB();
       const c = HA({ smooth: !0 });
       if (MA(), MI(), cA(gA), FA(nA), C && c) {
         DA = null, HA(), MA(), cA(gA), FA(nA);
@@ -4107,11 +4107,11 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         }, Kd);
       }, M = () => {
         N && clearTimeout(N), N = null;
-      }, V = (f) => {
+      }, w = (f) => {
         f.preventDefault();
         const T = A.getBoundingClientRect();
         if (T.width <= 0) return;
-        if (f.shiftKey || eZ(f)) {
+        if (f.shiftKey || RZ(f)) {
           c = "shift-pan", j();
           const uA = qg(f, T.height), KA = i.maxX - i.minX, nQ = uA / T.width * KA;
           Tc(nQ);
@@ -4135,7 +4135,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         g = !0, hQ = !1, C = _g(f, T) ? "scale-y" : "pan", d = f.clientX, m = f.clientY, Y = { ...i }, D = fc(f, T), A.style.cursor = C === "scale-y" ? "ns-resize" : "grabbing";
       }, h = () => {
         g = !1, A.style.cursor = YA.value ? "crosshair" : "";
-      }, e = (f) => {
+      }, R = (f) => {
         const T = Q.getBoundingClientRect(), ZA = window.devicePixelRatio || 1;
         if (gA = {
           px: (f.clientX - T.left) * ZA,
@@ -4145,8 +4145,8 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
             const P = Math.exp((f.clientY - m) / vd);
             i = PN(Y, D, P);
           } else {
-            const P = i.minX, uA = (f.clientX - d) / T.width * (Y.maxX - Y.minX), KA = (f.clientY - m) / eI(T) * (Y.maxY - Y.minY);
-            i.minX = Y.minX - uA, i.maxX = Y.maxX - uA, i.minY = Y.minY + KA, i.maxY = Y.maxY + KA, eB();
+            const P = i.minX, uA = (f.clientX - d) / T.width * (Y.maxX - Y.minX), KA = (f.clientY - m) / RI(T) * (Y.maxY - Y.minY);
+            i.minX = Y.minX - uA, i.maxX = Y.maxX - uA, i.minY = Y.minY + KA, i.maxY = Y.maxY + KA, RB();
             const nQ = i.minX - P;
             Number.isFinite(nQ) && nQ !== 0 && tI(i), MI();
           }
@@ -4165,10 +4165,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       }, JA = (f) => {
         f.key !== "Escape" || !YA.value || (YA.value = !1, A.style.cursor = "");
       };
-      A.addEventListener("wheel", V, { passive: !1 }), A.addEventListener("mousedown", G), A.addEventListener("mousemove", e), A.addEventListener("mouseleave", J), A.addEventListener("dblclick", H), window.addEventListener("mouseup", h), window.addEventListener("keydown", JA), oB.push(
-        () => A.removeEventListener("wheel", V),
+      A.addEventListener("wheel", w, { passive: !1 }), A.addEventListener("mousedown", G), A.addEventListener("mousemove", R), A.addEventListener("mouseleave", J), A.addEventListener("dblclick", H), window.addEventListener("mouseup", h), window.addEventListener("keydown", JA), oB.push(
+        () => A.removeEventListener("wheel", w),
         () => A.removeEventListener("mousedown", G),
-        () => A.removeEventListener("mousemove", e),
+        () => A.removeEventListener("mousemove", R),
         () => A.removeEventListener("mouseleave", J),
         () => A.removeEventListener("dblclick", H),
         () => window.removeEventListener("mouseup", h),
@@ -4181,13 +4181,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return A.deltaMode === 1 && (g *= 16), A.deltaMode === 2 && (g *= Math.max(1, Q)), g;
     }
     function _g(A, Q) {
-      return Q.width <= WC * 2 || A.clientY - Q.top > eI(Q) ? !1 : Q.right - A.clientX <= WC;
+      return Q.width <= WC * 2 || A.clientY - Q.top > RI(Q) ? !1 : Q.right - A.clientX <= WC;
     }
     function fc(A, Q) {
-      const g = eI(Q);
+      const g = RI(Q);
       return g <= 0 ? 0.5 : Math.max(0, Math.min(1, (A.clientY - Q.top) / g));
     }
-    function eI(A) {
+    function RI(A) {
       const Q = xA.value;
       if (!Q) return Math.max(1, A.height);
       const g = sI(), C = jQ(Q);
@@ -4195,7 +4195,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function $g() {
       const A = l == null ? void 0 : l.candles[l.candles.length - 1];
-      return uN(i, A == null ? void 0 : A.x, RB());
+      return uN(i, A == null ? void 0 : A.x, eB());
     }
     function tB(A, Q) {
       return l != null && l.candles.length ? rN(
@@ -4203,13 +4203,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         {
           firstX: l.candles[0].x,
           lastX: l.candles[l.candles.length - 1].x,
-          rightPaddingCandles: RB(A.maxX - A.minX)
+          rightPaddingCandles: eB(A.maxX - A.minX)
         },
         Q
       ) : A;
     }
     function bQ() {
-      return Math.max(1, Math.floor(Number.isFinite(w.limit) ? w.limit : 1));
+      return Math.max(1, Math.floor(Number.isFinite(V.limit) ? V.limit : 1));
     }
     function AC() {
       const A = X.value, Q = Math.max(
@@ -4248,7 +4248,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function xc(A) {
       return Math.max(1, Math.round(Math.abs(A.maxX - A.minX)) + 1);
     }
-    function RB(A = bQ()) {
+    function eB(A = bQ()) {
       const Q = xA.value, g = (Q == null ? void 0 : Q.width) ?? 0, C = Q ? jQ(Q) : Math.max(1, window.devicePixelRatio || 1), c = Math.max(
         AY * C,
         X.value.fontSize * C * 5
@@ -4261,7 +4261,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const d = Math.ceil(c * N / Math.max(1, g - c)) + 1;
       return Math.max(EB, d);
     }
-    function eB(A) {
+    function RB(A) {
       i = tB(i, A);
     }
     function BC() {
@@ -4278,7 +4278,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return !A || !Lc() ? [] : Sc(A.height, jQ(A), YQ.value);
     }
     function Lc() {
-      return !!(w.showIndicatorPanes && !NB.value && YQ.value.length && (l != null && l.candles.length) && l.candles.length > 0);
+      return !!(V.showIndicatorPanes && !NB.value && YQ.value.length && (l != null && l.candles.length) && l.candles.length > 0);
     }
     function Sc(A, Q, g) {
       const C = g.length;
@@ -4292,20 +4292,20 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           N * lB.value * C,
           Y
         )
-      ), j = Math.max(1, D / C), M = X.value, V = Math.min(
+      ), j = Math.max(1, D / C), M = X.value, w = Math.min(
         j * 0.3,
         Math.max(8 * Q, M.fontSize * Q * 0.8)
       ), G = N - D;
-      return g.map((h, e) => {
-        const J = G + j * e, H = e === C - 1 ? N : J + j;
+      return g.map((h, R) => {
+        const J = G + j * R, H = R === C - 1 ? N : J + j;
         return {
           id: h,
           top: J,
           bottom: H,
           height: H - J,
-          innerTop: J + V,
-          innerBottom: H - V,
-          innerHeight: Math.max(1, H - J - V * 2)
+          innerTop: J + w,
+          innerBottom: H - w,
+          innerHeight: Math.max(1, H - J - w * 2)
         };
       });
     }
@@ -4314,7 +4314,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (!Q) return;
       const g = Q.getContext("2d");
       if (!g) return;
-      const C = Q.width, c = Q.height, N = X.value, d = jQ(Q), m = N.fontSize * d, Y = Math.max(10 * d, m * 0.86), D = 6 * d, j = sI(), M = j[0] ?? null, V = (M == null ? void 0 : M.top) ?? c, G = M ? 0 : bI(d), h = Math.max(m * 2, V - G), e = N.showTimeAxis ? ZC(d, m) : 0, J = Math.max(m * 1.4, h - e);
+      const C = Q.width, c = Q.height, N = X.value, d = jQ(Q), m = N.fontSize * d, Y = Math.max(10 * d, m * 0.86), D = 6 * d, j = sI(), M = j[0] ?? null, w = (M == null ? void 0 : M.top) ?? c, G = M ? 0 : bI(d), h = Math.max(m * 2, w - G), R = N.showTimeAxis ? ZC(d, m) : 0, J = Math.max(m * 1.4, h - R);
       g.clearRect(0, 0, C, c);
       const H = YZ(g, J, d);
       if (g.save(), g.font = `${m}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`, g.textBaseline = "middle", N.showGrid) {
@@ -4395,17 +4395,17 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const m = Math.max(1, i.maxX - i.minX), Y = A.canvas.width / m, D = JC(Y, g), j = Math.max(
         18 * g,
         Math.min(180 * g, Q * C.volumeHeightRatio)
-      ), M = Math.max(j, Q - 4 * g), V = Math.max(0, M - j);
+      ), M = Math.max(j, Q - 4 * g), w = Math.max(0, M - j);
       A.save(), A.strokeStyle = O(C.gridColor, 0.2), A.beginPath(), A.moveTo(0, M + 0.5), A.lineTo(A.canvas.width, M + 0.5), A.stroke();
       for (const G of l.candles) {
         if (G.x < c || G.x > N) continue;
         const h = HI(G);
         if (h == null || h <= 0) continue;
-        const e = OA(G.x, A.canvas.width), J = Math.max(1 * g, h / d * j);
+        const R = OA(G.x, A.canvas.width), J = Math.max(1 * g, h / d * j);
         A.fillStyle = O(
           G.c >= G.o ? C.volumeUpColor : C.volumeDownColor,
           C.volumeOpacity
-        ), A.fillRect(e - D / 2, Math.max(V, M - J), D, J);
+        ), A.fillRect(R - D / 2, Math.max(w, M - J), D, J);
       }
       A.restore();
     }
@@ -4466,7 +4466,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return A.state === "transitional" ? `Transitional ${zI(A.transitionDirection)}` : Kc(A.state);
     }
     function qc(A) {
-      const Q = RA(A);
+      const Q = eA(A);
       return Q.endsWith("d") ? Q.toUpperCase() : Q;
     }
     function WI(A = X.value) {
@@ -4479,7 +4479,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       return WI(A) || CC(A);
     }
     function yI(A, Q = X.value) {
-      switch (RA(A)) {
+      switch (eA(A)) {
         case "1h":
           return Q.showMtfStructure1h;
         case "4h":
@@ -4522,10 +4522,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       A.save(), A.setLineDash(j), A.strokeStyle = O(D, 0.56 * d), A.beginPath(), A.moveTo(0, Y + 0.5), A.lineTo(A.canvas.width, Y + 0.5), A.stroke(), A.setLineDash([]);
       const M = `${BZ(Q)} ${QZ(
         g
-      )} ${aA(g.price)}`, V = 5 * c, G = Math.max(13 * c, m.fontSize * c * 0.94), h = A.measureText(M).width + V * 2, e = Math.max(4 * c, A.canvas.width - h - 86 * c), J = iQ(
+      )} ${aA(g.price)}`, w = 5 * c, G = Math.max(13 * c, m.fontSize * c * 0.94), h = A.measureText(M).width + w * 2, R = Math.max(4 * c, A.canvas.width - h - 86 * c), J = iQ(
         A,
         N,
-        e,
+        R,
         Y - G / 2,
         h,
         G,
@@ -4538,7 +4538,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         A.restore();
         return;
       }
-      tQ(A, A.canvas.width - 80 * c, Y, J, D, c, d), A.fillStyle = O(D, 0.18 * d), A.strokeStyle = O(D, 0.72 * d), A.fillRect(J.left, J.top, h, G), A.strokeRect(J.left + 0.5, J.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * d), A.fillText(M, J.left + V, J.top + G / 2), A.restore();
+      tQ(A, A.canvas.width - 80 * c, Y, J, D, c, d), A.fillStyle = O(D, 0.18 * d), A.strokeStyle = O(D, 0.72 * d), A.fillRect(J.left, J.top, h, G), A.strokeRect(J.left + 0.5, J.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * d), A.fillText(M, J.left + w, J.top + G / 2), A.restore();
     }
     function AZ(A, Q) {
       return A.role === "rangeHigh" ? Q.marketStructureHighColor : A.role === "rangeLow" ? Q.marketStructureLowColor : A.direction === "bullish" ? Q.marketStructureHighColor : A.direction === "bearish" ? Q.marketStructureLowColor : Q.marketStructureBreakColor;
@@ -4556,7 +4556,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       }
     }
     function BZ(A) {
-      return RA(A).toUpperCase();
+      return eA(A).toUpperCase();
     }
     function IZ(A, Q, g, C) {
       const c = mC();
@@ -4566,12 +4566,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const d = X.value, m = Math.max(
         0,
         Math.min(Q, XA((c.h + c.l + c.c) / 3, A.canvas.height))
-      ), Y = "AVWAP", D = 5 * g, j = Math.max(14 * g, d.fontSize * g * 0.95), M = A.measureText(Y).width + D * 2, V = N + 5 * g, G = m - j / 2;
+      ), Y = "AVWAP", D = 5 * g, j = Math.max(14 * g, d.fontSize * g * 0.95), M = A.measureText(Y).width + D * 2, w = N + 5 * g, G = m - j / 2;
       A.save(), A.setLineDash([3 * g, 5 * g]), A.lineWidth = Math.max(1, g), A.strokeStyle = O(d.anchoredVwapAnchorColor, 0.56), A.beginPath(), A.moveTo(N + 0.5, 0), A.lineTo(N + 0.5, Q), A.stroke(), A.setLineDash([]);
       const h = iQ(
         A,
         C,
-        V,
+        w,
         G,
         M,
         j,
@@ -4590,7 +4590,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (!(l != null && l.candles.length) || Q <= 0) return;
       const c = X.value;
       if (!c.showAnchoredVwapSignals) return;
-      const N = Math.min(i.minX, i.maxX) - 1, d = Math.max(i.minX, i.maxX) + 1, m = wC(
+      const N = Math.min(i.minX, i.maxX) - 1, d = Math.max(i.minX, i.maxX) + 1, m = VC(
         l.candles,
         { anchorBucket: c.anchoredVwapAnchorBucket },
         c.anchoredVwapMaxSignals
@@ -4606,25 +4606,25 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const N = X.value, d = OA(Q.x, A.canvas.width), m = XA(Q.price, A.canvas.height);
       if (d < -48 * C || d > A.canvas.width + 48 * C || m < -24 * C || m > g + 24 * C)
         return;
-      const Y = Q.kind === "reclaim", D = Y ? N.upColor : Q.kind === "failedReclaim" ? N.anchoredVwapColor : N.downColor, j = Q.kind === "loss" ? "AVWAP loss" : Q.kind === "reclaim" ? "AVWAP reclaim" : "Fail reclaim", M = 5 * C, V = Math.max(13 * C, N.fontSize * C * 0.92), G = A.measureText(j).width + M * 2, h = (Y ? -1 : 1) * (V * 1.1), e = iQ(
+      const Y = Q.kind === "reclaim", D = Y ? N.upColor : Q.kind === "failedReclaim" ? N.anchoredVwapColor : N.downColor, j = Q.kind === "loss" ? "AVWAP loss" : Q.kind === "reclaim" ? "AVWAP reclaim" : "Fail reclaim", M = 5 * C, w = Math.max(13 * C, N.fontSize * C * 0.92), G = A.measureText(j).width + M * 2, h = (Y ? -1 : 1) * (w * 1.1), R = iQ(
         A,
         c,
         d - G / 2,
         m + h,
         G,
-        V,
+        w,
         g,
         C,
         Y ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
         [0, -1, 1, -2, 2]
       );
-      if (!e) return;
+      if (!R) return;
       const J = N.anchoredVwapSignalOpacity;
-      tQ(A, d, m, e, D, C, J), A.fillStyle = O(D, 0.16 * J), A.strokeStyle = O(D, 0.68 * J), A.fillRect(e.left, e.top, G, V), A.strokeRect(e.left + 0.5, e.top + 0.5, G, V), A.fillStyle = O(D, 0.96 * J), A.fillText(j, e.left + M, e.top + V / 2);
+      tQ(A, d, m, R, D, C, J), A.fillStyle = O(D, 0.16 * J), A.strokeStyle = O(D, 0.68 * J), A.fillRect(R.left, R.top, G, w), A.strokeRect(R.left + 0.5, R.top + 0.5, G, w), A.fillStyle = O(D, 0.96 * J), A.fillText(j, R.left + M, R.top + w / 2);
     }
     function EZ(A, Q, g, C) {
       if (!(l != null && l.candles.length) || !(L != null && L.candles.length) || Q <= 0) return;
-      const c = X.value, N = Math.min(i.minX, i.maxX) - 1, d = Math.max(i.minX, i.maxX) + 1, m = VC(
+      const c = X.value, N = Math.min(i.minX, i.maxX) - 1, d = Math.max(i.minX, i.maxX) + 1, m = wC(
         l.candles,
         L.candles,
         {
@@ -4652,11 +4652,11 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const N = X.value, d = OA(Q.x, A.canvas.width), m = XA(Q.price, A.canvas.height);
       if (d < -48 * C || d > A.canvas.width + 48 * C || m < -24 * C || m > g + 24 * C)
         return;
-      const Y = Q.direction === "bearish", D = Y ? N.rsDivergenceBearishColor : N.rsDivergenceBullishColor, j = N.rsDivergenceOpacity, M = Q.label, V = 5 * C, G = Math.max(13 * C, N.fontSize * C * 0.94), h = A.measureText(M).width + V * 2, e = (Y ? -1 : 1) * (G * 1.45), J = iQ(
+      const Y = Q.direction === "bearish", D = Y ? N.rsDivergenceBearishColor : N.rsDivergenceBullishColor, j = N.rsDivergenceOpacity, M = Q.label, w = 5 * C, G = Math.max(13 * C, N.fontSize * C * 0.94), h = A.measureText(M).width + w * 2, R = (Y ? -1 : 1) * (G * 1.45), J = iQ(
         A,
         c,
         d - h / 2,
-        m + e,
+        m + R,
         h,
         G,
         g,
@@ -4667,7 +4667,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (!J) return;
       A.save(), A.fillStyle = O(D, 0.9 * j), A.strokeStyle = O(D, 0.95 * j), A.lineWidth = Math.max(1, C), A.beginPath();
       const H = Math.max(3 * C, 3);
-      Y ? (A.moveTo(d, m - H * 0.2), A.lineTo(d - H, m - H * 1.8), A.lineTo(d + H, m - H * 1.8)) : (A.moveTo(d, m + H * 0.2), A.lineTo(d - H, m + H * 1.8), A.lineTo(d + H, m + H * 1.8)), A.closePath(), A.fill(), tQ(A, d, m, J, D, C, j), A.fillStyle = O(D, 0.16 * j), A.strokeStyle = O(D, 0.72 * j), A.fillRect(J.left, J.top, h, G), A.strokeRect(J.left + 0.5, J.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * j), A.fillText(M, J.left + V, J.top + G / 2), A.restore();
+      Y ? (A.moveTo(d, m - H * 0.2), A.lineTo(d - H, m - H * 1.8), A.lineTo(d + H, m - H * 1.8)) : (A.moveTo(d, m + H * 0.2), A.lineTo(d - H, m + H * 1.8), A.lineTo(d + H, m + H * 1.8)), A.closePath(), A.fill(), tQ(A, d, m, J, D, C, j), A.fillStyle = O(D, 0.16 * j), A.strokeStyle = O(D, 0.72 * j), A.fillRect(J.left, J.top, h, G), A.strokeRect(J.left + 0.5, J.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * j), A.fillText(M, J.left + w, J.top + G / 2), A.restore();
     }
     function ZZ(A, Q, g, C) {
       if (!(l != null && l.candles.length) || Q <= 0) return;
@@ -4687,19 +4687,19 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const N = X.value, d = Q.kind === "SwingHigh" ? N.marketStructureHighColor : N.marketStructureLowColor, m = N.marketStructureOpacity, Y = OA(Q.x, A.canvas.width), D = XA(Q.price, A.canvas.height);
       if (Y < -48 * C || Y > A.canvas.width + 48 * C || D < -24 * C || D > g + 24 * C)
         return;
-      const j = 4 * C, M = Math.max(12 * C, N.fontSize * C * 0.95), V = A.measureText(Q.label).width + j * 2, G = (Q.kind === "SwingHigh" ? -1 : 1) * (M * 0.9), h = iQ(
+      const j = 4 * C, M = Math.max(12 * C, N.fontSize * C * 0.95), w = A.measureText(Q.label).width + j * 2, G = (Q.kind === "SwingHigh" ? -1 : 1) * (M * 0.9), h = iQ(
         A,
         c,
-        Y - V / 2,
+        Y - w / 2,
         D + G,
-        V,
+        w,
         M,
         g,
         C,
         Q.kind === "SwingHigh" ? [0, -1, 1, -2, 2, -3, 3] : [0, 1, -1, 2, -2, 3, -3],
         [0, -1, 1, -2, 2]
       );
-      h && (tQ(A, Y, D, h, d, C, m), A.fillStyle = O(d, 0.16 * m), A.strokeStyle = O(d, 0.72 * m), A.fillRect(h.left, h.top, V, M), A.strokeRect(h.left + 0.5, h.top + 0.5, V, M), A.fillStyle = O(d, 0.95 * m), A.fillText(Q.label, h.left + j, h.top + M / 2));
+      h && (tQ(A, Y, D, h, d, C, m), A.fillStyle = O(d, 0.16 * m), A.strokeStyle = O(d, 0.72 * m), A.fillRect(h.left, h.top, w, M), A.strokeRect(h.left + 0.5, h.top + 0.5, w, M), A.fillStyle = O(d, 0.95 * m), A.fillText(Q.label, h.left + j, h.top + M / 2));
     }
     function lZ(A, Q, g, C, c) {
       const N = X.value, d = XA(Q.level, A.canvas.height);
@@ -4708,7 +4708,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (Math.abs(Y - m) <= 1) return;
       const D = N.marketStructureBreakColor, j = N.marketStructureOpacity;
       A.save(), A.setLineDash([4 * C, 5 * C]), A.strokeStyle = O(D, 0.68 * j), A.beginPath(), A.moveTo(m, d + 0.5), A.lineTo(Y, d + 0.5), A.stroke(), A.setLineDash([]);
-      const M = `${Q.label} ${Q.direction === "bullish" ? "UP" : "DN"}`, V = 5 * C, G = Math.max(13 * C, N.fontSize * C), h = A.measureText(M).width + V * 2, e = iQ(
+      const M = `${Q.label} ${Q.direction === "bullish" ? "UP" : "DN"}`, w = 5 * C, G = Math.max(13 * C, N.fontSize * C), h = A.measureText(M).width + w * 2, R = iQ(
         A,
         c,
         Y + 4 * C,
@@ -4720,7 +4720,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         [0, -1, 1, -2, 2, -3, 3],
         [0, -1, 1, -2]
       );
-      e && (tQ(A, Y, d, e, D, C, j), A.fillStyle = O(D, 0.18 * j), A.strokeStyle = O(D, 0.72 * j), A.fillRect(e.left, e.top, h, G), A.strokeRect(e.left + 0.5, e.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * j), A.fillText(M, e.left + V, e.top + G / 2)), A.restore();
+      R && (tQ(A, Y, d, R, D, C, j), A.fillStyle = O(D, 0.18 * j), A.strokeStyle = O(D, 0.72 * j), A.fillRect(R.left, R.top, h, G), A.strokeRect(R.left + 0.5, R.top + 0.5, h, G), A.fillStyle = O(D, 0.98 * j), A.fillText(M, R.left + w, R.top + G / 2)), A.restore();
     }
     function dZ(A, Q, g, C) {
       var j;
@@ -4740,7 +4740,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           thicknessBps: c.srZoneThicknessBps,
           referencePrice: N,
           zonesPerSide: c.srZoneProjectionZonesPerSide
-        }).map((V) => ({ zone: V, timeframe: M.timeframe }))
+        }).map((w) => ({ zone: w, timeframe: M.timeframe }))
       ) : [];
       if (!d.length && !m.length) return;
       const Y = Math.min(i.minY, i.maxY), D = Math.max(i.minY, i.maxY);
@@ -4758,12 +4758,12 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function EC(A, Q, g, C, c, N = {}) {
       const d = X.value, m = Math.max(0.05, Math.min(1, N.opacity ?? 1)), Y = Q.kind === "support" ? d.srSupportZoneColor : d.srResistanceZoneColor, D = XA(Q.high, A.canvas.height), j = XA(Q.low, A.canvas.height), M = XA(Q.center, A.canvas.height);
-      let V = Math.max(0, Math.min(D, j)), G = Math.min(g, Math.max(D, j));
-      if (G <= 0 || V >= g) return;
-      G - V < 2 * C && (V = Math.max(0, Math.min(g - 2 * C, M - C)), G = Math.min(g, Math.max(2 * C, M + C)));
+      let w = Math.max(0, Math.min(D, j)), G = Math.min(g, Math.max(D, j));
+      if (G <= 0 || w >= g) return;
+      G - w < 2 * C && (w = Math.max(0, Math.min(g - 2 * C, M - C)), G = Math.min(g, Math.max(2 * C, M + C)));
       const h = Math.min(0.16, 0.07 + Q.touches * 0.018) * m;
-      A.fillStyle = O(Y, h), A.fillRect(0, V, A.canvas.width, Math.max(1, G - V)), A.setLineDash([4 * C, 5 * C]), A.strokeStyle = O(Y, 0.48 * m), A.beginPath(), A.moveTo(0, V + 0.5), A.lineTo(A.canvas.width, V + 0.5), A.moveTo(0, G + 0.5), A.lineTo(A.canvas.width, G + 0.5), A.stroke(), A.setLineDash([]);
-      const e = `${N.labelPrefix ?? ""}${Q.kind === "support" ? "S" : "R"} ${aA(Q.center)} x${Q.touches}`, J = 5 * C, H = Math.max(14 * C, X.value.fontSize * C * 1.05), f = A.measureText(e).width + J * 2, T = 4 * C, ZA = M - H / 2, P = iQ(
+      A.fillStyle = O(Y, h), A.fillRect(0, w, A.canvas.width, Math.max(1, G - w)), A.setLineDash([4 * C, 5 * C]), A.strokeStyle = O(Y, 0.48 * m), A.beginPath(), A.moveTo(0, w + 0.5), A.lineTo(A.canvas.width, w + 0.5), A.moveTo(0, G + 0.5), A.lineTo(A.canvas.width, G + 0.5), A.stroke(), A.setLineDash([]);
+      const R = `${N.labelPrefix ?? ""}${Q.kind === "support" ? "S" : "R"} ${aA(Q.center)} x${Q.touches}`, J = 5 * C, H = Math.max(14 * C, X.value.fontSize * C * 1.05), f = A.measureText(R).width + J * 2, T = 4 * C, ZA = M - H / 2, P = iQ(
         A,
         c,
         T,
@@ -4775,7 +4775,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         [0, -1, 1, -2, 2],
         [0, 1, 2, 3]
       );
-      P && (A.fillStyle = O(Y, 0.72 * m), A.fillRect(P.left, P.top, f, H), A.fillStyle = "white", A.fillText(e, P.left + J, P.top + H / 2));
+      P && (A.fillStyle = O(Y, 0.72 * m), A.fillRect(P.left, P.top, f, H), A.fillStyle = "white", A.fillText(R, P.left + J, P.top + H / 2));
     }
     function YZ(A, Q, g) {
       if (!(l != null && l.candles.length) || Q <= 0 || i.maxX <= i.minX) return [];
@@ -4788,13 +4788,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ), D = Math.max(8 * g, C.wickWidth * g + 6 * g), j = [];
       for (const M of l.candles) {
         if (M.x < c || M.x > N) continue;
-        const V = OA(M.x, A.canvas.width);
-        if (V < -Y || V > A.canvas.width + Y) continue;
-        const G = XA(M.h, A.canvas.height), h = XA(M.l, A.canvas.height), e = Math.max(0, Math.min(G, h)), J = Math.min(Q, Math.max(G, h));
-        if (J <= 0 || e >= Q) continue;
-        const H = Math.max(D, J - e + 8 * g), JA = (e + J) / 2;
+        const w = OA(M.x, A.canvas.width);
+        if (w < -Y || w > A.canvas.width + Y) continue;
+        const G = XA(M.h, A.canvas.height), h = XA(M.l, A.canvas.height), R = Math.max(0, Math.min(G, h)), J = Math.min(Q, Math.max(G, h));
+        if (J <= 0 || R >= Q) continue;
+        const H = Math.max(D, J - R + 8 * g), JA = (R + J) / 2;
         j.push({
-          left: V - Y / 2,
+          left: w - Y / 2,
           top: Math.max(0, Math.min(Q - H, JA - H / 2)),
           width: Y,
           height: H
@@ -4807,18 +4807,18 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       Math.hypot(m - Q, Y - g) < 7 * N || (A.save(), A.setLineDash([2 * N, 4 * N]), A.lineWidth = Math.max(1, N), A.strokeStyle = O(c, 0.45 * d), A.beginPath(), A.moveTo(Q + 0.5, g + 0.5), A.lineTo(m + 0.5, Y + 0.5), A.stroke(), A.restore());
     }
     function iQ(A, Q, g, C, c, N, d, m, Y, D = [0]) {
-      const j = 2 * m, M = j, V = A.canvas.width - j, G = j, h = d - j;
-      if (V - M < c || h - G < N) return null;
-      const e = Math.max(2 * m, 3);
+      const j = 2 * m, M = j, w = A.canvas.width - j, G = j, h = d - j;
+      if (w - M < c || h - G < N) return null;
+      const R = Math.max(2 * m, 3);
       for (const J of Y)
         for (const H of D) {
           const JA = {
-            left: cC(g + H * (c + e), c, M, V),
-            top: cC(C + J * (N + e), N, G, h),
+            left: cC(g + H * (c + R), c, M, w),
+            top: cC(C + J * (N + R), N, G, h),
             width: c,
             height: N
           };
-          if (!Q.some((f) => mZ(JA, f, e)))
+          if (!Q.some((f) => mZ(JA, f, R)))
             return Q.push(JA), JA;
         }
       return null;
@@ -4846,7 +4846,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           let D = -1 / 0;
           const j = Y + Math.max(1, Q - Y) * 0.58;
           for (const M of m) {
-            const V = OA(M.x, A.canvas.width), G = A.measureText(M.label).width, h = Math.max(N, Math.min(A.canvas.width - G - N, V - G / 2));
+            const w = OA(M.x, A.canvas.width), G = A.measureText(M.label).width, h = Math.max(N, Math.min(A.canvas.width - G - N, w - G / 2));
             h < D + 12 * C || (A.fillText(M.label, h, j), D = h + G);
           }
         }
@@ -4855,10 +4855,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function iZ(A, Q, g) {
       if (!(l != null && l.candles.length) || l.timeframeSec <= 0) return [];
-      const C = Math.max(1, (i.maxX - i.minX) * l.timeframeSec), c = eN(Q, g, C), N = Math.max(2, Math.floor(A / Math.max(1, c))), d = sN(C / N, l.timeframeSec, C), m = l.firstBucket + i.minX * l.timeframeSec, Y = l.firstBucket + i.maxX * l.timeframeSec, D = [];
+      const C = Math.max(1, (i.maxX - i.minX) * l.timeframeSec), c = RN(Q, g, C), N = Math.max(2, Math.floor(A / Math.max(1, c))), d = sN(C / N, l.timeframeSec, C), m = l.firstBucket + i.minX * l.timeframeSec, Y = l.firstBucket + i.maxX * l.timeframeSec, D = [];
       let j = Math.ceil(m / d) * d;
       const M = Math.ceil((Y - j) / d) + 4;
-      for (let V = 0; V < M && j <= Y + d * 1e-3; V++, j += d) {
+      for (let w = 0; w < M && j <= Y + d * 1e-3; w++, j += d) {
         const G = (j - l.firstBucket) / l.timeframeSec, h = OA(G, A);
         h >= -c && h <= A + c && D.push({ x: G, ts: j, label: WN(j, C, d) });
       }
@@ -4875,7 +4875,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     }
     function NC(A, Q, g, C) {
       const c = sB();
-      wZ(A, Q, C, c), pI(A, Q, g, [50], c), VZ(A, Q, g, C, c);
+      VZ(A, Q, C, c), pI(A, Q, g, [50], c), wZ(A, Q, g, C, c);
     }
     function jZ(A, Q, g, C) {
       const c = l ? EN(
@@ -4993,11 +4993,11 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         color: A === "rsi" ? Q.rsiRangeColor : Q.stochRsiRangeColor
       };
     }
-    function wZ(A, Q, g, C) {
+    function VZ(A, Q, g, C) {
       const c = IQ(g.upper, Q, C), N = IQ(g.lower, Q, C);
       A.fillStyle = O(g.color, 0.12), A.fillRect(0, c, A.canvas.width, Math.max(1, N - c));
     }
-    function VZ(A, Q, g, C, c) {
+    function wZ(A, Q, g, C, c) {
       const N = C.lower === C.upper ? [C.lower] : [C.upper, C.lower];
       A.save(), A.setLineDash([5 * g, 4 * g]), A.lineWidth = Math.max(1, g), A.strokeStyle = O(C.color, 0.78), A.fillStyle = O(C.color, 0.88);
       for (const d of N) {
@@ -5086,7 +5086,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function OZ(A) {
       if (A.id === "rsi") {
         const c = gQ(A.rsi);
-        return c == null ? [] : [{ label: "RSI", value: eQ(c), className: "rsi" }];
+        return c == null ? [] : [{ label: "RSI", value: RQ(c), className: "rsi" }];
       }
       if (A.id === "macd") {
         const c = gQ(A.macd), N = gQ(A.signal), d = gQ(A.histogram), m = [];
@@ -5111,7 +5111,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         ];
       }
       const Q = [], g = gQ(A.k), C = gQ(A.d);
-      return g != null && Q.push({ label: "K", value: eQ(g), className: "k" }), C != null && Q.push({ label: "D", value: eQ(C), className: "d" }), Q;
+      return g != null && Q.push({ label: "K", value: RQ(g), className: "k" }), C != null && Q.push({ label: "D", value: RQ(C), className: "d" }), Q;
     }
     function DQ(A, Q, g, C, c, N, d = !1, m) {
       if (Q.length < 4) return;
@@ -5122,19 +5122,19 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           Y = [];
           return;
         }
-        const V = Y[0];
-        if (!V) {
+        const w = Y[0];
+        if (!w) {
           Y = [];
           return;
         }
-        if (A.beginPath(), A.moveTo(V.x, V.y), d && Y.length > 2) {
+        if (A.beginPath(), A.moveTo(w.x, w.y), d && Y.length > 2) {
           for (let h = 1; h < Y.length - 1; h++) {
-            const e = Y[h], J = Y[h + 1];
-            !e || !J || A.quadraticCurveTo(
-              e.x,
-              e.y,
-              (e.x + J.x) / 2,
-              (e.y + J.y) / 2
+            const R = Y[h], J = Y[h + 1];
+            !R || !J || A.quadraticCurveTo(
+              R.x,
+              R.y,
+              (R.x + J.x) / 2,
+              (R.y + J.y) / 2
             );
           }
           const G = Y[Y.length - 1];
@@ -5146,14 +5146,14 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           }
         A.stroke(), Y = [];
       };
-      for (let V = 0; V < Q.length; V += 2) {
-        const G = Q[V], h = Q[V + 1];
+      for (let w = 0; w < Q.length; w += 2) {
+        const G = Q[w], h = Q[w + 1];
         if (!Number.isFinite(G) || !Number.isFinite(h) || G < D || G > j) {
           M();
           continue;
         }
-        const e = OA(G, A.canvas.width), J = IQ(h, g, m);
-        Y.push({ x: e, y: J });
+        const R = OA(G, A.canvas.width), J = IQ(h, g, m);
+        Y.push({ x: R, y: J });
       }
       M(), A.restore();
     }
@@ -5162,9 +5162,9 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const d = Math.min(i.minX, i.maxX) - 1, m = Math.max(i.minX, i.maxX) + 1, Y = A.canvas.width / Math.max(1, i.maxX - i.minX), D = JC(Y, N), j = IQ(0, g, C);
       A.save();
       for (let M = 0; M < Q.length; M += 2) {
-        const V = Q[M], G = Q[M + 1];
-        if (!Number.isFinite(V) || !Number.isFinite(G) || V < d || V > m) continue;
-        const h = OA(V, A.canvas.width), e = IQ(G, g, C), J = Math.min(e, j), H = Math.max(1 * N, Math.abs(e - j));
+        const w = Q[M], G = Q[M + 1];
+        if (!Number.isFinite(w) || !Number.isFinite(G) || w < d || w > m) continue;
+        const h = OA(w, A.canvas.width), R = IQ(G, g, C), J = Math.min(R, j), H = Math.max(1 * N, Math.abs(R - j));
         A.fillStyle = O(
           G >= 0 ? c.macdHistogramUpColor : c.macdHistogramDownColor,
           0.46
@@ -5176,26 +5176,26 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       if (c.id === "rsi") {
         const Y = CQ(c.rsi, C);
         if (Y == null) return;
-        RQ(A, Q, g, `RSI ${eQ(Y)}`);
+        eQ(A, Q, g, `RSI ${RQ(Y)}`);
         return;
       }
       if (c.id === "macd") {
         const Y = CQ(c.macd, C), D = CQ(c.signal, C), j = CQ(c.histogram, C);
         if (Y == null && D == null && j == null) return;
         const M = ["MACD"];
-        Y != null && M.push(`M ${EQ(Y)}`), D != null && M.push(`S ${EQ(D)}`), j != null && M.push(`H ${iC(j)}`), RQ(A, Q, g, M.join("  "));
+        Y != null && M.push(`M ${EQ(Y)}`), D != null && M.push(`S ${EQ(D)}`), j != null && M.push(`H ${iC(j)}`), eQ(A, Q, g, M.join("  "));
         return;
       }
       if (c.id === "atr") {
         const Y = CQ(c.atr, C);
         if (Y == null) return;
-        RQ(A, Q, g, `ATR ${EQ(Y)}`);
+        eQ(A, Q, g, `ATR ${EQ(Y)}`);
         return;
       }
       if (c.id === "relativeReturn") {
         const Y = CQ(c.relativeReturn, C);
         if (Y == null) return;
-        RQ(
+        eQ(
           A,
           Q,
           g,
@@ -5206,13 +5206,13 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const N = CQ(c.k, C), d = CQ(c.d, C);
       if (N == null && d == null) return;
       const m = ["Stoch RSI"];
-      N != null && m.push(`K ${eQ(N)}`), d != null && m.push(`D ${eQ(d)}`), RQ(A, Q, g, m.join("  "));
+      N != null && m.push(`K ${RQ(N)}`), d != null && m.push(`D ${RQ(d)}`), eQ(A, Q, g, m.join("  "));
     }
     function FZ(A, Q, g, C) {
       const c = HI(C), N = c == null ? "" : ` V ${kZ(c)}`, d = `O ${aA(C.o)} H ${aA(C.h)} L ${aA(
         C.l
       )} C ${aA(C.c)}${N}`;
-      RQ(A, Q, g, d);
+      eQ(A, Q, g, d);
     }
     function HI(A) {
       return Number.isFinite(A.v_quote) ? A.v_quote : Number.isFinite(A.v_base) ? A.v_base : null;
@@ -5229,21 +5229,21 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       const Y = XA(Q, A.canvas.height);
       if (Y < 0 || Y > c) return;
       A.save(), A.setLineDash([6 * m, 5 * m]), A.lineWidth = Math.max(1, m), A.strokeStyle = O(C, 0.76), A.beginPath(), A.moveTo(0, Y + 0.5), A.lineTo(A.canvas.width, Y + 0.5), A.stroke(), A.setLineDash([]);
-      const D = `${g} ${aA(Q)}`, M = A.measureText(D).width + d * 2, V = N + d * 1.2, G = Math.max(0, A.canvas.width - M - 4 * m), h = Math.max(2 * m, Math.min(c - V - 2 * m, Y - V / 2));
-      A.fillStyle = O(C, 0.88), A.fillRect(G, h, M, V), A.fillStyle = "white", A.fillText(D, G + d, h + V / 2), A.restore();
+      const D = `${g} ${aA(Q)}`, M = A.measureText(D).width + d * 2, w = N + d * 1.2, G = Math.max(0, A.canvas.width - M - 4 * m), h = Math.max(2 * m, Math.min(c - w - 2 * m, Y - w / 2));
+      A.fillStyle = O(C, 0.88), A.fillRect(G, h, M, w), A.fillStyle = "white", A.fillText(D, G + d, h + w / 2), A.restore();
     }
     function tZ(A, Q, g, C, c, N) {
-      const d = X.value, m = RZ(Q, A.canvas.height);
+      const d = X.value, m = eZ(Q, A.canvas.height);
       if (!Number.isFinite(m)) return;
-      const Y = aA(m), j = A.measureText(Y).width + c * 2, M = C + c * 1.2, V = Math.max(0, A.canvas.width - j - 4 * N), G = Math.max(
+      const Y = aA(m), j = A.measureText(Y).width + c * 2, M = C + c * 1.2, w = Math.max(0, A.canvas.width - j - 4 * N), G = Math.max(
         2 * N,
         Math.min(g - M - 2 * N, Q - M / 2)
       );
-      A.save(), A.fillStyle = O(d.tooltipBackgroundColor, 0.94), A.strokeStyle = O(d.crosshairColor, 0.72), A.fillRect(V, G, j, M), A.strokeRect(V + 0.5, G + 0.5, j, M), A.fillStyle = O(d.textColor, 0.98), A.fillText(Y, V + c, G + M / 2), A.restore();
+      A.save(), A.fillStyle = O(d.tooltipBackgroundColor, 0.94), A.strokeStyle = O(d.crosshairColor, 0.72), A.fillRect(w, G, j, M), A.strokeRect(w + 0.5, G + 0.5, j, M), A.fillStyle = O(d.textColor, 0.98), A.fillText(Y, w + c, G + M / 2), A.restore();
     }
-    function RQ(A, Q, g, C) {
-      const c = X.value, N = jQ(A.canvas), d = 8 * N, m = 6 * N, D = A.measureText(C).width + d * 2, j = c.fontSize * N + m * 2, M = Math.min(Math.max(4 * N, Q), A.canvas.width - D - 4 * N), V = Math.max(j + 4 * N, Math.min(g, A.canvas.height - 4 * N));
-      A.fillStyle = O(c.tooltipBackgroundColor, 0.82), A.fillRect(M, V - j, D, j), A.fillStyle = O(c.textColor, 0.95), A.fillText(C, M + d, V - j / 2);
+    function eQ(A, Q, g, C) {
+      const c = X.value, N = jQ(A.canvas), d = 8 * N, m = 6 * N, D = A.measureText(C).width + d * 2, j = c.fontSize * N + m * 2, M = Math.min(Math.max(4 * N, Q), A.canvas.width - D - 4 * N), w = Math.max(j + 4 * N, Math.min(g, A.canvas.height - 4 * N));
+      A.fillStyle = O(c.tooltipBackgroundColor, 0.82), A.fillRect(M, w - j, D, j), A.fillStyle = O(c.textColor, 0.95), A.fillText(C, M + d, w - j / 2);
     }
     function IQ(A, Q, g) {
       const C = Math.max(1e-9, g.max - g.min), c = (A - g.min) / C, N = Math.max(0, Math.min(1, c));
@@ -5290,10 +5290,10 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
     function oC(A, Q) {
       return i.minX + A / Q * (i.maxX - i.minX);
     }
-    function RZ(A, Q) {
+    function eZ(A, Q) {
       return i.maxY - A / Q * (i.maxY - i.minY);
     }
-    function eZ(A) {
+    function RZ(A) {
       return Math.abs(A.deltaX) > Math.abs(A.deltaY);
     }
     function jQ(A) {
@@ -5323,7 +5323,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
         maximumFractionDigits: Q >= 1 ? 2 : 6
       });
     }
-    function eQ(A) {
+    function RQ(A) {
       return A.toLocaleString("en-US", {
         minimumFractionDigits: 1,
         maximumFractionDigits: 1
@@ -5412,7 +5412,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ref_key: "shellRef",
       ref: cB,
       class: mA(["gpu-chart-shell", {
-        "gpu-chart-shell-link": wg.value,
+        "gpu-chart-shell-link": Vg.value,
         "gpu-chart-shell-picking": YA.value
       }]),
       "data-last-close": nB.value,
@@ -5422,7 +5422,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       "data-view-min-x": mg.value,
       "data-view-max-x": og.value,
       style: WQ(IE.value),
-      onClick: eE
+      onClick: RE
     }, [
       n("canvas", {
         ref_key: "canvasRef",
@@ -5569,7 +5569,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           n("div", {
             class: mA(["gpu-chart-settings-header", { dragging: II.value }]),
             title: "Drag to move",
-            onMousedown: S(Rc, ["stop", "prevent"])
+            onMousedown: S(ec, ["stop", "prevent"])
           }, [
             n("span", Ad, z(sA.value) + " Settings", 1),
             n("button", {
@@ -5577,7 +5577,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
               class: "gpu-chart-settings-close",
               "aria-label": "Close chart settings",
               title: "Close",
-              onClick: VI
+              onClick: wI
             }, " x ")
           ], 34),
           n("div", Qd, [
@@ -5691,8 +5691,8 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
                   n("span", null, z(QE.value), 1),
                   n("span", null, z(BE.value), 1)
                 ]),
-                dQ.value ? (b(), t("div", wd, [
-                  n("label", Vd, [
+                dQ.value ? (b(), t("div", Vd, [
+                  n("label", wd, [
                     Q[22] || (Q[22] = n("span", null, "Color", -1)),
                     n("input", {
                       type: "color",
@@ -5745,7 +5745,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
                       class: "gpu-chart-settings-range",
                       value: X.value[g.key],
                       onInput: (C) => ac(g.key, C)
-                    }, null, 40, Rd)
+                    }, null, 40, ed)
                   ]))), 128)),
                   (b(!0), t(BA, null, IA(jB.value.toggleFields, (g) => (b(), t("label", {
                     key: g.key,
@@ -5756,7 +5756,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
                       class: "gpu-chart-settings-check",
                       checked: X.value[g.key],
                       onChange: (C) => Jc(g.key, C)
-                    }, null, 40, ed),
+                    }, null, 40, Rd),
                     n("span", null, z(g.label), 1)
                   ]))), 128)),
                   AE.value ? (b(), t("div", sd, [
@@ -5785,7 +5785,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
                       class: "gpu-chart-avwap-action",
                       onClick: oc
                     }, " Clear "),
-                    n("span", Wd, z(RE.value), 1)
+                    n("span", Wd, z(eE.value), 1)
                   ])) : NA("", !0)
                 ]))
               ])) : NA("", !0)
@@ -5806,7 +5806,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
           n("div", {
             class: mA(["gpu-chart-settings-resize", { resizing: gI.value }]),
             "aria-hidden": "true",
-            onMousedown: S(ec, ["stop", "prevent"])
+            onMousedown: S(Rc, ["stop", "prevent"])
           }, null, 34)
         ], 36)) : NA("", !0)
       ])),
@@ -5837,7 +5837,7 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
       ], 36)) : NA("", !0),
       X.value.showBadge ? (b(), nC(vZ(FE.value), KZ({
         key: 3,
-        class: ["gpu-chart-badge", { "gpu-chart-badge-link": wg.value }]
+        class: ["gpu-chart-badge", { "gpu-chart-badge-link": Vg.value }]
       }, tE.value), {
         default: PZ(() => [
           n("span", yd, [
@@ -5888,15 +5888,15 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
               key: 1,
               class: mA(["gpu-chart-avwap-distance", ME.value])
             }, z(GB.value), 3)) : NA("", !0),
-            wB.value ? (b(), t("span", {
-              key: 2,
-              class: mA(["gpu-chart-structure-summary", wE.value])
-            }, z(wB.value), 3)) : NA("", !0),
             VB.value ? (b(), t("span", {
+              key: 2,
+              class: mA(["gpu-chart-structure-summary", VE.value])
+            }, z(VB.value), 3)) : NA("", !0),
+            wB.value ? (b(), t("span", {
               key: 3,
               class: mA(["gpu-chart-setup-state", JE.value]),
               title: aE.value
-            }, z(VB.value), 11, rd)) : NA("", !0)
+            }, z(wB.value), 11, rd)) : NA("", !0)
           ])) : NA("", !0)
         ]),
         _: 1
@@ -5915,8 +5915,8 @@ const bl = { class: "cdgc-appearance" }, tl = { class: "cdgc-appearance-color-gr
 }), JY = /* @__PURE__ */ LC(cY, [["__scopeId", "data-v-0e3f8e2b"]]);
 export {
   tY as CANDLE_TIMESTAMP_SEMANTICS,
-  RY as DECISION_RECORD_SCHEMA_VERSION,
-  eY as DECISION_SNAPSHOT_SCHEMA_VERSION,
+  eY as DECISION_RECORD_SCHEMA_VERSION,
+  RY as DECISION_SNAPSHOT_SCHEMA_VERSION,
   HC as DEFAULT_GPU_CHART_APPEARANCE,
   Cg as DEFAULT_GPU_CHART_INDICATORS,
   DN as DEFAULT_GRID_GPU_CHART_APPEARANCE,
@@ -5940,38 +5940,57 @@ export {
   UY as IMPULSE_FADE_RESEARCH_PROFILE_ID,
   TY as IMPULSE_FADE_RESEARCH_PROFILE_VERSION,
   HY as IMPULSE_FADE_SETUP_FAMILY,
+  uY as InMemoryReplayHistoricalDataAdapter,
+  fY as InMemoryReplayOutcomeStore,
+  rY as JsonReplayHistoricalDataAdapter,
   fB as MAX_ACTIVE_GPU_CHART_INDICATOR_PANES,
   zN as MIN_VISIBLE_CANDLES,
-  uY as RADAR_EPISODE_SCHEMA_VERSION,
-  fY as RADAR_METRIC_OBSERVATION_SCHEMA_VERSION,
-  rY as RADAR_SCAN_RESULT_SCHEMA_VERSION,
-  xY as RADAR_SELECTION_PROFILE_SCHEMA_VERSION,
-  LY as RADAR_STATUS_OBSERVATION_SCHEMA_VERSION,
-  SY as RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION,
-  vY as RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
-  KY as REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
+  xY as RADAR_EPISODE_SCHEMA_VERSION,
+  LY as RADAR_METRIC_OBSERVATION_SCHEMA_VERSION,
+  SY as RADAR_SCAN_RESULT_SCHEMA_VERSION,
+  vY as RADAR_SELECTION_PROFILE_SCHEMA_VERSION,
+  KY as RADAR_STATUS_OBSERVATION_SCHEMA_VERSION,
+  PY as RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION,
+  qY as RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
+  _Y as REPLAY_ANALYSIS_STATE_SCHEMA_VERSION,
+  $Y as REPLAY_CASE_MANIFEST_SCHEMA_VERSION,
+  Am as REPLAY_COMMAND_SCHEMA_VERSION,
+  Qm as REPLAY_DATA_BUNDLE_SCHEMA_VERSION,
+  Bm as REPLAY_DECISION_FRAME_SCHEMA_VERSION,
+  Im as REPLAY_ENGINE_VERSION,
+  gm as REPLAY_EVENT_SCHEMA_VERSION,
+  Cm as REPLAY_JSON_DATA_SCHEMA_VERSION,
+  Em as REPLAY_KNOWN_EVENT_SCHEMA_VERSION,
+  cm as REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION,
+  Zm as REPLAY_SESSION_CONFIG_SCHEMA_VERSION,
+  Nm as REPLAY_SESSION_SCHEMA_VERSION,
+  lm as REPLAY_WAKE_CONDITION_SCHEMA_VERSION,
+  dm as REPLAY_WAKE_PLAN_SCHEMA_VERSION,
+  Ym as REPLAY_WAKE_RESULT_SCHEMA_VERSION,
   EB as RIGHT_EDGE_PADDING_CANDLES,
-  PY as SIZING_MODEL_VERSION,
-  qY as SIZING_RESULT_SCHEMA_VERSION,
-  _Y as STRATEGY_PROFILE_SCHEMA_VERSION,
-  $Y as TRADE_PLAN_SCHEMA_VERSION,
+  mm as SIZING_MODEL_VERSION,
+  om as SIZING_RESULT_SCHEMA_VERSION,
+  im as STRATEGY_PROFILE_SCHEMA_VERSION,
+  Dm as TRADE_PLAN_SCHEMA_VERSION,
   UN as VISIBLE_Y_PADDING_RATIO,
   bC as VISIBLE_Y_SMOOTHING_RATIO,
   HN as WHEEL_ZOOM_MAX_DELTA_PX,
   TN as WHEEL_ZOOM_SENSITIVITY,
   XC as appendSyntheticCandle,
-  Am as bucketStart,
-  Qm as calculateLinearPerpetualSizing,
+  jm as applyReplayCommand,
+  nm as bucketStart,
+  Mm as calculateLinearPerpetualSizing,
   FN as cancelScheduledGpuRender,
   hC as candleCloseTime,
-  Bm as candleToBytes,
+  Xm as candleRevisionKnownAt,
+  Gm as candleToBytes,
   MC as candlesToBytes,
-  Im as canonicalHash,
-  gm as canonicalRadarJson,
-  Cm as canonicalSerialize,
+  Vm as canonicalHash,
+  wm as canonicalRadarJson,
+  hm as canonicalSerialize,
   rN as clampXView,
   IN as computeAnchoredVwapLine,
-  wC as computeAnchoredVwapSignals,
+  VC as computeAnchoredVwapSignals,
   YN as computeAnchoredVwapSnapshot,
   NN as computeAtrLine,
   gN as computeBollingerBands,
@@ -5981,38 +6000,48 @@ export {
   ZN as computeMacd,
   aC as computeMarketStructure,
   lN as computeRelativeCumulativeReturnLine,
-  VC as computeRelativeStrengthDivergences,
+  wC as computeRelativeStrengthDivergences,
   cN as computeRsiLine,
-  Em as computeSetupState,
+  Om as computeSetupState,
   AN as computeSmaLine,
   EN as computeStochRsi,
   CN as computeStructureActiveLevels,
   UB as computeSupportResistanceZones,
-  cm as computeSupportResistanceZonesFromSwings,
-  Zm as computeSwingPoints,
+  am as computeSupportResistanceZonesFromSwings,
+  Jm as computeSwingPoints,
   qZ as computeViewBounds,
   xN as computeVisibleYBounds,
   BN as computeWmaLine,
-  Nm as createDecisionRecord,
-  lm as createDecisionReferenceLevel,
-  dm as createDecisionSnapshot,
-  Ym as createDurableObjectReference,
-  mm as createExecutionVenueEligibilityObservation,
-  om as createImpulseFadeResearchProfile,
-  im as createRadarSelectionProfile,
-  Dm as createRadarStructureObservation,
-  jm as createStrategyProfile,
-  nm as createTradePlan,
-  Mm as createUniverseMembershipObservation,
-  Xm as decisionReferenceObservationId,
-  Gm as decisionSnapshotId,
-  wm as decisionSnapshotReferenceLevels,
+  Fm as createDecisionRecord,
+  bm as createDecisionReferenceLevel,
+  tm as createDecisionSnapshot,
+  em as createDefaultReplaySessionConfig,
+  Rm as createDurableObjectReference,
+  sm as createExecutionVenueEligibilityObservation,
+  Wm as createImpulseFadeResearchProfile,
+  km as createRadarSelectionProfile,
+  ym as createRadarStructureObservation,
+  zm as createReplayAnalysisStateObservation,
+  pm as createReplayCandleRecord,
+  Um as createReplayCommand,
+  Tm as createReplayKnownEvent,
+  Hm as createReplaySession,
+  um as createReplaySessionConfig,
+  fm as createReplayWakeCondition,
+  rm as createReplayWakePlan,
+  xm as createStrategyProfile,
+  Lm as createTradePlan,
+  Sm as createUniverseMembershipObservation,
+  vm as decisionReferenceObservationId,
+  Km as decisionSnapshotId,
+  Pm as decisionSnapshotReferenceLevels,
   CB as defaultGpuChartAppearance,
-  eN as estimateTimeAxisLabelWidth,
+  qm as deserializeReplaySession,
+  RN as estimateTimeAxisLabelWidth,
   mN as evaluateImpulseFadeSnapshot,
-  Vm as evaluateImpulseFadeTimeline,
-  hm as evaluateTradePlanCompliance,
-  Om as executionVenueEligibilityObservationId,
+  _m as evaluateImpulseFadeTimeline,
+  $m as evaluateTradePlanCompliance,
+  Ao as executionVenueEligibilityObservationId,
   WN as formatTimeAxisLabel,
   GA as gpuChartIndicatorCanAddInstance,
   Eg as gpuChartIndicatorEnabled,
@@ -6020,36 +6049,53 @@ export {
   AB as gpuChartMovingAveragePeriod,
   QB as hexToRgb01,
   O as hexToRgba,
-  am as immutableJsonClone,
-  Jm as impulseFadeLifecycleConfigHash,
+  Qo as immutableJsonClone,
+  Bo as impulseFadeLifecycleConfigHash,
   uN as isFollowingLatest,
+  Io as isStrictTimeframe,
   vN as isYBoundsClose,
   $Z as lineToBytes,
   jN as loadGpuChartAppearance,
   Fl as loadGpuChartModule,
+  go as loadReplayCase,
   uI as makeSyntheticCandles,
   GC as mergeLiveCandle,
-  wQ as normalizeGpuChartAppearance,
-  Fm as normalizeOhlcvPoint,
-  RA as normalizeRestTimeframe,
+  VQ as normalizeGpuChartAppearance,
+  Co as normalizeOhlcvPoint,
+  eA as normalizeRestTimeframe,
   pB as packHistoricalCandles,
+  Eo as parseReplayJsonHistoricalDataFixture,
   OC as prependHistoricalCandles,
-  bm as radarSelectionProfileHash,
-  tm as radarStructureObservationId,
+  co as radarEpisodeObservationId,
+  Zo as radarSelectionProfileHash,
+  No as radarStructureObservationId,
+  lo as reconstructReplaySession,
+  Yo as replayAnalysisStateObservationId,
+  mo as replayCandleLogicalId,
+  oo as replayCandleObservationId,
+  io as replayCaseManifestId,
+  Do as replayDataFingerprintAt,
+  jo as replayKnownEventId,
+  no as replaySessionConfigHash,
+  Mo as replaySha256,
   SN as reserveLowerPaneYBounds,
   MN as resetGpuChartAppearance,
+  Xo as resumeReplaySession,
   nN as saveGpuChartAppearance,
   PN as scaleYView,
-  Rm as scanRadarEpisodes,
+  Go as scanRadarEpisodes,
   FA as scheduleGpuRender,
+  Vo as selectCompletedCandleRevisionsAt,
+  wo as serializeReplaySession,
   JC as sliverGapBarWidth,
   LN as smoothVisibleYBounds,
-  em as strategyProfileHash,
+  ho as strategyProfileHash,
+  Oo as strictTimeframeToSeconds,
   sN as timeAxisStepSeconds,
   _N as timeWindowToXBounds,
   $Q as timeframeToSeconds,
-  sm as tradePlanId,
-  Wm as universeMembershipObservationId,
+  ao as tradePlanId,
+  Jo as universeMembershipObservationId,
   OY as useGpuChartAppearance,
   qN as viewBoundsToTimeWindow,
   KN as wheelZoomScale,
