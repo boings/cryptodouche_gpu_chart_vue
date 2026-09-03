@@ -247,7 +247,11 @@ contains:
 - selected price and optional range boundaries;
 - source timeframe;
 - `eventTime` and `knownAt`;
-- source object type, source object ID, and a JSON snapshot of the source object.
+- source object type, source object ID, exact source-observation ID, and a JSON
+  snapshot of the source object.
+
+`createDecisionReferenceLevel()` derives the observation ID from the canonical
+source object snapshot and rejects a supplied ID that does not match.
 
 The validator requires `reference.knownAt <= snapshot.effectiveAsOf`, requires the
 ID to exist in the snapshot's reference set, and compares the supplied and frozen
@@ -255,9 +259,10 @@ objects using canonical serialization. A later-discovered or modified level is a
 hard error. The final selected numeric stop/target remains in the plan so future
 changes to swing or S/R algorithms cannot alter historical plans.
 
-Upstream calculations are responsible for assigning durable source-object IDs;
-the trade-planning layer verifies preserved identity but cannot invent provenance
-that was not supplied.
+Upstream calculations are responsible for assigning durable logical object IDs.
+The trade-planning layer derives and verifies the exact revision identity from
+the frozen source snapshot; it cannot invent source provenance that was not
+supplied.
 
 ## Compliance and overrides
 

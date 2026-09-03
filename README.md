@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.22'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.23'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.22'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.23'
 ```
 
 Import the component and CSS:
@@ -247,6 +247,28 @@ example with:
 pnpm audit:trade-plan --out ./trade-plan-audit.json
 ```
 
+### Headless radar selection
+
+The same non-visual core exports path-aware market-move observations,
+`RadarEpisode` selection, and immutable `ReplayCaseManifest` creation:
+
+```ts
+import {
+  EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE,
+  scanRadarEpisodes,
+} from "@cryptodouche/gpu-chart-vue/core";
+```
+
+The bundled profile is an experimental, unoptimized research starting point.
+Run the deterministic rebound, reset/rearm, and continuation audit with:
+
+```sh
+pnpm audit:radar --out ./radar-audit.json
+```
+
+See [`docs/radar-selection-and-replay-manifests.md`](docs/radar-selection-and-replay-manifests.md)
+for detector definitions, causal cutoff semantics, and replay-manifest boundaries.
+
 Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when changing the renderer under `renderer/src`.
 
 Rebuild the renderer after Rust/WebGPU changes:
@@ -267,7 +289,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml docs fixtures scripts src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.22
+git tag v0.1.23
 git push origin main --tags
 ```
 
