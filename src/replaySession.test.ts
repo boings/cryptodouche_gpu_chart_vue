@@ -50,7 +50,8 @@ import {
   type DecisionReferenceLevel,
   type StrategyProfile,
 } from "./strategy";
-import type { CandleRecord } from "./types";
+import type { VenueRiskRules } from "./tradePlanning";
+import type { CandidateMetrics, CandleRecord } from "./types";
 
 const HOUR = 3_600;
 const DAY = 86_400;
@@ -79,6 +80,7 @@ interface ReplayFixture {
   candles: ReplayCandleRecord[];
   analysisStateHistory: ReplayAnalysisStateObservation[];
   knownEvents: ReplayKnownEvent[];
+  venueRules: VenueRiskRules | null;
   loaded: ReplayLoadedCase;
 }
 
@@ -92,6 +94,11 @@ interface ReplayFixtureOptions {
   maximumCaseDuration?: number;
   maximumSingleWaitDuration?: number;
   allowEarlyReveal?: boolean;
+  venueRules?: VenueRiskRules | null;
+  initialLifecycleState?: SetupStateName;
+  initialCandidateMetrics?: CandidateMetrics | null;
+  radarCandles?: CandleRecord[];
+  historicalCandles?: ReplayCandleRecord[];
 }
 
 describe("Replay Phase 1 session engine", () => {
@@ -486,6 +493,112 @@ describe("Replay Phase 1 session engine", () => {
     expect(skipRecord.tags).toEqual(["reviewed", "eventTooMature"]);
   });
 
+  it("integrates compliant, overridden, and invalid finalized trade plans without fills or P&L", async () => {
+    const rules = venueRulesFixture();
+    const episodeHigh = candidateEpisodeReference(DETECTION);
+
+    const compliantFixture = await buildReplayFixture({
+      venueRules: rules,
+      initialLifecycleState: "entryCandidate",
+      initialCandidateMetrics: candidateMetrics(DETECTION),
+      initialReferences: [episodeHigh],
+    });
+    const compliantStarted = await startSession(
+      compliantFixture.loaded,
+      "start:trade-compliant",
+    );
+    const compliant = await applyReplayCommand(
+      compliantFixture.loaded,
+      compliantStarted,
+      proposeTradeCommand(
+        compliantStarted,
+        tradePlanProposal(compliantStarted),
+        "trade:compliant",
+      ),
+    );
+    const compliantAttempt = compliant.session.planningAttempts[0];
+
+    expect(compliant.session.state).toBe("TradePlanRecorded");
+    expect(compliantAttempt).toMatchObject({ accepted: true, rejectionReason: null });
+    expect(compliantAttempt.tradePlan).toMatchObject({
+      status: "finalized",
+      complianceResult: {
+        classification: "Compliant",
+        hardErrors: [],
+        strategyViolations: [],
+      },
+    });
+    expect(compliant.session.decisionRecords[0]).toMatchObject({
+      action: "ProposeTrade",
+      tradePlan: { id: compliantAttempt.tradePlan.id },
+    });
+    expectNoFillOrPnlKeys(compliant.session);
+
+    const overrideFixture = await buildReplayFixture({
+      venueRules: rules,
+      initialLifecycleState: "deteriorating",
+      initialCandidateMetrics: candidateMetrics(DETECTION),
+      initialReferences: [episodeHigh],
+    });
+    const overrideStarted = await startSession(overrideFixture.loaded, "start:trade-override");
+    const overrideReason = "Researching relative deterioration before absolute structure breaks";
+    const overrideProposal = tradePlanProposal(overrideStarted, {
+      discretionaryOverrideReason: overrideReason,
+    });
+    const overridden = await applyReplayCommand(
+      overrideFixture.loaded,
+      overrideStarted,
+      proposeTradeCommand(overrideStarted, overrideProposal, "trade:override"),
+    );
+    const overrideAttempt = overridden.session.planningAttempts[0];
+
+    expect(overridden.session.state).toBe("TradePlanRecorded");
+    expect(overrideAttempt).toMatchObject({ accepted: true, rejectionReason: null });
+    expect(overrideAttempt.tradePlan.complianceResult).toMatchObject({
+      classification: "Overridden",
+      overrideReason,
+    });
+    expect(
+      overrideAttempt.tradePlan.complianceResult.strategyViolations.map((issue) => issue.code),
+    ).toEqual(
+      expect.arrayContaining([
+        "ENTRY_BEFORE_ENTRY_CANDIDATE",
+        "ENTRY_BEFORE_STRUCTURE_BREAK",
+        "ENTRY_BEFORE_RETEST",
+      ]),
+    );
+    expectNoFillOrPnlKeys(overridden.session);
+
+    const invalidFixture = await buildReplayFixture({
+      venueRules: rules,
+      initialLifecycleState: "entryCandidate",
+      initialCandidateMetrics: candidateMetrics(DETECTION),
+      initialReferences: [episodeHigh],
+    });
+    const invalidStarted = await startSession(invalidFixture.loaded, "start:trade-invalid");
+    const validProposal = tradePlanProposal(invalidStarted);
+    const invalidProposal = {
+      ...validProposal,
+      stopPlan: { ...validProposal.stopPlan, stopPrice: validProposal.entryPlan.intendedPrice },
+    };
+    const invalid = await applyReplayCommand(
+      invalidFixture.loaded,
+      invalidStarted,
+      proposeTradeCommand(invalidStarted, invalidProposal, "trade:invalid"),
+    );
+    const invalidAttempt = invalid.session.planningAttempts[0];
+
+    expect(invalid.session.state).toBe("Active");
+    expect(invalid.session.currentFrameId).toBe(invalidStarted.currentFrameId);
+    expect(invalid.session.decisionRecords).toEqual([]);
+    expect(invalidAttempt).toMatchObject({ accepted: false, rejectionReason: "InvalidPlan" });
+    expect(invalidAttempt.tradePlan.complianceResult.classification).toBe("InvalidPlan");
+    expect(invalidAttempt.tradePlan.complianceResult.hardErrors.map((issue) => issue.code)).toContain(
+      "STOP_NOT_ABOVE_ENTRY",
+    );
+    expectNoFillOrPnlKeys(invalid.session);
+  });
+
   it("makes repeated command IDs idempotent and rejects reused payloads or stale revisions", async () => {
     const fixture = await buildReplayFixture();
     const created = createReplaySession(fixture.loaded);
@@ -634,11 +747,186 @@ describe("Replay Phase 1 session engine", () => {
     });
     expect(early.outcomeEnvelope?.revealedBeforeDecisionCompletion).toBe(true);
   });
+
+  it("produces the same current frame from full history and history physically truncated at the cutoff", async () => {
+    const allFutureCandles = Array.from({ length: 8 }, (_, index) =>
+      replayCandle(DETECTION + index * HOUR, 94 + index, { revision: 1 }),
+    );
+    const cutoff = DETECTION + 3 * HOUR;
+    const full = await buildReplayFixture({ futureCandles: allFutureCandles });
+    const truncated = await buildReplayFixture({ futureCandles: allFutureCandles.slice(0, 3) });
+
+    expect(full.loaded.dataBundle.causalPrefixFingerprint).toBe(
+      truncated.loaded.dataBundle.causalPrefixFingerprint,
+    );
+    expect(full.loaded.dataBundle.internalBundleFingerprint).not.toBe(
+      truncated.loaded.dataBundle.internalBundleFingerprint,
+    );
+
+    const fullStarted = await startSession(full.loaded, "start:truncated-equivalence");
+    const truncatedStarted = await startSession(
+      truncated.loaded,
+      "start:truncated-equivalence",
+    );
+    const fullPlan = wakePlan(fullStarted, {
+      scheduledReview: { mode: "elapsedDuration", durationSeconds: 3 * HOUR },
+      deadlineAsOf: cutoff,
+    });
+    const truncatedPlan = wakePlan(truncatedStarted, {
+      scheduledReview: { mode: "elapsedDuration", durationSeconds: 3 * HOUR },
+      deadlineAsOf: cutoff,
+    });
+    const fullAtCutoff = await applyReplayCommand(
+      full.loaded,
+      fullStarted,
+      waitCommand(fullStarted, fullPlan, "wait:truncated-equivalence"),
+    );
+    const truncatedAtCutoff = await applyReplayCommand(
+      truncated.loaded,
+      truncatedStarted,
+      waitCommand(truncatedStarted, truncatedPlan, "wait:truncated-equivalence"),
+    );
+
+    expect(currentFrame(fullAtCutoff.session)).toEqual(currentFrame(truncatedAtCutoff.session));
+    expect(currentFrame(fullAtCutoff.session).effectiveAsOf).toBe(cutoff);
+    expectNoFillOrPnlKeys(fullAtCutoff.session);
+    expectNoFillOrPnlKeys(truncatedAtCutoff.session);
+  });
+
+  it("keeps a 100 to 120 to 145 to 170 continuation path replay-legitimate without assuming reversal", async () => {
+    const continuation = await buildReplayFixture({
+      radarCandles: [
+        radarCandle(DETECTION - 2 * HOUR, 100),
+        radarCandle(DETECTION - HOUR, 120),
+      ],
+      historicalCandles: [
+        replayCandle(ANALYSIS_START, 100, { revision: 1 }),
+        replayCandle(DETECTION - 2 * HOUR, 100, { revision: 1 }),
+        replayCandle(DETECTION - HOUR, 120, { revision: 1 }),
+      ],
+      futureCandles: [
+        replayCandle(DETECTION, 145, { revision: 1 }),
+        replayCandle(DETECTION + HOUR, 170, { revision: 1 }),
+      ],
+    });
+
+    expect(continuation.episode).toMatchObject({
+      detectedAt: DETECTION,
+      effectiveAsOf: DETECTION,
+      triggeringDetectorIds: ["recent-trough-runup"],
+    });
+    const started = await startSession(continuation.loaded, "start:continuation");
+    expect(currentFrame(started).latestVisibleCandleByTimeframe["1h"]?.c).toBe(120);
+
+    const firstPlan = wakePlan(started, {
+      scheduledReview: { mode: "nextCompletedCandle", timeframe: "1h" },
+      deadlineAsOf: DETECTION + 2 * HOUR,
+    });
+    const after145 = await applyReplayCommand(
+      continuation.loaded,
+      started,
+      waitCommand(started, firstPlan, "wait:continuation-145"),
+    );
+    expect(after145.session.state).toBe("Active");
+    expect(currentFrame(after145.session).latestVisibleCandleByTimeframe["1h"]?.c).toBe(145);
+
+    const secondPlan = wakePlan(after145.session, {
+      scheduledReview: { mode: "nextCompletedCandle", timeframe: "1h" },
+      deadlineAsOf: DETECTION + 2 * HOUR,
+    });
+    const after170 = await applyReplayCommand(
+      continuation.loaded,
+      after145.session,
+      waitCommand(after145.session, secondPlan, "wait:continuation-170"),
+    );
+    expect(after170.session.state).toBe("Active");
+    expect(currentFrame(after170.session).latestVisibleCandleByTimeframe["1h"]?.c).toBe(170);
+
+    const skipped = await applyReplayCommand(
+      continuation.loaded,
+      after170.session,
+      skipCommand(after170.session, "skip:continuation", {
+        reasons: ["higherTimeframeContinuationTooStrong"],
+        thesis: "Continuation invalidates the fade thesis",
+      }),
+    );
+    expect(skipped.session.state).toBe("Skipped");
+    expectNoFillOrPnlKeys(skipped.session);
+  });
+
+  it("starts the 100 to 80 to 92 rebound only at the crossing and freezes its path context", async () => {
+    const fixture = await buildReplayFixture();
+    const beforeCross = scanRadarEpisodes({
+      candlesBySymbolAndTimeframe: {
+        [SYMBOL]: {
+          symbol: SYMBOL,
+          source: SOURCE,
+          dataOrigin: "test",
+          candlesByTimeframe: {
+            "1h": [
+              radarCandle(DETECTION - 25 * HOUR, 100),
+              radarCandle(DETECTION - 2 * HOUR, 80),
+            ],
+          },
+        },
+      },
+      selectionProfile: fixture.radarSelectionProfile,
+      strategyProfile: fixture.strategyProfile,
+      from: DETECTION - 25 * HOUR,
+      to: DETECTION - HOUR,
+    });
+
+    expect(beforeCross.episodes).toEqual([]);
+    expect(fixture.episode).toMatchObject({
+      detectedAt: DETECTION,
+      effectiveAsOf: DETECTION,
+      selectionAnchor: { price: 80, timestamp: DETECTION - 2 * HOUR },
+      pathContext: {
+        net24hReturnPct: expect.any(Number),
+        priorDrawdownPct: expect.any(Number),
+        triggeringLocalImpulseReturnPct: expect.any(Number),
+        selectionAnchorPrice: 80,
+        selectionAnchorTime: DETECTION - 2 * HOUR,
+      },
+    });
+    expect(fixture.episode.pathContext.net24hReturnPct).toBeCloseTo(-8, 12);
+    expect(fixture.episode.pathContext.priorDrawdownPct).toBeCloseTo(-20, 12);
+    expect(fixture.episode.pathContext.triggeringLocalImpulseReturnPct).toBeCloseTo(15, 12);
+
+    const started = await startSession(fixture.loaded, "start:drop-rebound");
+    const frozenAnchor = currentFrame(started).radarContext.selectionAnchor;
+    expect(frozenAnchor).toEqual(fixture.episode.selectionAnchor);
+
+    const plan = wakePlan(started, {
+      scheduledReview: { mode: "nextCompletedCandle", timeframe: "1h" },
+      deadlineAsOf: DETECTION + HOUR,
+    });
+    const advanced = await applyReplayCommand(
+      fixture.loaded,
+      started,
+      waitCommand(started, plan, "wait:drop-rebound"),
+    );
+    expect(currentFrame(advanced.session).radarContext).toMatchObject({
+      selectionAnchor: frozenAnchor,
+      pathContext: {
+        net24hReturnPct: fixture.episode.pathContext.net24hReturnPct,
+        priorDrawdownPct: fixture.episode.pathContext.priorDrawdownPct,
+        triggeringLocalImpulseReturnPct:
+          fixture.episode.pathContext.triggeringLocalImpulseReturnPct,
+      },
+    });
+    expectNoFillOrPnlKeys(advanced.session);
+  });
 });
 
 async function buildReplayFixture(options: ReplayFixtureOptions = {}): Promise<ReplayFixture> {
   const strategyProfile = strategyProfileFixture();
   const radarSelectionProfile = radarProfileFixture();
+  const radarCandles = options.radarCandles ?? [
+    radarCandle(DETECTION - 25 * HOUR, 100),
+    radarCandle(DETECTION - 2 * HOUR, 80),
+    radarCandle(DETECTION - HOUR, 92),
+  ];
   const scan = scanRadarEpisodes({
     candlesBySymbolAndTimeframe: {
       [SYMBOL]: {
@@ -646,11 +934,7 @@ async function buildReplayFixture(options: ReplayFixtureOptions = {}): Promise<R
         source: SOURCE,
         dataOrigin: "test",
         candlesByTimeframe: {
-          "1h": [
-            radarCandle(DETECTION - 25 * HOUR, 100),
-            radarCandle(DETECTION - 2 * HOUR, 80),
-            radarCandle(DETECTION - HOUR, 92),
-          ],
+          "1h": radarCandles,
         },
       },
     },
@@ -671,15 +955,23 @@ async function buildReplayFixture(options: ReplayFixtureOptions = {}): Promise<R
       { revision: 1 },
     ),
   );
-  const candles = [
+  const historicalCandles = options.historicalCandles ?? [
     replayCandle(ANALYSIS_START, 70, { revision: 1 }),
     replayCandle(DETECTION - 2 * HOUR, 80, { revision: 1 }),
     replayCandle(DETECTION - HOUR, 92, { revision: 1 }),
+  ];
+  const candles = [
+    ...historicalCandles,
     ...futureCandles,
     ...(options.extraCandles ?? []),
   ];
   const analysisStateHistory = [
-    analysisState(DETECTION, "notCandidate", options.initialReferences ?? []),
+    analysisState(
+      DETECTION,
+      options.initialLifecycleState ?? "notCandidate",
+      options.initialReferences ?? [],
+      options.initialCandidateMetrics ?? null,
+    ),
     ...(options.laterAnalysisStates ?? []),
   ];
   const sessionConfig = createReplaySessionConfig(
@@ -699,6 +991,7 @@ async function buildReplayFixture(options: ReplayFixtureOptions = {}): Promise<R
     historicalDataAdapter: adapter,
     strategyProfile,
     radarSelectionProfile,
+    venueRules: options.venueRules ?? null,
   });
 
   return {
@@ -710,6 +1003,7 @@ async function buildReplayFixture(options: ReplayFixtureOptions = {}): Promise<R
     candles,
     analysisStateHistory,
     knownEvents: options.knownEvents ?? [],
+    venueRules: options.venueRules ?? null,
     loaded,
   };
 }
@@ -781,6 +1075,13 @@ function replayConfigDefinition(
       version: strategyProfile.version,
       profileHash: strategyProfile.profileHash,
     },
+    venueRulesRef: options.venueRules
+      ? {
+          id: `${options.venueRules.venue}:${options.venueRules.symbol}`,
+          version: options.venueRules.feeSchedule.version,
+          hash: canonicalHash(options.venueRules),
+        }
+      : null,
   };
 }
 
@@ -823,15 +1124,16 @@ function analysisState(
   knownAt: number,
   state: SetupStateName,
   references: DecisionReferenceLevel[] = [],
+  metrics: CandidateMetrics | null = null,
 ) {
   return createReplayAnalysisStateObservation({
     symbol: SYMBOL,
     source: SOURCE,
     knownAt,
     lifecycle: lifecycleSnapshot(knownAt, state),
-    candidateMetrics: null,
+    candidateMetrics: metrics,
     structureByTimeframe: { "1h": null },
-    activeStructureLevels: [],
+    activeStructureLevels: references,
     supportResistanceZones: [],
     avwapState: null,
     avwapEvents: [],
@@ -843,6 +1145,7 @@ function analysisState(
 }
 
 function lifecycleSnapshot(asOf: number, state: SetupStateName): SetupStateSnapshot {
+  const hasCandidate = !["notCandidate", "invalidated", "expired"].includes(state);
   return {
     strategy: "pumpFade",
     setupFamily: "impulse_fade_v1",
@@ -857,8 +1160,45 @@ function lifecycleSnapshot(asOf: number, state: SetupStateName): SetupStateSnaps
     reason: "Replay session fixture",
     checks: [],
     updatedTs: asOf,
-    candidate: null,
-    evidence: [],
+    candidate: hasCandidate
+      ? {
+          id: "replay-session:candidate",
+          setupFamily: "impulse_fade_v1",
+          lifecycleVersion: IMPULSE_FADE_LIFECYCLE_VERSION,
+          lifecycleConfigHash: impulseFadeLifecycleConfigHash(),
+          symbol: SYMBOL,
+          source: SOURCE,
+          venue: SOURCE,
+          executionTimeframe: "1h",
+          detectedAt: asOf - HOUR,
+          detectionEventTime: asOf - 2 * HOUR,
+          detectionMetrics: {
+            returnPct: 15,
+            percentile: 98,
+            zScore: 2.7,
+            atrExtension: 2.4,
+          },
+          initialMtfContext: [],
+          episodeHigh: 100,
+          episodeHighTime: asOf - HOUR,
+          currentState: state,
+          stateSince: asOf,
+          terminalAt: null,
+        }
+      : null,
+    evidence: state === "entryCandidate"
+      ? [
+          {
+            id: "replay-session:retest",
+            code: "bearish_retest_rejection",
+            explanation: "Replay fixture retest rejected",
+            eventTime: asOf - HOUR,
+            knownAt: asOf,
+            sourceTimeframe: "1h",
+            contributesTo: "entryCandidate",
+          },
+        ]
+      : [],
     transitions: [],
     pendingConditions: [],
     activeBreakLevel: null,
@@ -867,6 +1207,75 @@ function lifecycleSnapshot(asOf: number, state: SetupStateName): SetupStateSnaps
     invalidationReason: null,
     expiryReason: null,
     dataQuality: [],
+  };
+}
+
+function candidateEpisodeReference(knownAt: number) {
+  return createDecisionReferenceLevel({
+    id: "replay-session:candidate:episode-high",
+    kind: "candidateEpisodeHigh",
+    price: 100,
+    sourceTimeframe: "1h",
+    eventTime: knownAt - HOUR,
+    knownAt,
+    sourceObject: {
+      objectType: "SetupCandidateEpisode",
+      objectId: "replay-session:candidate",
+      snapshot: { episodeHigh: 100, episodeHighTime: knownAt - HOUR },
+    },
+  });
+}
+
+function candidateMetrics(asOf: number): CandidateMetrics {
+  return {
+    symbol: SYMBOL,
+    exchange: SOURCE,
+    marketType: "perp",
+    source: "external",
+    baseTimeframe: "1h",
+    requestedAsOf: asOf,
+    effectiveAsOf: asOf,
+    sampleCount: 100,
+    historyCoverage: {
+      requestedStartTs: asOf - 180 * DAY,
+      requestedEndTs: asOf,
+      availableStartTs: asOf - 180 * DAY,
+      availableEndTs: asOf,
+      coveredSeconds: 180 * DAY,
+      requestedSeconds: 180 * DAY,
+      coverageRatio: 1,
+    },
+    insufficientDataReasons: [],
+    extension: {
+      windowSeconds: DAY,
+      historyDays: 180,
+      sampleCount: 100,
+      latestTs: asOf - HOUR,
+      referenceTs: asOf - DAY,
+      latestClose: 92,
+      referenceClose: 80,
+      returnPct: 15,
+      percentile: 98,
+      zScore: 2.7,
+    },
+    timeframeExtensions: {},
+    updatedAt: asOf,
+  };
+}
+
+function venueRulesFixture(): VenueRiskRules {
+  return {
+    venue: "phemex",
+    symbol: SYMBOL,
+    quantityStep: 0.1,
+    priceTick: 0.001,
+    minQuantity: 0.1,
+    minNotional: 5,
+    maxLeverage: 25,
+    leverageStep: 1,
+    feeSchedule: { makerRate: 0.0002, takerRate: 0.00055, version: "replay-test.1" },
+    maintenanceMarginModel: null,
+    liquidationModel: null,
   };
 }
 
@@ -943,6 +1352,69 @@ function skipCommand(
   return { ...commandBase(session, id), type: "Skip", payload };
 }
 
+type TradePlanProposal = Extract<ReplayCommand, { type: "ProposeTrade" }>["payload"];
+
+function tradePlanProposal(
+  session: ReplaySession,
+  overrides: Partial<TradePlanProposal> = {},
+): TradePlanProposal {
+  const snapshot = currentFrame(session).decisionSnapshot;
+  const episodeHigh = snapshot.visibleOrSelectedReferenceLevels.find(
+    (reference) => reference.kind === "candidateEpisodeHigh",
+  );
+  if (!episodeHigh) throw new Error("Expected a frozen candidate episode-high reference");
+  return {
+    entryPlan: {
+      orderPlanType: "manualReference",
+      intendedPrice: 92,
+      priceSource: "decision snapshot",
+      associatedReferenceLevelId: null,
+      associatedReferenceLevel: null,
+      expiresAt: null,
+      cancellationCondition: null,
+    },
+    stopPlan: {
+      stopPrice: 101,
+      derivationType: "episodeHigh",
+      referenceLevelId: episodeHigh.id,
+      referenceLevel: episodeHigh,
+      buffer: { basisPoints: 100, atrFraction: null, atrValue: null },
+      rationale: "One percent beyond the frozen episode high",
+    },
+    targetPlans: [
+      {
+        id: "target-1",
+        targetPrice: 70,
+        positionFraction: 1,
+        derivationType: "manual",
+        referenceLevelId: null,
+        referenceLevel: null,
+        rationale: "Deterministic replay research target",
+      },
+    ],
+    accountState: { equity: 10_000, availableBalance: 5_000, quoteCurrency: "USDT" },
+    riskRequest: {
+      accountRiskFraction: 0.01,
+      fixedRiskAmount: null,
+      maximumMarginAllocationFraction: 0.25,
+      maximumNotional: null,
+    },
+    leveragePolicy: { mode: "manual", leverage: 2 },
+    stopDistanceAtr: 1.25,
+    discretionaryOverrideReason: null,
+    status: "finalized",
+    ...overrides,
+  };
+}
+
+function proposeTradeCommand(
+  session: ReplaySession,
+  payload: TradePlanProposal,
+  id: string,
+): Extract<ReplayCommand, { type: "ProposeTrade" }> {
+  return { ...commandBase(session, id), type: "ProposeTrade", payload };
+}
+
 function revealCommand(
   session: ReplaySession,
   id: string,
@@ -984,6 +1456,32 @@ function frameIsCutoffSafe(frame: ReplaySession["frames"][number]) {
     .every(
       (candle) => candle.closeTime <= frame.effectiveAsOf && candle.knownAt <= frame.effectiveAsOf,
     );
+}
+
+function expectNoFillOrPnlKeys(value: unknown) {
+  const forbidden = new Set([
+    "fill",
+    "fills",
+    "pnl",
+    "realizedpnl",
+    "unrealizedpnl",
+    "profitandloss",
+    "profitloss",
+  ]);
+  const found: string[] = [];
+  const visit = (entry: unknown) => {
+    if (!entry || typeof entry !== "object") return;
+    if (Array.isArray(entry)) {
+      entry.forEach(visit);
+      return;
+    }
+    for (const [key, child] of Object.entries(entry)) {
+      if (forbidden.has(key.toLowerCase())) found.push(key);
+      visit(child);
+    }
+  };
+  visit(value);
+  expect(found).toEqual([]);
 }
 
 function outcomeStore(fixture: ReplayFixture) {
