@@ -7645,7 +7645,7 @@ const Go = { class: "cdgc-appearance" }, Vo = { class: "cdgc-appearance-color-gr
       lB.value ? (u(), T("div", fY, "Loading")) : Gg.value ? (u(), T("div", HY, S(Gg.value), 1)) : jA("", !0)
     ], 14, uo));
   }
-}), Mm = /* @__PURE__ */ SE(Im, [["__scopeId", "data-v-9146d605"]]);
+}), Mm = /* @__PURE__ */ SE(Im, [["__scopeId", "data-v-bee4659b"]]);
 export {
   OE as DEFAULT_GPU_CHART_APPEARANCE,
   UI as DEFAULT_GPU_CHART_INDICATORS,

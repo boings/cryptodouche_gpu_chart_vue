@@ -7104,8 +7104,11 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-badge-secondary {
+  flex-wrap: wrap;
   gap: 6px;
   line-height: 1.25;
+  overflow: visible;
+  white-space: normal;
 }
 
 .gpu-chart-badge-link {
@@ -7208,13 +7211,12 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-extension-context {
-  min-width: 0;
-  flex: 0 3 auto;
-  max-width: min(42em, 48vw);
+  flex: 0 0 auto;
   color: rgba(203, 213, 225, 0.88);
   font-size: 0.82em;
   font-variant-numeric: tabular-nums;
   opacity: 0.92;
+  white-space: nowrap;
 }
 
 .gpu-chart-extension-context.positive {
@@ -7244,33 +7246,25 @@ function setError(message: string | null) {
 }
 
 .gpu-chart-structure-summary {
-  flex: 1 1 auto;
-  max-width: min(54em, 62vw);
-  padding: 0 4px;
-  border: 1px solid rgba(148, 163, 184, 0.18);
-  border-radius: 4px;
-  background: rgba(15, 23, 42, 0.52);
+  flex: 0 0 auto;
   color: rgba(203, 213, 225, 0.92);
   font-size: 0.82em;
+  white-space: nowrap;
 }
 
 .gpu-chart-structure-summary.bullish {
-  border-color: rgba(34, 197, 94, 0.22);
   color: rgb(74, 222, 128);
 }
 
 .gpu-chart-structure-summary.bearish {
-  border-color: rgba(248, 113, 113, 0.24);
   color: rgb(248, 113, 113);
 }
 
 .gpu-chart-structure-summary.transitional {
-  border-color: rgba(245, 158, 11, 0.24);
   color: rgb(251, 191, 36);
 }
 
 .gpu-chart-structure-summary.range {
-  border-color: rgba(148, 163, 184, 0.24);
   color: rgba(203, 213, 225, 0.94);
 }
 
