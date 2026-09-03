@@ -590,13 +590,14 @@ import {
   computeAnchoredVwapSnapshot,
   computeAtrLine,
   computeBollingerBands,
+  candleCloseTime,
   computeEmaLine,
   computeExtensionSnapshot,
   computeMacd,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
   computeRelativeStrengthDivergences,
-  computeSetupState,
+  evaluateImpulseFadeSnapshot,
   computeRsiLine,
   computeSmaLine,
   computeStochRsi,
@@ -609,6 +610,7 @@ import {
   type MarketStructureState,
   type RelativeStrengthDivergence,
   type SetupExtensionMetrics,
+  type SetupStateSnapshot,
   type StructureActiveLevel,
   type StructureBreak,
   type StructureDirection,
@@ -1882,39 +1884,60 @@ const setupRelativeStrengthDivergences = computed(() => {
     },
   );
 });
+let setupStateCacheKey = "";
+let setupStateCache: SetupStateSnapshot | null = null;
 const setupState = computed(() => {
   void candleCount.value;
-  void liveUpdates.value;
   if (!state?.candles.length || !chartIndicatorEnabled("extensionContext", resolvedAppearance.value)) {
     return null;
   }
-  const latestCandle = state.candles[state.candles.length - 1] ?? null;
-  const marketStructure = currentMarketStructure();
+  const requestedAsOf = candidateMetricsForChart.value?.requestedAsOf ?? Math.floor(Date.now() / 1000);
+  const latestCompleted = [...state.candles]
+    .reverse()
+    .find((item) => candleCloseTime(item, displayTimeframe.value) <= requestedAsOf);
+  if (!latestCompleted) return null;
+  const setupAsOf = candleCloseTime(latestCompleted, displayTimeframe.value);
   const appearance = resolvedAppearance.value;
-  return computeSetupState({
-    candles: state.candles,
+  const cacheKey = [
+    displaySymbol.value,
+    props.exchange ?? "",
+    candidateMetricsForChart.value?.source ?? "chart",
+    displayTimeframe.value,
+    state.firstBucket,
+    latestCompleted.bucket,
+    projectionRevision.value,
+    benchmarkState?.candles.length ?? 0,
+    JSON.stringify(appearance),
+  ].join(":");
+  if (cacheKey === setupStateCacheKey) return setupStateCache;
+  const candlesByTimeframe: Record<string, CandleRecord[]> = {
+    [displayTimeframe.value]: state.candles,
+  };
+  for (const projection of srProjectionStates) {
+    candlesByTimeframe[projection.timeframe] = projection.state.candles;
+  }
+  setupStateCache = evaluateImpulseFadeSnapshot({
     symbol: displaySymbol.value,
     source: candidateMetricsForChart.value?.source ?? "chart",
     venue: props.exchange ?? "",
     executionTimeframe: displayTimeframe.value,
-    extensionOptions: {
-      windowSeconds: appearance.extensionWindowHours * 60 * 60,
-      historyDays: appearance.extensionHistoryDays,
-      minSamples: appearance.extensionMinSamples,
-      emaPeriod: appearance.extensionEmaPeriod,
-      atrPeriod: appearance.extensionAtrPeriod,
+    candlesByTimeframe,
+    supportResistanceZones: setupSupportResistanceZones.value,
+    relativeStrengthEvents: setupRelativeStrengthDivergences.value,
+    avwapEvents: setupAnchoredVwapSignals.value,
+    to: setupAsOf,
+    config: {
+      extensionOptions: {
+        windowSeconds: appearance.extensionWindowHours * 60 * 60,
+        historyDays: appearance.extensionHistoryDays,
+        minSamples: appearance.extensionMinSamples,
+        emaPeriod: appearance.extensionEmaPeriod,
+        atrPeriod: appearance.extensionAtrPeriod,
+      },
     },
-    extension: setupExtensionMetrics.value,
-    marketStructure,
-    structure: marketStructure.summary,
-    htfStructures: mtfStructureEntries.value,
-    srZones: setupSupportResistanceZones.value,
-    rsDivergences: setupRelativeStrengthDivergences.value,
-    anchoredVwapSignals: setupAnchoredVwapSignals.value,
-    avwapDistancePct: anchoredVwapDistancePct.value,
-    latestPrice: lastClose.value ?? latestCandle?.c ?? null,
-    latestTs: latestCandle?.ts ?? null,
   });
+  setupStateCacheKey = cacheKey;
+  return setupStateCache;
 });
 const setupStateText = computed(() => {
   const snapshot = setupState.value;

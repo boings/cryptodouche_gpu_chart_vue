@@ -1,0 +1,49 @@
+{
+  "symbol": "FILUSDT",
+  "source": "external",
+  "venue": "bybit",
+  "executionTimeframe": "1m",
+  "candlesByTimeframe": {
+    "1m": [
+      { "ts": 0, "bucket": 0, "x": 0, "o": 100, "h": 101, "l": 99, "c": 100, "v_base": 100, "v_quote": 10000 },
+      { "ts": 60, "bucket": 60, "x": 1, "o": 100.75, "h": 102, "l": 99.75, "c": 101, "v_base": 100, "v_quote": 10100 },
+      { "ts": 120, "bucket": 120, "x": 2, "o": 101.75, "h": 103, "l": 100.75, "c": 102, "v_base": 100, "v_quote": 10200 },
+      { "ts": 180, "bucket": 180, "x": 3, "o": 102.75, "h": 104, "l": 101.75, "c": 103, "v_base": 100, "v_quote": 10300 },
+      { "ts": 240, "bucket": 240, "x": 4, "o": 111.75, "h": 118, "l": 105.75, "c": 112, "v_base": 100, "v_quote": 11200 },
+      { "ts": 300, "bucket": 300, "x": 5, "o": 111, "h": 112, "l": 108, "c": 109, "v_base": 100, "v_quote": 10900 },
+      { "ts": 360, "bucket": 360, "x": 6, "o": 109.5, "h": 110.1, "l": 106.8, "c": 108, "v_base": 100, "v_quote": 10800 }
+    ]
+  },
+  "candidateMetrics": [
+    { "asOf": 60, "metrics": { "returnPct": 0, "percentile": 50, "zScore": 0, "atrExtension": 0 } },
+    { "asOf": 300, "sampleCount": 90, "metrics": { "returnPct": 11, "percentile": 98, "zScore": 2.4, "atrExtension": 2.2 } }
+  ],
+  "structureEvents": [
+    {
+      "kind": "StructureShift",
+      "direction": "bearish",
+      "label": "Shift",
+      "index": 5,
+      "x": 5,
+      "ts": 300,
+      "bucket": 300,
+      "level": 110,
+      "sourceSwingX": 4,
+      "sourceSwingPrice": 110,
+      "eventTime": 300,
+      "knownAt": 360,
+      "sourceTimeframe": "1m"
+    }
+  ],
+  "from": 60,
+  "to": 420,
+  "config": {
+    "extensionOptions": {
+      "windowSeconds": 60,
+      "historyDays": 1,
+      "minSamples": 1,
+      "emaPeriod": 2,
+      "atrPeriod": 2
+    }
+  }
+}

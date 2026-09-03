@@ -1,3 +1,4 @@
+import { timeframeToSeconds } from "./data";
 import type { CandleRecord } from "./types";
 
 export const IMPULSE_FADE_SETUP_FAMILY = "impulse_fade_v1" as const;
@@ -248,6 +249,7 @@ export interface SetupStateOptions {
   executionTimeframe?: string;
   asOf?: number | null;
   extensionOptions?: ExtensionSnapshotOptions;
+  candidateMetrics?: ImpulseFadeCandidateMetricObservation[];
   extension?: SetupExtensionMetrics | null;
   marketStructure?: MarketStructureState | null;
   structure?: MarketStructureSummary | null;
@@ -356,6 +358,67 @@ export interface SetupConfluenceItem {
   sourceTimeframe?: string;
   level?: number | null;
   value?: number | null;
+}
+
+export interface ImpulseFadeCandidateMetricObservation {
+  asOf: number;
+  knownAt?: number;
+  eventTime?: number;
+  metrics: SetupExtensionMetrics;
+  sampleCount?: number;
+}
+
+export type ImpulseFadeStructureEvent = StructureBreak & {
+  sourceTimeframe?: string;
+};
+
+export interface ImpulseFadeTimelineConfig {
+  extensionOptions?: ExtensionSnapshotOptions;
+  marketStructureOptions?: MarketStructureOptions;
+  resistanceNearPct?: number;
+  retestNearPct?: number;
+  retestToleranceBps?: number;
+  retestToleranceAtr?: number;
+  invalidationBps?: number;
+  maxCandidateAgeSeconds?: number;
+}
+
+export interface ImpulseFadeTimelineOptions {
+  symbol: string;
+  source?: string;
+  venue?: string;
+  executionTimeframe: string;
+  candlesByTimeframe: Record<string, CandleRecord[]>;
+  candidateMetrics?: ImpulseFadeCandidateMetricObservation[];
+  structureEvents?: ImpulseFadeStructureEvent[];
+  supportResistanceZones?: SupportResistanceZone[];
+  avwapEvents?: AnchoredVwapSignal[];
+  relativeStrengthEvents?: RelativeStrengthDivergence[];
+  config?: ImpulseFadeTimelineConfig;
+  evaluationPoints?: number[];
+  from?: number;
+  to?: number;
+}
+
+export interface ImpulseFadeTimelineRecord {
+  asOf: number;
+  candidateGatePassed: boolean;
+  candidateId: string | null;
+  candidateDetectedAt: number | null;
+  initialMtfContext: SetupMtfContextSnapshot[];
+  currentState: SetupStateName;
+  stateSince: number | null;
+  transition: SetupStateTransition | null;
+  transitions: SetupStateTransition[];
+  evidenceAdded: SetupStateEvidence[];
+  pendingConditions: string[];
+  confluence: SetupConfluenceItem[];
+  episodeHigh: number | null;
+  episodeHighTime: number | null;
+  activeBreakLevel: SetupLifecycleLevel | null;
+  retestLevel: SetupLifecycleLevel | null;
+  terminalReason: string | null;
+  dataQualityNotes: string[];
 }
 
 export function computeSmaLine(candles: CandleRecord[], period = 20): Float32Array {
@@ -584,27 +647,43 @@ export function computeExtensionSnapshot(
 }
 
 export function computeSetupState(options: SetupStateOptions = {}): SetupStateSnapshot {
-  const latestPrice = normalizedNullableNumber(options.latestPrice);
-  const marketStructure = options.marketStructure ?? null;
-  const structure = options.structure ?? marketStructure?.summary ?? null;
-  const htfStructures = options.htfStructures ?? [];
-  const srZones = options.srZones ?? [];
+  const executionTimeframe = options.executionTimeframe ?? "chart";
+  const explicitAsOf = normalizedNullableNumber(options.asOf);
   const latestTs =
     normalizedNullableNumber(options.latestTs) ??
-    latestKnownAt(options.candles ?? []) ??
-    normalizedNullableNumber(structure?.updatedTs) ??
+    latestKnownAt(options.candles ?? [], executionTimeframe) ??
+    normalizedNullableNumber(options.structure?.updatedTs) ??
+    normalizedNullableNumber(options.marketStructure?.summary.updatedTs) ??
     null;
-  const asOf = normalizedNullableNumber(options.asOf) ?? latestTs;
-  const executionTimeframe = options.executionTimeframe ?? "chart";
+  const asOf = explicitAsOf ?? latestTs;
+  const latestCandle = asOf == null
+    ? null
+    : latestKnownCandle(options.candles ?? [], asOf, executionTimeframe);
+  const latestPrice = latestCandle?.candle.c ?? normalizedNullableNumber(options.latestPrice);
+  const marketStructure = marketStructureAtCutoff(options.marketStructure ?? null, explicitAsOf);
+  const structure = marketStructure?.summary ?? structureSummaryAtCutoff(options.structure, explicitAsOf);
+  const htfStructureHistory = options.htfStructures ?? [];
+  const htfStructures = explicitAsOf == null
+    ? options.htfStructures ?? []
+    : latestHtfStructureSnapshots(options.htfStructures ?? [], explicitAsOf);
+  const srZones = (options.srZones ?? []).filter(
+    (zone) => explicitAsOf == null || setupEventKnownAt(zone) <= explicitAsOf,
+  );
+  const rsDivergences = (options.rsDivergences ?? []).filter(
+    (event) => explicitAsOf == null || setupEventKnownAt(event) <= explicitAsOf,
+  );
+  const anchoredVwapSignals = (options.anchoredVwapSignals ?? []).filter(
+    (event) => explicitAsOf == null || setupEventKnownAt(event) <= explicitAsOf,
+  );
   const resistanceNearPct = clampNumberOption(options.resistanceNearPct, 0, 10, 1.5);
   const retestNearPct = clampNumberOption(options.retestNearPct, 0, 10, 0.8);
 
   const extension = setupExtensionCheck(options.extension ?? null);
   const htfResistance = setupResistanceCheck(srZones, latestPrice, resistanceNearPct);
-  const rsWeakness = setupRsWeaknessCheck(options.rsDivergences ?? []);
+  const rsWeakness = setupRsWeaknessCheck(rsDivergences);
   const structureShift = setupStructureShiftCheck(structure);
   const avwapFailure = setupAvwapFailureCheck(
-    options.anchoredVwapSignals ?? [],
+    anchoredVwapSignals,
     options.avwapDistancePct,
   );
   const retest = setupRetestCheck(structure, srZones, latestPrice, retestNearPct);
@@ -642,8 +721,10 @@ export function computeSetupState(options: SetupStateOptions = {}): SetupStateSn
       latestPrice,
       marketStructure,
       structure,
-      htfStructures,
+      htfStructures: htfStructureHistory,
       srZones,
+      rsDivergences,
+      anchoredVwapSignals,
       checks,
       executionTimeframe,
     });
@@ -655,6 +736,339 @@ export function computeSetupState(options: SetupStateOptions = {}): SetupStateSn
     reason: setupStateReason(fallbackState, checks),
     dataQuality: ["Chronological setup lifecycle requires candle history"],
   });
+}
+
+function marketStructureAtCutoff(
+  structure: MarketStructureState | null,
+  asOf: number | null,
+) {
+  if (!structure || asOf == null) return structure;
+  const swings = structure.swings.filter((swing) => swing.knownAt <= asOf);
+  const breaks = structure.breaks.filter((event) => event.knownAt <= asOf);
+  const trend = lastItem(breaks)?.direction ?? "neutral";
+  return {
+    swings,
+    breaks,
+    trend,
+    summary: summarizeMarketStructure(swings, breaks, trend),
+  } satisfies MarketStructureState;
+}
+
+function structureSummaryAtCutoff(
+  structure: MarketStructureSummary | null | undefined,
+  asOf: number | null,
+) {
+  if (!structure || asOf == null) return structure ?? null;
+  const updatedTs = normalizedNullableNumber(structure.updatedTs);
+  return updatedTs == null || updatedTs <= asOf ? structure : null;
+}
+
+export function evaluateImpulseFadeTimeline(
+  options: ImpulseFadeTimelineOptions,
+): ImpulseFadeTimelineRecord[] {
+  return evaluateImpulseFadeTimelineInternal(options).records;
+}
+
+export function evaluateImpulseFadeSnapshot(
+  options: ImpulseFadeTimelineOptions,
+): SetupStateSnapshot | null {
+  const points = impulseFadeEvaluationPoints(options);
+  const asOf = lastItem(points);
+  if (asOf == null) return null;
+  const htfStructureHistory = buildHtfStructureHistory(options, asOf);
+  const confirmedExecutionBreaks = new Map<string, StructureBreak>();
+  const executionCandles = options.candlesByTimeframe[options.executionTimeframe] ?? [];
+  const structurePoints = new Set(
+    executionCandles
+      .map((candle) => candleCloseTime(candle, options.executionTimeframe))
+      .filter((knownAt) => knownAt <= asOf),
+  );
+  for (const event of options.structureEvents ?? []) {
+    if (
+      (!event.sourceTimeframe || event.sourceTimeframe === options.executionTimeframe) &&
+      setupEventKnownAt(event) <= asOf
+    ) {
+      structurePoints.add(setupEventKnownAt(event));
+    }
+  }
+  for (const point of [...structurePoints].sort((a, b) => a - b)) {
+    timelineMarketStructure(
+      completedCandlesAt(executionCandles, options.executionTimeframe, point),
+      options.executionTimeframe,
+      options.structureEvents ?? [],
+      options.config?.marketStructureOptions,
+      point,
+      confirmedExecutionBreaks,
+    );
+  }
+  return impulseFadeSnapshotAt(
+    options,
+    asOf,
+    confirmedExecutionBreaks,
+    htfStructureHistory,
+  );
+}
+
+function evaluateImpulseFadeTimelineInternal(options: ImpulseFadeTimelineOptions) {
+  const executionTimeframe = options.executionTimeframe;
+  const executionCandles = options.candlesByTimeframe[executionTimeframe] ?? [];
+  const config = options.config ?? {};
+  const points = impulseFadeEvaluationPoints(options);
+  const htfStructureHistory = buildHtfStructureHistory(
+    options,
+    lastItem(points) ?? 0,
+  );
+  const confirmedExecutionBreaks = new Map<string, StructureBreak>();
+  const seenEvidence = new Set<string>();
+  const seenTransitions = new Set<string>();
+  const emitFrom = normalizedNullableNumber(options.from) ?? -Infinity;
+  let latestSnapshot: SetupStateSnapshot | null = null;
+
+  const records = points.map((asOf) => {
+    const snapshot = impulseFadeSnapshotAt(
+      options,
+      asOf,
+      confirmedExecutionBreaks,
+      htfStructureHistory,
+    );
+    const metricObservation = latestCandidateMetricObservation(options.candidateMetrics, asOf);
+    const extension = metricObservation?.metrics ?? setupMetricsFromExtensionSnapshot(
+      computeExtensionSnapshot(
+        completedCandlesAt(executionCandles, executionTimeframe, asOf),
+        config.extensionOptions,
+      ),
+    );
+    latestSnapshot = snapshot;
+    const evidenceAdded = snapshot.evidence.filter((item) => {
+      if (seenEvidence.has(item.id)) return false;
+      seenEvidence.add(item.id);
+      return item.knownAt >= emitFrom;
+    });
+    const transitions = snapshot.transitions.filter((item) => {
+      const key = setupTransitionKey(item);
+      if (seenTransitions.has(key)) return false;
+      seenTransitions.add(key);
+      return item.knownAt >= emitFrom;
+    });
+
+    return {
+      asOf,
+      candidateGatePassed: setupExtensionGatePass(extension),
+      candidateId: snapshot.candidate?.id ?? null,
+      candidateDetectedAt: snapshot.candidate?.detectedAt ?? null,
+      initialMtfContext: snapshot.candidate?.initialMtfContext ?? [],
+      currentState: snapshot.currentState,
+      stateSince: snapshot.stateSince,
+      transition: lastItem(transitions) ?? null,
+      transitions,
+      evidenceAdded,
+      pendingConditions: snapshot.pendingConditions,
+      confluence: snapshot.confluence,
+      episodeHigh: snapshot.candidate?.episodeHigh ?? null,
+      episodeHighTime: snapshot.candidate?.episodeHighTime ?? null,
+      activeBreakLevel: snapshot.activeBreakLevel,
+      retestLevel: snapshot.retestLevel,
+      terminalReason: snapshot.invalidationReason ?? snapshot.expiryReason,
+      dataQualityNotes: snapshot.dataQuality,
+    };
+  });
+  return { records, latestSnapshot };
+}
+
+function impulseFadeSnapshotAt(
+  options: ImpulseFadeTimelineOptions,
+  asOf: number,
+  confirmedExecutionBreaks: Map<string, StructureBreak>,
+  htfStructureHistory: Array<{ timeframe: string; summary: MarketStructureSummary }>,
+) {
+  const executionTimeframe = options.executionTimeframe;
+  const executionCandles = options.candlesByTimeframe[executionTimeframe] ?? [];
+  const config = options.config ?? {};
+  const closedExecutionCandles = completedCandlesAt(executionCandles, executionTimeframe, asOf);
+  const extensionSnapshot = computeExtensionSnapshot(closedExecutionCandles, config.extensionOptions);
+  const metricObservation = latestCandidateMetricObservation(options.candidateMetrics, asOf);
+  const extension = metricObservation?.metrics ?? setupMetricsFromExtensionSnapshot(extensionSnapshot);
+  const marketStructure = timelineMarketStructure(
+    closedExecutionCandles,
+    executionTimeframe,
+    options.structureEvents ?? [],
+    config.marketStructureOptions,
+    asOf,
+    confirmedExecutionBreaks,
+  );
+  const htfStructures = htfStructureHistory.filter(
+    (entry) => (entry.summary.updatedTs ?? 0) <= asOf,
+  );
+  const latestCandle = lastItem(closedExecutionCandles) ?? null;
+  return computeSetupState({
+    candles: executionCandles,
+    symbol: options.symbol,
+    source: options.source,
+    venue: options.venue,
+    executionTimeframe,
+    asOf,
+    extensionOptions: config.extensionOptions,
+    candidateMetrics: options.candidateMetrics,
+    extension,
+    marketStructure,
+    structure: marketStructure.summary,
+    htfStructures,
+    srZones: options.supportResistanceZones,
+    rsDivergences: options.relativeStrengthEvents,
+    anchoredVwapSignals: options.avwapEvents,
+    latestPrice: latestCandle?.c ?? null,
+    latestTs: asOf,
+    resistanceNearPct: config.resistanceNearPct,
+    retestNearPct: config.retestNearPct,
+    retestToleranceBps: config.retestToleranceBps,
+    retestToleranceAtr: config.retestToleranceAtr,
+    invalidationBps: config.invalidationBps,
+    maxCandidateAgeSeconds: config.maxCandidateAgeSeconds,
+  });
+}
+
+function buildHtfStructureHistory(
+  options: ImpulseFadeTimelineOptions,
+  through: number,
+) {
+  return Object.entries(options.candlesByTimeframe)
+    .filter(([timeframe]) => timeframe !== options.executionTimeframe)
+    .flatMap(([timeframe, candles]) => {
+      const knownTimes = new Set(
+        candles
+          .map((candle) => candleCloseTime(candle, timeframe))
+          .filter((knownAt) => knownAt <= through),
+      );
+      for (const event of options.structureEvents ?? []) {
+        if (event.sourceTimeframe === timeframe && setupEventKnownAt(event) <= through) {
+          knownTimes.add(setupEventKnownAt(event));
+        }
+      }
+      return [...knownTimes]
+        .sort((a, b) => a - b)
+        .map((knownAt) => {
+          const structure = timelineMarketStructure(
+            completedCandlesAt(candles, timeframe, knownAt),
+            timeframe,
+            options.structureEvents ?? [],
+            options.config?.marketStructureOptions,
+            knownAt,
+          );
+          return {
+            timeframe,
+            summary: { ...structure.summary, updatedTs: knownAt },
+          };
+        });
+    });
+}
+
+export const CANDLE_TIMESTAMP_SEMANTICS = "openTime" as const;
+
+export function candleCloseTime(
+  candle: Pick<CandleRecord, "ts" | "bucket">,
+  timeframe: string | number,
+) {
+  const openTime =
+    normalizedNullableNumber(candle.bucket) ?? normalizedNullableNumber(candle.ts) ?? 0;
+  return openTime + Math.max(1, timeframeToSeconds(timeframe));
+}
+
+function completedCandlesAt(
+  candles: CandleRecord[],
+  timeframe: string | number,
+  asOf: number,
+) {
+  return candles.filter((candle) => candleCloseTime(candle, timeframe) <= asOf);
+}
+
+function impulseFadeEvaluationPoints(options: ImpulseFadeTimelineOptions) {
+  const points = new Set<number>();
+  for (const [timeframe, candles] of Object.entries(options.candlesByTimeframe)) {
+    for (const candle of candles) points.add(candleCloseTime(candle, timeframe));
+  }
+  for (const observation of options.candidateMetrics ?? []) {
+    points.add(normalizedNullableNumber(observation.knownAt) ?? observation.asOf);
+  }
+  for (const event of options.structureEvents ?? []) points.add(setupEventKnownAt(event));
+  for (const event of options.avwapEvents ?? []) points.add(setupEventKnownAt(event));
+  for (const event of options.relativeStrengthEvents ?? []) points.add(setupEventKnownAt(event));
+  for (const zone of options.supportResistanceZones ?? []) points.add(setupEventKnownAt(zone));
+  for (const point of options.evaluationPoints ?? []) {
+    const normalized = normalizedNullableNumber(point);
+    if (normalized != null) points.add(normalized);
+  }
+
+  const ordered = [...points].filter(Number.isFinite).sort((a, b) => a - b);
+  const from = normalizedNullableNumber(options.from) ?? ordered[0] ?? 0;
+  const to = normalizedNullableNumber(options.to) ?? lastItem(ordered) ?? from;
+  points.add(from);
+  points.add(to);
+  return [...points]
+    .filter((point) => Number.isFinite(point) && point >= from && point <= to)
+    .sort((a, b) => a - b);
+}
+
+function latestCandidateMetricObservation(
+  observations: ImpulseFadeCandidateMetricObservation[] | undefined,
+  asOf: number,
+) {
+  return lastItem([...(observations ?? [])]
+    .filter((item) => (normalizedNullableNumber(item.knownAt) ?? item.asOf) <= asOf)
+    .sort(
+      (a, b) =>
+        (normalizedNullableNumber(a.knownAt) ?? a.asOf) -
+          (normalizedNullableNumber(b.knownAt) ?? b.asOf) ||
+        a.asOf - b.asOf,
+    )) ?? null;
+}
+
+function timelineMarketStructure(
+  candles: CandleRecord[],
+  executionTimeframe: string,
+  suppliedEvents: ImpulseFadeStructureEvent[],
+  options: MarketStructureOptions | undefined,
+  asOf: number,
+  confirmedBreaks?: Map<string, StructureBreak>,
+) {
+  const derived = computeMarketStructure(candles, options);
+  const supplied = suppliedEvents.filter(
+    (event) =>
+      (!event.sourceTimeframe || event.sourceTimeframe === executionTimeframe) &&
+      setupEventKnownAt(event) <= asOf,
+  );
+  const byId = confirmedBreaks ?? new Map<string, StructureBreak>();
+  for (const event of [...derived.breaks, ...supplied]) {
+    byId.set(
+      setupEventId(
+        event.kind,
+        executionTimeframe,
+        event.eventTime,
+        event.knownAt,
+        `${event.direction}:${event.level}`,
+      ),
+      event,
+    );
+  }
+  const breaks = [...byId.values()].filter((event) => event.knownAt <= asOf).sort(
+    (a, b) => a.knownAt - b.knownAt || a.eventTime - b.eventTime,
+  );
+  if (!breaks.length) return derived;
+  const trend = lastItem(breaks)?.direction ?? derived.trend;
+  return {
+    swings: derived.swings,
+    breaks,
+    trend,
+    summary: summarizeMarketStructure(derived.swings, breaks, trend),
+  } satisfies MarketStructureState;
+}
+
+function setupTransitionKey(transition: SetupStateTransition) {
+  return [
+    transition.from,
+    transition.to,
+    transition.knownAt,
+    ...transition.evidenceIds,
+  ].join(":");
 }
 
 interface ExtensionGatePoint {
@@ -696,18 +1110,27 @@ function computeImpulseFadeLifecycle(
 ): SetupStateSnapshot {
   const candles = options.candles ?? [];
   const extensionOptions = options.extensionOptions ?? {};
-  const gateSeries = buildExtensionGateSeries(candles, extensionOptions, options.asOf);
+  const gateSeries = buildExtensionGateSeries(
+    candles,
+    extensionOptions,
+    options.asOf,
+    options.executionTimeframe,
+    options.candidateMetrics,
+  );
   const dataQuality = setupDataQualityNotes(gateSeries, extensionOptions);
   let selectedGate = selectLifecycleCandidateGate(gateSeries, options);
 
   if (!selectedGate && setupExtensionGatePass(options.extension ?? null)) {
-    const latest = latestKnownCandle(candles, options.asOf);
+    const latest = latestKnownCandle(candles, options.asOf, options.executionTimeframe);
     if (latest) {
       selectedGate = {
         index: latest.index,
         candle: latest.candle,
         eventTime: candleEventTime(latest.candle),
-        knownAt: Math.min(options.asOf, candleKnownAt(candles, latest.index)),
+        knownAt: Math.min(
+          options.asOf,
+          candleKnownAt(candles, latest.index, options.executionTimeframe),
+        ),
         metrics: setupMetricsFromPartial(options.extension ?? null),
         pass: true,
         rollingReturnCount: 0,
@@ -737,11 +1160,36 @@ function buildExtensionGateSeries(
   candles: CandleRecord[],
   options: ExtensionSnapshotOptions,
   asOf: number,
+  executionTimeframe: string,
+  observations: ImpulseFadeCandidateMetricObservation[] | undefined,
 ): ExtensionGatePoint[] {
+  if (observations?.length) {
+    return [...observations]
+      .map((observation) => {
+        const knownAt = normalizedNullableNumber(observation.knownAt) ?? observation.asOf;
+        const latest = latestKnownCandle(candles, knownAt, executionTimeframe);
+        if (!latest || knownAt > asOf) return null;
+        const eventTime =
+          normalizedNullableNumber(observation.eventTime) ?? candleEventTime(latest.candle);
+        const metrics = setupMetricsFromPartial(observation.metrics);
+        return {
+          index: latest.index,
+          candle: latest.candle,
+          eventTime,
+          knownAt,
+          metrics,
+          pass: setupExtensionGatePass(metrics),
+          rollingReturnCount: Math.max(0, Math.trunc(observation.sampleCount ?? 0)),
+        } satisfies ExtensionGatePoint;
+      })
+      .filter((point): point is ExtensionGatePoint => point != null)
+      .sort((a, b) => a.knownAt - b.knownAt || a.eventTime - b.eventTime);
+  }
+
   const gates: ExtensionGatePoint[] = [];
   for (let index = 0; index < candles.length; index += 1) {
     const candle = candles[index];
-    const knownAt = candleKnownAt(candles, index);
+    const knownAt = candleKnownAt(candles, index, executionTimeframe);
     if (knownAt > asOf) continue;
     const snapshot = computeExtensionSnapshot(candles.slice(0, index + 1), options);
     const metrics = setupMetricsFromExtensionSnapshot(snapshot);
@@ -794,7 +1242,10 @@ function evaluateImpulseFadeCandidate(
   const source = options.source ?? "chart";
   const venue = options.venue ?? "";
   const executionTimeframe = options.executionTimeframe;
-  const initialMtfContext = (options.htfStructures ?? []).map((entry) => ({
+  const initialMtfContext = latestHtfStructureSnapshots(
+    options.htfStructures ?? [],
+    gate.knownAt,
+  ).map((entry) => ({
     timeframe: entry.timeframe,
     state: entry.summary.state,
     trend: entry.summary.trend,
@@ -905,7 +1356,12 @@ function evaluateImpulseFadeCandidate(
     }
   }
 
-  const episodeHigh = episodeHighSnapshot(options.candles ?? [], gate.eventTime, asOf);
+  const episodeHigh = episodeHighSnapshot(
+    options.candles ?? [],
+    gate.eventTime,
+    asOf,
+    executionTimeframe,
+  );
   const candidate: SetupCandidateEpisode = {
     id: candidateId,
     setupFamily: IMPULSE_FADE_SETUP_FAMILY,
@@ -960,7 +1416,7 @@ function collectImpulseFadeLifecycleEvents(
   for (const event of options.rsDivergences ?? []) {
     if (event.direction !== "bearish") continue;
     const knownAt = setupEventKnownAt(event);
-    if (knownAt <= gate.knownAt || knownAt > asOf) continue;
+    if (!isCandidateRelativeEvent(event, gate, asOf)) continue;
     const code =
       event.signal === "break"
         ? "rs_break_bearish"
@@ -983,7 +1439,7 @@ function collectImpulseFadeLifecycleEvents(
 
   for (const signal of options.anchoredVwapSignals ?? []) {
     const knownAt = setupEventKnownAt(signal);
-    if (signal.kind !== "failedReclaim" || knownAt <= gate.knownAt || knownAt > asOf) {
+    if (signal.kind !== "failedReclaim" || !isCandidateRelativeEvent(signal, gate, asOf)) {
       continue;
     }
     events.push({
@@ -1004,7 +1460,7 @@ function collectImpulseFadeLifecycleEvents(
   const bearishBreaks: SetupLifecycleEvent[] = [];
   for (const item of structureBreaks) {
     const knownAt = setupEventKnownAt(item);
-    if (item.direction !== "bearish" || knownAt <= gate.knownAt || knownAt > asOf) continue;
+    if (item.direction !== "bearish" || !isCandidateRelativeEvent(item, gate, asOf)) continue;
     const code =
       item.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break";
     const eventId = setupEventId(code, executionTimeframe, item.eventTime, knownAt, item.x);
@@ -1041,13 +1497,17 @@ function collectImpulseFadeLifecycleEvents(
     if (
       item.kind !== "StructureBreak" ||
       item.direction !== "bullish" ||
-      knownAt <= gate.knownAt ||
-      knownAt > asOf
+      !isCandidateRelativeEvent(item, gate, asOf)
     ) {
       continue;
     }
     const sourceCandle = (options.candles ?? [])[item.index];
-    const highBefore = episodeHighSnapshot(options.candles ?? [], gate.eventTime, knownAt - 1);
+    const highBefore = episodeHighSnapshot(
+      options.candles ?? [],
+      gate.eventTime,
+      knownAt - 1,
+      executionTimeframe,
+    );
     const invalidationBps = clampNumberOption(options.invalidationBps, 0, 1000, 10);
     if (
       !sourceCandle ||
@@ -1115,8 +1575,16 @@ function findRetestRejectionEvent(
 
   for (let index = 0; index < candles.length; index += 1) {
     const candle = candles[index];
-    const knownAt = candleKnownAt(candles, index);
-    if (knownAt <= breakEvent.knownAt || knownAt <= gate.knownAt || knownAt > asOf) continue;
+    const knownAt = candleKnownAt(candles, index, options.executionTimeframe);
+    const eventTime = candleEventTime(candle);
+    if (
+      knownAt <= breakEvent.knownAt ||
+      eventTime < breakEvent.knownAt ||
+      eventTime < gate.knownAt ||
+      knownAt > asOf
+    ) {
+      continue;
+    }
     const atr = atrByIndex[index] ?? 0;
     const tolerance = Math.max(
       breakLevel.level * (retestToleranceBps / 10000),
@@ -1136,7 +1604,7 @@ function findRetestRejectionEvent(
       ),
       code: "bearish_retest_rejection",
       explanation: `Bearish rejection after retest of ${formatSetupPrice(breakLevel.level)}`,
-      eventTime: candleEventTime(candle),
+      eventTime,
       knownAt,
       sourceTimeframe: breakLevel.sourceTimeframe,
       price: candle.c,
@@ -1174,7 +1642,10 @@ function collectSetupConfluence(
   }
 
   const avwapLoss = [...(options.anchoredVwapSignals ?? [])]
-    .filter((signal) => signal.kind === "loss" && setupEventKnownAt(signal) > gate.knownAt)
+    .filter(
+      (signal) =>
+        signal.kind === "loss" && isCandidateRelativeEvent(signal, gate, asOf),
+    )
     .sort((a, b) => setupEventKnownAt(b) - setupEventKnownAt(a))[0];
   if (avwapLoss && setupEventKnownAt(avwapLoss) <= asOf) {
     confluence.push({
@@ -1199,7 +1670,7 @@ function collectSetupConfluence(
     });
   }
 
-  for (const entry of options.htfStructures) {
+  for (const entry of latestHtfStructureSnapshots(options.htfStructures, asOf)) {
     if (entry.summary.state === "neutral") continue;
     confluence.push({
       code: "mtf_structure_context",
@@ -1212,6 +1683,21 @@ function collectSetupConfluence(
   }
 
   return confluence;
+}
+
+function latestHtfStructureSnapshots(
+  entries: Array<{ timeframe: string; summary: MarketStructureSummary }>,
+  asOf: number,
+) {
+  const latest = new Map<string, { timeframe: string; summary: MarketStructureSummary }>();
+  for (const entry of entries) {
+    const knownAt = normalizedNullableNumber(entry.summary.updatedTs);
+    if (knownAt != null && knownAt > asOf) continue;
+    const current = latest.get(entry.timeframe);
+    const currentKnownAt = normalizedNullableNumber(current?.summary.updatedTs) ?? -Infinity;
+    if (!current || (knownAt ?? -Infinity) >= currentKnownAt) latest.set(entry.timeframe, entry);
+  }
+  return [...latest.values()];
 }
 
 function setupStructureBreaks(options: ComputeImpulseFadeLifecycleOptions): StructureBreak[] {
@@ -1950,26 +2436,37 @@ function setupEventId(
     .join(":");
 }
 
-function episodeHighSnapshot(candles: CandleRecord[], detectedEventTime: number, asOf: number) {
+function episodeHighSnapshot(
+  candles: CandleRecord[],
+  detectedEventTime: number,
+  asOf: number,
+  timeframe?: string | number,
+) {
   let best: { price: number; eventTime: number } | null = null;
   for (let index = 0; index < candles.length; index += 1) {
     const candle = candles[index];
     const eventTime = candleEventTime(candle);
-    if (eventTime < detectedEventTime || candleKnownAt(candles, index) > asOf) continue;
+    if (eventTime < detectedEventTime || candleKnownAt(candles, index, timeframe) > asOf) continue;
     if (!Number.isFinite(candle.h)) continue;
     if (!best || candle.h > best.price) best = { price: candle.h, eventTime };
   }
   return best;
 }
 
-function latestKnownAt(candles: CandleRecord[]) {
+function latestKnownAt(candles: CandleRecord[], timeframe?: string | number) {
   if (!candles.length) return null;
-  return candleKnownAt(candles, candles.length - 1);
+  return candleKnownAt(candles, candles.length - 1, timeframe);
 }
 
-function latestKnownCandle(candles: CandleRecord[], asOf: number) {
+function latestKnownCandle(
+  candles: CandleRecord[],
+  asOf: number,
+  timeframe?: string | number,
+) {
   for (let index = candles.length - 1; index >= 0; index -= 1) {
-    if (candleKnownAt(candles, index) <= asOf) return { candle: candles[index], index };
+    if (candleKnownAt(candles, index, timeframe) <= asOf) {
+      return { candle: candles[index], index };
+    }
   }
   return null;
 }
@@ -1981,9 +2478,16 @@ function candleEventTime(candle: CandleRecord) {
   return bucket ?? 0;
 }
 
-function candleKnownAt(candles: CandleRecord[], index: number) {
+function candleKnownAt(
+  candles: CandleRecord[],
+  index: number,
+  timeframe?: string | number,
+) {
   const candle = candles[index];
   if (!candle) return 0;
+  if (timeframe != null && String(timeframe).trim() !== "chart") {
+    return candleCloseTime(candle, timeframe);
+  }
   const start = normalizedNullableNumber(candle.bucket) ?? candleEventTime(candle);
   return start + inferredCandleSeconds(candles, index);
 }
@@ -2010,6 +2514,25 @@ function setupEventKnownAt(event: {
     normalizedNullableNumber(event.bucket) ??
     0
   );
+}
+
+function isCandidateRelativeEvent(
+  event: {
+    knownAt?: number | null;
+    eventTime?: number | null;
+    ts?: number | null;
+    bucket?: number | null;
+  },
+  gate: ExtensionGatePoint,
+  asOf: number,
+) {
+  const knownAt = setupEventKnownAt(event);
+  const eventTime =
+    normalizedNullableNumber(event.eventTime) ??
+    normalizedNullableNumber(event.ts) ??
+    normalizedNullableNumber(event.bucket) ??
+    knownAt;
+  return knownAt > gate.knownAt && knownAt <= asOf && eventTime >= gate.knownAt;
 }
 
 function formatSetupStructure(summary: MarketStructureSummary) {
@@ -2239,6 +2762,10 @@ function formatSetupPrice(value: number) {
 
 function normalizedNullableNumber(value: number | null | undefined) {
   return value == null || !Number.isFinite(value) ? null : Number(value);
+}
+
+function lastItem<T>(items: T[]) {
+  return items[items.length - 1];
 }
 
 function latestValidCloseCandle(candles: CandleRecord[]) {
@@ -2591,7 +3118,7 @@ function summarizeMarketStructure(
     lastSwingHigh,
     lastSwingLow,
     updatedX: lastBreak?.x ?? latestSwing?.x ?? null,
-    updatedTs: lastBreak?.ts ?? latestSwing?.ts ?? null,
+    updatedTs: lastBreak?.knownAt ?? latestSwing?.knownAt ?? null,
   };
 }
 

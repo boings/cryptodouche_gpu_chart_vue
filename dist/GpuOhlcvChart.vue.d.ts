@@ -43,12 +43,13 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
 }>, {
     showSma: boolean;
     showEma: boolean;
+    candles: unknown[];
+    candidateMetrics: CandidateMetrics | null;
     title: string;
     exchange: string;
     marketType: string;
     timeframeOptions: Array<string | number>;
     srProjectionTimeframes: Array<string | number>;
-    candles: unknown[];
     dataAdapter: GpuChartDataAdapter;
     synthetic: boolean;
     openOnChartClick: boolean;
@@ -56,6 +57,5 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     showChartSettings: boolean;
     syncId: string | number;
     timeSyncCommand: GpuChartTimeSyncCommand | null;
-    candidateMetrics: CandidateMetrics | null;
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

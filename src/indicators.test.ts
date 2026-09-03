@@ -367,14 +367,14 @@ describe("gpu chart indicators", () => {
       symbol: "filusdt",
       source: "external",
       venue: "bybit",
-      executionTimeframe: "1h",
+      executionTimeframe: "1m",
       extensionOptions: lifecycleExtensionOptions,
       latestPrice: 108,
     });
 
     expect(setup.setupFamily).toBe("impulse_fade_v1");
     expect(setup.state).toBe("developing");
-    expect(setup.candidate?.id).toBe("impulse_fade_v1:filusdt:external:bybit:1h:300");
+    expect(setup.candidate?.id).toBe("impulse_fade_v1:filusdt:external:bybit:1m:300");
     expect(setup.candidate?.detectedAt).toBe(300);
     expect(setup.candidate?.detectionEventTime).toBe(240);
     expect(setup.transitions.map((item) => `${item.from}->${item.to}`)).toEqual([
@@ -386,7 +386,7 @@ describe("gpu chart indicators", () => {
     const setup = computeSetupState({
       candles: lifecycleCandles(),
       symbol: "FILUSDT",
-      executionTimeframe: "1h",
+      executionTimeframe: "1m",
       extensionOptions: lifecycleExtensionOptions,
       latestPrice: 108,
       rsDivergences: [
@@ -408,7 +408,7 @@ describe("gpu chart indicators", () => {
     const setup = computeSetupState({
       candles: lifecycleCandles(),
       symbol: "FILUSDT",
-      executionTimeframe: "1h",
+      executionTimeframe: "1m",
       extensionOptions: lifecycleExtensionOptions,
       asOf: 360,
       latestPrice: 109,
@@ -453,7 +453,7 @@ describe("gpu chart indicators", () => {
     const setup = computeSetupState({
       candles,
       symbol: "FILUSDT",
-      executionTimeframe: "1h",
+      executionTimeframe: "1m",
       extensionOptions: lifecycleExtensionOptions,
       asOf: 420,
       latestPrice: 108,
@@ -475,7 +475,7 @@ describe("gpu chart indicators", () => {
     const setup = computeSetupState({
       candles: lifecycleCandles(),
       symbol: "FILUSDT",
-      executionTimeframe: "1h",
+      executionTimeframe: "1m",
       extensionOptions: lifecycleExtensionOptions,
       asOf: 480,
       latestPrice: 107,

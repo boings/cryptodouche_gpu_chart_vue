@@ -214,6 +214,16 @@ pnpm test
 pnpm build
 ```
 
+The deterministic Impulse Fade lifecycle and its audit input format are documented in
+[`docs/impulse-fade-v1.md`](docs/impulse-fade-v1.md). To print a historical lifecycle trace as
+JSON, run:
+
+```sh
+pnpm audit:impulse-fade ./path/to/input.json
+```
+
+Add `--out ./trace.json` to also write the trace to a file.
+
 Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when changing the renderer under `renderer/src`.
 
 Rebuild the renderer after Rust/WebGPU changes:
@@ -232,7 +242,7 @@ pnpm clean:appledouble
 pnpm test
 pnpm build
 git status
-git add README.md AGENTS.md package.json pnpm-lock.yaml src dist renderer/pkg renderer/src
+git add README.md AGENTS.md package.json pnpm-lock.yaml docs fixtures scripts src dist renderer/pkg renderer/src
 git commit -m "Describe change"
 git tag v0.1.12
 git push origin main --tags

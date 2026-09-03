@@ -21,6 +21,7 @@
     "build": "COPYFILE_DISABLE=1 vite build && COPYFILE_DISABLE=1 vue-tsc -p tsconfig.json --declaration --emitDeclarationOnly && find dist -name '._*' -delete",
     "clean:appledouble": "find . -name '._*' -not -path './node_modules/*' -delete",
     "test": "vitest run",
+    "audit:impulse-fade": "pnpm build && node scripts/audit-impulse-fade.mjs",
     "pack:local": "pnpm build && pnpm clean:appledouble && pnpm pack",
     "build:renderer": "bash scripts/build-renderer.sh"
   },

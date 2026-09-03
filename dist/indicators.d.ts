@@ -193,6 +193,7 @@ export interface SetupStateOptions {
     executionTimeframe?: string;
     asOf?: number | null;
     extensionOptions?: ExtensionSnapshotOptions;
+    candidateMetrics?: ImpulseFadeCandidateMetricObservation[];
     extension?: SetupExtensionMetrics | null;
     marketStructure?: MarketStructureState | null;
     structure?: MarketStructureSummary | null;
@@ -298,6 +299,62 @@ export interface SetupConfluenceItem {
     level?: number | null;
     value?: number | null;
 }
+export interface ImpulseFadeCandidateMetricObservation {
+    asOf: number;
+    knownAt?: number;
+    eventTime?: number;
+    metrics: SetupExtensionMetrics;
+    sampleCount?: number;
+}
+export type ImpulseFadeStructureEvent = StructureBreak & {
+    sourceTimeframe?: string;
+};
+export interface ImpulseFadeTimelineConfig {
+    extensionOptions?: ExtensionSnapshotOptions;
+    marketStructureOptions?: MarketStructureOptions;
+    resistanceNearPct?: number;
+    retestNearPct?: number;
+    retestToleranceBps?: number;
+    retestToleranceAtr?: number;
+    invalidationBps?: number;
+    maxCandidateAgeSeconds?: number;
+}
+export interface ImpulseFadeTimelineOptions {
+    symbol: string;
+    source?: string;
+    venue?: string;
+    executionTimeframe: string;
+    candlesByTimeframe: Record<string, CandleRecord[]>;
+    candidateMetrics?: ImpulseFadeCandidateMetricObservation[];
+    structureEvents?: ImpulseFadeStructureEvent[];
+    supportResistanceZones?: SupportResistanceZone[];
+    avwapEvents?: AnchoredVwapSignal[];
+    relativeStrengthEvents?: RelativeStrengthDivergence[];
+    config?: ImpulseFadeTimelineConfig;
+    evaluationPoints?: number[];
+    from?: number;
+    to?: number;
+}
+export interface ImpulseFadeTimelineRecord {
+    asOf: number;
+    candidateGatePassed: boolean;
+    candidateId: string | null;
+    candidateDetectedAt: number | null;
+    initialMtfContext: SetupMtfContextSnapshot[];
+    currentState: SetupStateName;
+    stateSince: number | null;
+    transition: SetupStateTransition | null;
+    transitions: SetupStateTransition[];
+    evidenceAdded: SetupStateEvidence[];
+    pendingConditions: string[];
+    confluence: SetupConfluenceItem[];
+    episodeHigh: number | null;
+    episodeHighTime: number | null;
+    activeBreakLevel: SetupLifecycleLevel | null;
+    retestLevel: SetupLifecycleLevel | null;
+    terminalReason: string | null;
+    dataQualityNotes: string[];
+}
 export declare function computeSmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeEmaLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeWmaLine(candles: CandleRecord[], period?: number): Float32Array;
@@ -319,6 +376,10 @@ export declare function computeMacd(candles: CandleRecord[], fastPeriod?: number
 export declare function computeAtrLine(candles: CandleRecord[], period?: number): Float32Array;
 export declare function computeExtensionSnapshot(candles: CandleRecord[], options?: ExtensionSnapshotOptions): ExtensionSnapshot;
 export declare function computeSetupState(options?: SetupStateOptions): SetupStateSnapshot;
+export declare function evaluateImpulseFadeTimeline(options: ImpulseFadeTimelineOptions): ImpulseFadeTimelineRecord[];
+export declare function evaluateImpulseFadeSnapshot(options: ImpulseFadeTimelineOptions): SetupStateSnapshot | null;
+export declare const CANDLE_TIMESTAMP_SEMANTICS: "openTime";
+export declare function candleCloseTime(candle: Pick<CandleRecord, "ts" | "bucket">, timeframe: string | number): number;
 export declare function computeAnchoredVwapLine(candles: CandleRecord[], options?: AnchoredVwapOptions): Float32Array;
 export declare function computeAnchoredVwapSnapshot(candles: CandleRecord[], options?: AnchoredVwapOptions): AnchoredVwapSnapshot;
 export declare function computeAnchoredVwapSignals(candles: CandleRecord[], options?: AnchoredVwapOptions, maxSignals?: number): AnchoredVwapSignal[];

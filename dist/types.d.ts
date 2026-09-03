@@ -100,12 +100,34 @@ export interface CandidateTimeframeExtensionMetrics {
     atr: number | null;
     atrExtension: number | null;
 }
+export interface CandidateHistoryCoverage {
+    requestedStartTs: number;
+    requestedEndTs: number;
+    availableStartTs: number | null;
+    availableEndTs: number | null;
+    coveredSeconds: number | null;
+    requestedSeconds: number;
+    coverageRatio: number | null;
+}
+export interface CandidateInsufficientDataReason {
+    code: string;
+    scope: string;
+    message: string;
+    required: number | null;
+    available: number | null;
+    unit: string | null;
+}
 export interface CandidateMetrics {
     symbol: string;
     exchange: string;
     marketType: string;
     source: "local" | "external";
     baseTimeframe: string;
+    requestedAsOf: number | null;
+    effectiveAsOf: number | null;
+    sampleCount: number;
+    historyCoverage: CandidateHistoryCoverage;
+    insufficientDataReasons: CandidateInsufficientDataReason[];
     extension: CandidateExtensionMetrics;
     timeframeExtensions: Record<string, CandidateTimeframeExtensionMetrics>;
     updatedAt: number;
