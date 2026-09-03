@@ -7,7 +7,9 @@ import {
   type JsonValue,
 } from "./serialization";
 import {
+  createStrategyProfile,
   DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
+  strategyProfileHash,
   type DataQualitySeverity,
   type StrategyProfile,
 } from "./strategy";
@@ -272,11 +274,18 @@ export interface RadarHardGateResult {
   code: RadarHardGateCode;
   passed: boolean;
   explanation: string;
+  evidenceObservationIds: string[];
 }
+
+export type RadarHardGateEvidence =
+  | RadarMetricObservation
+  | UniverseMembershipObservation
+  | ExecutionVenueEligibilityObservation;
 
 export interface RadarDetectorResult {
   detectorId: string;
   detectorType: RadarMoveDetector["type"];
+  evaluable: boolean;
   passed: boolean;
   observationIds: string[];
   winningObservationId: string | null;
@@ -290,6 +299,8 @@ export interface RadarGateEvaluation {
   asOf: number;
   detectorResults: RadarDetectorResult[];
   hardGateResults: RadarHardGateResult[];
+  hardGateEvidence: RadarHardGateEvidence[];
+  evaluable: boolean;
   detectorGatePassed: boolean;
   hardGatesPassed: boolean;
   compositePassed: boolean;
@@ -313,6 +324,7 @@ export interface RadarEpisode {
   triggeringObservations: RadarMetricObservation[];
   selectionGateEvaluationId: string;
   hardGateResults: RadarHardGateResult[];
+  hardGateEvidence: RadarHardGateEvidence[];
   contextObservations: RadarMetricObservation[];
   selectionAnchor: RadarSelectionAnchor | null;
   pathContext: RadarPathContext;
@@ -378,6 +390,7 @@ export interface ReplayCaseManifest {
   >;
   initialRadarObservations: RadarMetricObservation[];
   initialHardGateResults: RadarHardGateResult[];
+  initialHardGateEvidence: RadarHardGateEvidence[];
   initialLifecycleState: string | null;
   initialLifecycleStateRef: DurableObjectReference | null;
   executionVenueEligibility: ExecutionVenueEligibilityObservation;
@@ -427,11 +440,16 @@ interface DetectorEvaluationInternal {
 }
 
 interface MutableRadarState {
-  previousGate: boolean;
+  previousGate: boolean | null;
   activeEpisode: RadarEpisode | null;
   blockedEpisode: RadarEpisode | null;
   falseSince: number | null;
   armed: boolean;
+}
+
+interface HardGateEvaluationInternal {
+  results: RadarHardGateResult[];
+  evidence: RadarHardGateEvidence[];
 }
 
 export function radarSelectionProfileHash(
@@ -646,21 +664,26 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
   const replayCaseManifests: ReplayCaseManifest[] = [];
   const seriesIdentities = new Set<string>();
 
-  for (const [seriesKey, series] of Object.entries(input.candlesBySymbolAndTimeframe).sort(
+  for (const [seriesKey, suppliedSeries] of Object.entries(input.candlesBySymbolAndTimeframe).sort(
     ([left], [right]) => left.localeCompare(right),
   )) {
+    const series = cutoffSeries(suppliedSeries, input.to);
     const seriesIdentity = `${series.symbol.toUpperCase()}\u0000${series.source.toLowerCase()}`;
     if (seriesIdentities.has(seriesIdentity)) {
       throw new Error(`Duplicate radar series identity for ${series.symbol} from ${series.source}`);
     }
     seriesIdentities.add(seriesIdentity);
-    const scanCandles = orderedCandles(series.candlesByTimeframe[input.selectionProfile.scanTimeframe] ?? []);
+    const scanCandles = completedCandles(
+      series.candlesByTimeframe[input.selectionProfile.scanTimeframe] ?? [],
+      input.selectionProfile.scanTimeframe,
+      input.to,
+    );
     const points = scanCandles
       .map((item) => candleCloseTime(item, input.selectionProfile.scanTimeframe))
       .filter((asOf) => asOf <= input.to)
       .filter((asOf) => cadenceIncludes(asOf, input.selectionProfile));
     const state: MutableRadarState = {
-      previousGate: false,
+      previousGate: null,
       activeEpisode: null,
       blockedEpisode: null,
       falseSince: null,
@@ -679,8 +702,8 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           }
         }
       }
-      const detectorGatePassed = combineDetectorResults(
-        detectorEvaluations.map((item) => item.result.passed),
+      const detectorGate = combineDetectorResults(
+        detectorEvaluations.map((item) => item.result),
         input.selectionProfile.detectorCombination,
       );
       const venueEligibility = venueEligibilityAt(
@@ -689,7 +712,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         input.selectionProfile,
         input.venueEligibilityHistory ?? [],
       );
-      const hardGateResults = evaluateHardGates(
+      const hardGateEvaluation = evaluateHardGates(
         series,
         asOf,
         input.selectionProfile,
@@ -697,35 +720,55 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         venueEligibility,
         input.universeHistory ?? [],
       );
+      const hardGateResults = hardGateEvaluation.results;
       const hardGatesPassed = hardGateResults.every((gate) => gate.passed);
-      const compositePassed = detectorGatePassed && hardGatesPassed;
+      const compositePassed = detectorGate.passed && hardGatesPassed;
+      const compositeEvaluable = !hardGatesPassed || detectorGate.evaluable;
+      if (inRequestedRange) {
+        for (const evidence of hardGateEvaluation.evidence) {
+          if (evidence.schemaVersion === RADAR_METRIC_OBSERVATION_SCHEMA_VERSION) {
+            observations.set(evidence.observationId, evidence);
+          }
+        }
+      }
       const evaluation = createGateEvaluation(
         series,
         asOf,
         detectorEvaluations.map((item) => item.result),
         hardGateResults,
-        detectorGatePassed,
+        hardGateEvaluation.evidence,
+        detectorGate.passed,
         hardGatesPassed,
         compositePassed,
+        compositeEvaluable,
       );
       if (inRequestedRange) gateEvaluations.push(evaluation);
 
       if (state.activeEpisode && asOf >= state.activeEpisode.activeUntil) {
-        if (inRequestedRange) {
+        if (
+          state.activeEpisode.detectedAt >= input.from &&
+          state.activeEpisode.activeUntil <= input.to
+        ) {
           episodeStatusObservations.push(
-            createStatusObservation(state.activeEpisode, asOf, "expired", "maximumAgeElapsed", "blockedUntilReset"),
+            createStatusObservation(
+              state.activeEpisode,
+              state.activeEpisode.activeUntil,
+              "expired",
+              "maximumAgeElapsed",
+              "blockedUntilReset",
+            ),
           );
         }
         state.activeEpisode = null;
       }
 
-      if (!compositePassed) {
+      if (compositeEvaluable && !compositePassed) {
         state.falseSince ??= asOf;
         if (
           !state.armed &&
           asOf - state.falseSince >= input.selectionProfile.resetPolicy.minimumFalseDurationSeconds
         ) {
-          if (inRequestedRange && state.blockedEpisode) {
+          if (inRequestedRange && state.blockedEpisode?.detectedAt != null && state.blockedEpisode.detectedAt >= input.from) {
             episodeStatusObservations.push(
               createStatusObservation(state.blockedEpisode, asOf, "reset", "radarGateReset", "armed"),
             );
@@ -734,11 +777,13 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           state.blockedEpisode = null;
           state.armed = true;
         }
+      } else if (compositeEvaluable) {
+        state.falseSince = null;
       } else {
         state.falseSince = null;
       }
 
-      if (compositePassed && !state.previousGate && state.armed) {
+      if (compositeEvaluable && compositePassed && state.previousGate === false && state.armed) {
         const episode = createRadarEpisode({
           series,
           seriesKey,
@@ -746,6 +791,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           profile: input.selectionProfile,
           detectorEvaluations,
           selectionEvaluation: evaluation,
+          hardGateEvidence: hardGateEvaluation.evidence,
           venueEligibility,
           lifecycleHistory: input.lifecycleHistory?.[seriesKey] ?? [],
           structureHistory: input.structureHistory ?? [],
@@ -766,7 +812,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         state.armed = false;
       }
 
-      state.previousGate = compositePassed;
+      state.previousGate = compositeEvaluable ? compositePassed : null;
     }
   }
 
@@ -1086,6 +1132,7 @@ function createRadarEpisode(input: {
   profile: RadarSelectionProfile;
   detectorEvaluations: DetectorEvaluationInternal[];
   selectionEvaluation: RadarGateEvaluation;
+  hardGateEvidence: RadarHardGateEvidence[];
   venueEligibility: ExecutionVenueEligibilityObservation;
   lifecycleHistory: readonly SetupStateSnapshot[];
   structureHistory: readonly RadarStructureObservation[];
@@ -1152,7 +1199,11 @@ function createRadarEpisode(input: {
     atrObservation,
     initialMtfStructure,
   );
-  const lifecycle = latestLifecycleAt(input.lifecycleHistory, input.asOf);
+  const lifecycle = latestLifecycleAt(
+    input.lifecycleHistory,
+    input.series,
+    input.asOf,
+  );
   const candidate = lifecycle?.candidate ?? null;
   const lifecycleKnownAt = lifecycle?.asOf ?? null;
   const lifecycleStateRef = lifecycle && lifecycleKnownAt != null
@@ -1188,6 +1239,7 @@ function createRadarEpisode(input: {
     triggeringObservations,
     selectionGateEvaluationId: input.selectionEvaluation.id,
     hardGateResults: input.selectionEvaluation.hardGateResults,
+    hardGateEvidence: input.hardGateEvidence,
     contextObservations,
     selectionAnchor: anchor,
     pathContext,
@@ -1226,7 +1278,13 @@ function createReplayCaseManifest(
   profile: RadarSelectionProfile,
   strategyProfile: StrategyProfile,
 ): ReplayCaseManifest {
-  const inputTimeframes = Object.keys(series.candlesByTimeframe).sort(compareTimeframes);
+  const inputTimeframes = Object.keys(series.candlesByTimeframe)
+    .filter(
+      (timeframe) =>
+        completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, episode.detectedAt)
+          .length > 0,
+    )
+    .sort(compareTimeframes);
   const dataCoverageByTimeframe = Object.fromEntries(
     inputTimeframes.map((timeframe) => {
       const candles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, episode.detectedAt);
@@ -1264,6 +1322,7 @@ function createReplayCaseManifest(
     dataCoverageByTimeframe,
     initialRadarObservations: episode.contextObservations,
     initialHardGateResults: episode.hardGateResults,
+    initialHardGateEvidence: episode.hardGateEvidence,
     initialLifecycleState: episode.initialLifecycleState,
     initialLifecycleStateRef: episode.initialLifecycleStateRef,
     executionVenueEligibility: episode.executionVenueEligibility,
@@ -1390,15 +1449,21 @@ function createMetricObservation(input: {
 }): RadarMetricObservation {
   const historyStart = input.historyCandles[0]?.bucket ?? null;
   const historyEnd = input.historyCandles.at(-1)?.bucket ?? null;
+  const effectiveAsOf =
+    input.timeframe && input.historyCandles.at(-1)
+      ? candleCloseTime(input.historyCandles.at(-1)!, input.timeframe)
+      : input.asOf;
   const inputHash = canonicalHash(
     input.historyCandles.map((item) => ({
       bucket: item.bucket,
+      ts: item.ts,
       o: item.o,
       h: item.h,
       l: item.l,
       c: item.c,
       vBase: finite(item.v_base) ? item.v_base : null,
       vQuote: finite(item.v_quote) ? item.v_quote : null,
+      ver: finite(item.ver) ? item.ver : null,
     })),
   );
   const logicalObjectId = `radar-metric:${hashSuffix({
@@ -1420,8 +1485,8 @@ function createMetricObservation(input: {
     dataOrigin: input.series.dataOrigin ?? null,
     timeframe: input.timeframe,
     requestedAsOf: input.asOf,
-    effectiveAsOf: input.asOf,
-    knownAt: input.asOf,
+    effectiveAsOf,
+    knownAt: effectiveAsOf,
     window: input.window,
     referenceTime: input.referenceTime,
     referenceValue: input.referenceValue,
@@ -1436,9 +1501,10 @@ function createMetricObservation(input: {
     inputHash,
     dataQualityNotes: input.notes,
   };
+  const { requestedAsOf: _requestedAsOf, ...identityDefinition } = definition;
   return immutableJsonClone({
     ...definition,
-    observationId: `radar-observation:${hashSuffix(definition)}`,
+    observationId: `radar-observation:${hashSuffix(identityDefinition)}`,
   });
 }
 
@@ -1515,49 +1581,89 @@ function evaluateHardGates(
   detectors: readonly DetectorEvaluationInternal[],
   venueEligibility: ExecutionVenueEligibilityObservation,
   universeHistory: readonly UniverseMembershipObservation[],
-): RadarHardGateResult[] {
-  return profile.hardGates.map((code) => {
+): HardGateEvaluationInternal {
+  const evidence: RadarHardGateEvidence[] = [];
+  const results = profile.hardGates.map((code) => {
     if (code === "sourcePolicy") {
       const passed =
         profile.sourcePolicy.allowedSources == null ||
         profile.sourcePolicy.allowedSources.includes(series.source);
-      return { code, passed, explanation: passed ? "Source allowed" : "Source excluded" };
+      return hardGateResult(code, passed, passed ? "Source allowed" : "Source excluded", []);
     }
     if (code === "dataQuality") {
+      const observations = dedupeObservations(detectors.flatMap((item) => item.observations));
+      evidence.push(...observations);
       const passed = !detectors.some((item) =>
         item.observations.some((observation) =>
           observation.dataQualityNotes.some((item) => item.severity === "error"),
         ),
       );
-      return { code, passed, explanation: passed ? "Required metrics available" : "Required metric data unavailable" };
+      return hardGateResult(
+        code,
+        passed,
+        passed ? "Required metrics available" : "Required metric data unavailable",
+        observations,
+      );
     }
     if (code === "executionVenueEligibility") {
+      evidence.push(venueEligibility);
       const passed = venuePolicyPasses(venueEligibility.status, profile.executionVenuePolicy.mode);
-      return { code, passed, explanation: `Execution venue ${venueEligibility.status}` };
+      return hardGateResult(
+        code,
+        passed,
+        `Execution venue ${venueEligibility.status}`,
+        [venueEligibility],
+      );
     }
     if (code === "selectedUniverse") {
       const membership = latestUniverseAt(universeHistory, series, asOf);
-      return {
+      if (membership) evidence.push(membership);
+      return hardGateResult(
         code,
-        passed: membership?.included === true,
-        explanation: membership ? (membership.included ? "Symbol included" : "Symbol excluded") : "Historical universe membership unknown",
-      };
+        membership?.included === true,
+        membership
+          ? membership.included
+            ? "Symbol included"
+            : "Symbol excluded"
+          : "Historical universe membership unknown",
+        membership ? [membership] : [],
+      );
     }
     const volume = quoteNotionalObservation(series, asOf, profile);
+    evidence.push(volume);
     const threshold = profile.liquidityPolicy.minimumQuoteNotional;
     const passed = threshold == null || volume.value == null
       ? threshold == null || profile.liquidityPolicy.missingData === "warn"
       : volume.value >= threshold;
-    return {
+    return hardGateResult(
       code,
       passed,
-      explanation: threshold == null
+      threshold == null
         ? "No minimum liquidity configured"
         : volume.value == null
           ? "Quote-notional history unavailable"
           : `Quote notional ${volume.value} versus ${threshold} minimum`,
-    };
+      [volume],
+    );
   });
+  return {
+    results,
+    evidence: dedupeHardGateEvidence(evidence),
+  };
+}
+
+function hardGateResult(
+  code: RadarHardGateCode,
+  passed: boolean,
+  explanation: string,
+  evidence: readonly RadarHardGateEvidence[],
+): RadarHardGateResult {
+  return {
+    code,
+    passed,
+    explanation,
+    evidenceObservationIds: [...new Set(evidence.map((item) => item.observationId))].sort(),
+  };
 }
 
 function venueEligibilityAt(
@@ -1567,22 +1673,26 @@ function venueEligibilityAt(
   history: readonly ExecutionVenueEligibilityObservation[],
 ): ExecutionVenueEligibilityObservation {
   const venue = profile.executionVenuePolicy.intendedVenue ?? "ignored";
-  const match = [...history]
+  const candidates = [...history]
     .filter(
       (item) =>
         item.symbol.toUpperCase() === series.symbol.toUpperCase() &&
-        item.marketDataSource === series.source &&
         item.executionVenue.toLowerCase() === venue.toLowerCase() &&
         item.knownAt <= asOf &&
         item.effectiveFrom <= asOf &&
         (item.effectiveTo == null || item.effectiveTo >= asOf),
-    )
-    .sort((left, right) => left.effectiveFrom - right.effectiveFrom || left.knownAt - right.knownAt)
-    .at(-1);
-  if (match) {
-    if (executionVenueEligibilityObservationId(match) !== match.observationId) {
+    );
+  for (const item of candidates) {
+    if (executionVenueEligibilityObservationId(item) !== item.observationId) {
       throw new Error("Execution-venue eligibility observation failed deterministic verification");
     }
+  }
+  const match = latestUniqueObservation(
+    candidates,
+    (item) => [item.effectiveFrom, item.knownAt],
+    "execution-venue eligibility",
+  );
+  if (match) {
     return match;
   }
   return createExecutionVenueEligibilityObservation({
@@ -1657,9 +1767,11 @@ function createGateEvaluation(
   asOf: number,
   detectorResults: RadarDetectorResult[],
   hardGateResults: RadarHardGateResult[],
+  hardGateEvidence: RadarHardGateEvidence[],
   detectorGatePassed: boolean,
   hardGatesPassed: boolean,
   compositePassed: boolean,
+  evaluable: boolean,
 ): RadarGateEvaluation {
   const definition = {
     symbol: series.symbol,
@@ -1667,6 +1779,8 @@ function createGateEvaluation(
     asOf,
     detectorResults,
     hardGateResults,
+    hardGateEvidence,
+    evaluable,
     detectorGatePassed,
     hardGatesPassed,
     compositePassed,
@@ -1684,9 +1798,15 @@ function detectorResult(
   winningObservationId: string | null,
   explanation: string,
 ): RadarDetectorResult {
+  const evaluable =
+    passed ||
+    observations.every((observation) =>
+      observation.dataQualityNotes.every((item) => item.severity !== "error"),
+    );
   return {
     detectorId: detector.id,
     detectorType: detector.type,
+    evaluable,
     passed,
     observationIds: observations.map((item) => item.observationId),
     winningObservationId,
@@ -1728,13 +1848,21 @@ function completedCandles(
   timeframe: string,
   asOf: number,
 ) {
-  return orderedCandles(candles).filter((item) => candleCloseTime(item, timeframe) <= asOf);
+  const cutoffCandles = candles.filter((item) => {
+    if (!Number.isFinite(item.bucket)) {
+      throw new RangeError("Candle bucket must be finite");
+    }
+    return candleCloseTime(item, timeframe) <= asOf;
+  });
+  return orderedCandles(cutoffCandles);
 }
 
 function orderedCandles(candles: readonly CandleRecord[]) {
   const byBucket = new Map<number, CandleRecord>();
   for (const candle of [...candles].sort((left, right) => left.bucket - right.bucket || left.ts - right.ts)) {
-    if (!validCandle(candle)) continue;
+    if (!validCandle(candle)) {
+      throw new RangeError(`Invalid candle for bucket ${candle.bucket}`);
+    }
     const existing = byBucket.get(candle.bucket);
     if (existing && canonicalCandle(existing) !== canonicalCandle(candle)) {
       throw new Error(
@@ -1746,24 +1874,50 @@ function orderedCandles(candles: readonly CandleRecord[]) {
   return [...byBucket.values()].sort((left, right) => left.bucket - right.bucket);
 }
 
+function cutoffSeries(series: RadarSymbolSeries, asOf: number): RadarSymbolSeries {
+  if (!series.symbol.trim() || !series.source.trim()) {
+    throw new RangeError("Radar symbol and market-data source are required");
+  }
+  const candlesByTimeframe = Object.fromEntries(
+    Object.entries(series.candlesByTimeframe).map(([timeframe, candles]) => {
+      if (!validPositive(timeframeToSeconds(timeframe))) {
+        throw new RangeError(`Invalid radar timeframe ${timeframe}`);
+      }
+      return [timeframe, completedCandles(candles, timeframe, asOf)];
+    }),
+  );
+  return {
+    symbol: series.symbol,
+    source: series.source,
+    dataOrigin: series.dataOrigin ?? null,
+    candlesByTimeframe,
+  };
+}
+
 function structureAt(
   history: readonly RadarStructureObservation[],
   series: RadarSymbolSeries,
   asOf: number,
 ) {
-  const latest = new Map<string, RadarStructureObservation>();
-  for (const item of history
-    .filter(
-      (entry) =>
-        entry.symbol.toUpperCase() === series.symbol.toUpperCase() &&
-        entry.source === series.source &&
-        entry.knownAt <= asOf,
-    )
-    .sort((left, right) => left.knownAt - right.knownAt || left.observationId.localeCompare(right.observationId))) {
+  const eligible = history.filter(
+    (entry) =>
+      entry.symbol.toUpperCase() === series.symbol.toUpperCase() &&
+      entry.source === series.source &&
+      entry.knownAt <= asOf,
+  );
+  for (const item of eligible) {
     if (radarStructureObservationId(item) !== item.observationId) {
       throw new Error("Radar structure observation failed deterministic verification");
     }
-    latest.set(item.timeframe, item);
+  }
+  const latest = new Map<string, RadarStructureObservation>();
+  for (const timeframe of new Set(eligible.map((item) => item.timeframe))) {
+    const selected = latestUniqueObservation(
+      eligible.filter((item) => item.timeframe === timeframe),
+      (item) => [item.knownAt, item.eventTime],
+      `market-structure ${timeframe}`,
+    );
+    if (selected) latest.set(timeframe, selected);
   }
   return Object.fromEntries(
     [...latest.entries()].sort(([left], [right]) => compareTimeframes(left, right)).map(
@@ -1929,11 +2083,94 @@ function atrValues(candles: readonly CandleRecord[], period: number) {
   return values;
 }
 
-function latestLifecycleAt(history: readonly SetupStateSnapshot[], asOf: number) {
-  return [...history]
-    .filter((item) => item.asOf != null && item.asOf <= asOf)
-    .sort((left, right) => (left.asOf ?? 0) - (right.asOf ?? 0))
-    .at(-1) ?? null;
+function latestLifecycleAt(
+  history: readonly SetupStateSnapshot[],
+  series: RadarSymbolSeries,
+  asOf: number,
+) {
+  const eligible = history.filter((item) => item.asOf != null && item.asOf <= asOf);
+  for (const item of eligible) validateLifecycleSnapshotAt(item, series, asOf);
+  const maximumAsOf = Math.max(...eligible.map((item) => item.asOf ?? -Infinity));
+  const latest = eligible.filter((item) => item.asOf === maximumAsOf);
+  if (new Set(latest.map((item) => canonicalSerialize(item))).size > 1) {
+    throw new Error(`Conflicting lifecycle snapshots at ${maximumAsOf}`);
+  }
+  return latest[0] ?? null;
+}
+
+function validateLifecycleSnapshotAt(
+  snapshot: SetupStateSnapshot,
+  series: RadarSymbolSeries,
+  cutoff: number,
+) {
+  if (
+    snapshot.setupFamily !== "impulse_fade_v1" ||
+    snapshot.lifecycleVersion !== IMPULSE_FADE_LIFECYCLE_VERSION ||
+    !snapshot.lifecycleConfigHash.trim()
+  ) {
+    throw new Error("Lifecycle snapshot is incompatible with the radar profile");
+  }
+  assertCausalTime(snapshot.asOf, cutoff, "lifecycle asOf");
+  assertCausalTime(snapshot.updatedTs, cutoff, "lifecycle updatedTs");
+  assertCausalTime(snapshot.stateSince, cutoff, "lifecycle stateSince");
+  const candidate = snapshot.candidate;
+  if (candidate) {
+    if (
+      candidate.symbol.toUpperCase() !== series.symbol.toUpperCase() ||
+      candidate.source.toLowerCase() !== series.source.toLowerCase() ||
+      candidate.setupFamily !== snapshot.setupFamily ||
+      candidate.lifecycleVersion !== snapshot.lifecycleVersion ||
+      candidate.lifecycleConfigHash !== snapshot.lifecycleConfigHash
+    ) {
+      throw new Error("Lifecycle candidate does not match the radar series and lifecycle identity");
+    }
+    for (const [label, value] of [
+      ["candidate detectedAt", candidate.detectedAt],
+      ["candidate detectionEventTime", candidate.detectionEventTime],
+      ["candidate episodeHighTime", candidate.episodeHighTime],
+      ["candidate stateSince", candidate.stateSince],
+      ["candidate terminalAt", candidate.terminalAt],
+    ] as const) {
+      assertCausalTime(value, cutoff, label);
+    }
+    for (const item of candidate.initialMtfContext) {
+      assertCausalTime(item.updatedTs, cutoff, "candidate MTF context updatedTs");
+    }
+  }
+  for (const item of snapshot.evidence) {
+    assertCausalTime(item.eventTime, cutoff, "lifecycle evidence eventTime");
+    assertCausalTime(item.knownAt, cutoff, "lifecycle evidence knownAt");
+    if (item.knownAt < item.eventTime) {
+      throw new Error("Lifecycle evidence knownAt precedes eventTime");
+    }
+  }
+  for (const item of snapshot.transitions) {
+    assertCausalTime(item.knownAt, cutoff, "lifecycle transition knownAt");
+  }
+  for (const [label, item] of [
+    ["active break", snapshot.activeBreakLevel],
+    ["retest", snapshot.retestLevel],
+  ] as const) {
+    if (!item) continue;
+    assertCausalTime(item.eventTime, cutoff, `${label} eventTime`);
+    assertCausalTime(item.knownAt, cutoff, `${label} knownAt`);
+    if (item.knownAt < item.eventTime) {
+      throw new Error(`${label} knownAt precedes eventTime`);
+    }
+  }
+  for (const item of snapshot.confluence) {
+    assertCausalTime(item.eventTime, cutoff, "lifecycle confluence eventTime");
+    assertCausalTime(item.knownAt, cutoff, "lifecycle confluence knownAt");
+    if (item.eventTime != null && item.knownAt != null && item.knownAt < item.eventTime) {
+      throw new Error("Lifecycle confluence knownAt precedes eventTime");
+    }
+  }
+}
+
+function assertCausalTime(value: number | null | undefined, cutoff: number, label: string) {
+  if (value != null && (!Number.isFinite(value) || value > cutoff)) {
+    throw new Error(`${label} exceeds the radar cutoff`);
+  }
 }
 
 function latestUniverseAt(
@@ -1941,7 +2178,7 @@ function latestUniverseAt(
   series: RadarSymbolSeries,
   asOf: number,
 ) {
-  const match = [...history]
+  const candidates = [...history]
     .filter(
       (item) =>
         item.symbol.toUpperCase() === series.symbol.toUpperCase() &&
@@ -1949,13 +2186,17 @@ function latestUniverseAt(
         item.knownAt <= asOf &&
         item.effectiveFrom <= asOf &&
         (item.effectiveTo == null || item.effectiveTo >= asOf),
-    )
-    .sort((left, right) => left.effectiveFrom - right.effectiveFrom || left.knownAt - right.knownAt)
-    .at(-1) ?? null;
-  if (match && universeMembershipObservationId(match) !== match.observationId) {
-    throw new Error("Universe membership observation failed deterministic verification");
+    );
+  for (const item of candidates) {
+    if (universeMembershipObservationId(item) !== item.observationId) {
+      throw new Error("Universe membership observation failed deterministic verification");
+    }
   }
-  return match;
+  return latestUniqueObservation(
+    candidates,
+    (item) => [item.effectiveFrom, item.knownAt],
+    "universe membership",
+  );
 }
 
 function preRollRequirements(profile: RadarSelectionProfile) {
@@ -2000,12 +2241,28 @@ function preRollRequirements(profile: RadarSelectionProfile) {
     }));
 }
 
-function combineDetectorResults(results: readonly boolean[], combination: RadarDetectorCombination) {
-  if (combination.mode === "all") return results.every(Boolean);
-  if (combination.mode === "atLeast") {
-    return results.filter(Boolean).length >= combination.count;
+function combineDetectorResults(
+  results: readonly RadarDetectorResult[],
+  combination: RadarDetectorCombination,
+) {
+  const passing = results.filter((item) => item.passed).length;
+  const unavailable = results.filter((item) => !item.evaluable).length;
+  if (combination.mode === "all") {
+    return {
+      passed: passing === results.length,
+      evaluable: results.some((item) => item.evaluable && !item.passed) || unavailable === 0,
+    };
   }
-  return results.some(Boolean);
+  if (combination.mode === "atLeast") {
+    return {
+      passed: passing >= combination.count,
+      evaluable: passing >= combination.count || passing + unavailable < combination.count,
+    };
+  }
+  return {
+    passed: passing > 0,
+    evaluable: passing > 0 || unavailable === 0,
+  };
 }
 
 function venuePolicyPasses(status: ExecutionVenueEligibilityStatus, mode: ExecutionVenuePolicyMode) {
@@ -2037,6 +2294,9 @@ function validateProfile(definition: RadarSelectionProfileDefinition) {
   if (!validPositive(timeframeToSeconds(definition.scanTimeframe))) {
     createProfileError("scanTimeframe must be valid");
   }
+  if (definition.evaluationCadence.mode !== "completedScanCandle") {
+    createProfileError("Only completed-scan-candle evaluation is supported");
+  }
   if (!Number.isInteger(definition.evaluationCadence.everyBars) || definition.evaluationCadence.everyBars < 1) {
     createProfileError("evaluation cadence must contain a positive integer bar count");
   }
@@ -2046,6 +2306,19 @@ function validateProfile(definition: RadarSelectionProfileDefinition) {
   }
   if (new Set(definition.hardGates).size !== definition.hardGates.length) {
     createProfileError("Hard gates must be unique");
+  }
+  const supportedHardGates = new Set<RadarHardGateCode>([
+    "dataQuality",
+    "liquidity",
+    "selectedUniverse",
+    "sourcePolicy",
+    "executionVenueEligibility",
+  ]);
+  if (definition.hardGates.some((item) => !supportedHardGates.has(item))) {
+    createProfileError("Radar profile contains an unsupported hard gate");
+  }
+  if (!["any", "all", "atLeast"].includes(definition.detectorCombination.mode)) {
+    createProfileError("Radar profile contains an unsupported detector combination");
   }
   if (
     definition.detectorCombination.mode === "atLeast" &&
@@ -2062,19 +2335,85 @@ function validateProfile(definition: RadarSelectionProfileDefinition) {
   ) {
     createProfileError("Episode expiry, reset duration, and createdAt must be valid");
   }
+  if (
+    (definition.sourcePolicy.allowedSources != null &&
+      (definition.sourcePolicy.allowedSources.some((item) => !item.trim()) ||
+        new Set(definition.sourcePolicy.allowedSources).size !==
+          definition.sourcePolicy.allowedSources.length)) ||
+    !["requireKnownAvailable", "allowUnknown", "ignore", "rejectKnownUnavailable"].includes(
+      definition.executionVenuePolicy.mode,
+    ) ||
+    (definition.executionVenuePolicy.mode !== "ignore" &&
+      !definition.executionVenuePolicy.intendedVenue?.trim()) ||
+    (definition.liquidityPolicy.minimumQuoteNotional != null &&
+      (!Number.isFinite(definition.liquidityPolicy.minimumQuoteNotional) ||
+        definition.liquidityPolicy.minimumQuoteNotional < 0)) ||
+    !validPositive(definition.liquidityPolicy.windowSeconds) ||
+    !["fail", "warn"].includes(definition.liquidityPolicy.missingData)
+  ) {
+    createProfileError("Radar profile policies are invalid");
+  }
   for (const detector of definition.moveDetectors) validateDetector(detector);
 }
 
 function validateDetector(detector: RadarMoveDetector) {
   if (!detector.id.trim()) createProfileError("Detector ID is required");
-  const numericValues = Object.entries(detector)
-    .filter(([key, value]) => key !== "minimumReturnPct" && key !== "minimumPercentile" && key !== "minimumZScore" && typeof value === "number")
-    .map(([, value]) => value as number);
-  if (numericValues.some((value) => !Number.isFinite(value) || value < 0)) {
-    createProfileError(`Detector ${detector.id} contains invalid numeric settings`);
+  if (!["elapsedWindowReturn", "rollingTroughRunup", "emaAtrDisplacement", "maximumWindowReturn"].includes(detector.type)) {
+    createProfileError(`Detector ${detector.id} has an unsupported type`);
   }
-  if (detector.type === "maximumWindowReturn" && !detector.windowsSeconds.length) {
-    createProfileError(`Detector ${detector.id} requires at least one window`);
+  if (!Number.isInteger(detector.minimumSampleCount) || detector.minimumSampleCount < 0) {
+    createProfileError(`Detector ${detector.id} has an invalid sample count`);
+  }
+  if (detector.type === "emaAtrDisplacement") {
+    if (
+      !validPositive(timeframeToSeconds(detector.analysisTimeframe)) ||
+      !Number.isInteger(detector.emaPeriod) ||
+      detector.emaPeriod < 1 ||
+      !Number.isInteger(detector.atrPeriod) ||
+      detector.atrPeriod < 1 ||
+      !Number.isFinite(detector.minimumAtrDisplacement)
+    ) {
+      createProfileError(`Detector ${detector.id} has invalid EMA/ATR settings`);
+    }
+    return;
+  }
+  if (
+    !validPositive(detector.historyLookbackSeconds) ||
+    !validNullableNumber(detector.minimumPercentile, 0, 100) ||
+    !validNullableNumber(detector.minimumZScore)
+  ) {
+    createProfileError(`Detector ${detector.id} contains invalid statistical settings`);
+  }
+  if (detector.type === "rollingTroughRunup") {
+    if (
+      !validPositive(detector.lookbackSeconds) ||
+      !Number.isFinite(detector.minimumRunupPct) ||
+      detector.minimumRunupPct < 0 ||
+      !validPositive(detector.maximumTroughAgeSeconds) ||
+      detector.referenceField !== "close"
+    ) {
+      createProfileError(`Detector ${detector.id} has invalid rolling-trough settings`);
+    }
+    return;
+  }
+  if (
+    !validNullableNumber(detector.minimumReturnPct) ||
+    (detector.maximumReferenceStalenessSeconds != null &&
+      (!Number.isFinite(detector.maximumReferenceStalenessSeconds) ||
+        detector.maximumReferenceStalenessSeconds < 0))
+  ) {
+    createProfileError(`Detector ${detector.id} has invalid return settings`);
+  }
+  if (detector.type === "elapsedWindowReturn" && !validPositive(detector.windowSeconds)) {
+    createProfileError(`Detector ${detector.id} requires a positive window`);
+  }
+  if (
+    detector.type === "maximumWindowReturn" &&
+    (!detector.windowsSeconds.length ||
+      detector.windowsSeconds.some((item) => !validPositive(item)) ||
+      new Set(detector.windowsSeconds).size !== detector.windowsSeconds.length)
+  ) {
+    createProfileError(`Detector ${detector.id} requires unique positive windows`);
   }
 }
 
@@ -2085,6 +2424,19 @@ function validateScanInput(input: RadarScanInput) {
   if (radarSelectionProfileHash(input.selectionProfile) !== input.selectionProfile.canonicalConfigHash) {
     throw new Error("Radar selection profile failed deterministic hash verification");
   }
+  const { canonicalConfigHash: _profileHash, ...profileDefinition } = input.selectionProfile;
+  validateProfile(profileDefinition);
+  if (input.strategyProfile) {
+    if (strategyProfileHash(input.strategyProfile) !== input.strategyProfile.profileHash) {
+      throw new Error("Strategy profile failed deterministic hash verification");
+    }
+    const { profileHash: _strategyHash, ...strategyDefinition } = input.strategyProfile;
+    createStrategyProfile(strategyDefinition);
+  }
+}
+
+function validNullableNumber(value: number | null, minimum = -Infinity, maximum = Infinity) {
+  return value == null || (Number.isFinite(value) && value >= minimum && value <= maximum);
 }
 
 function optionalMinimum(value: number | null, required: number | null) {
@@ -2094,11 +2446,21 @@ function optionalMinimum(value: number | null, required: number | null) {
 function validCandle(candle: CandleRecord) {
   return (
     Number.isFinite(candle.bucket) &&
+    Number.isFinite(candle.ts) &&
     validPositive(candle.o) &&
     validPositive(candle.h) &&
     validPositive(candle.l) &&
-    validPositive(candle.c)
+    validPositive(candle.c) &&
+    candle.h >= Math.max(candle.o, candle.c, candle.l) &&
+    candle.l <= Math.min(candle.o, candle.c, candle.h) &&
+    optionalNonnegative(candle.v_base) &&
+    optionalNonnegative(candle.v_quote) &&
+    optionalNonnegative(candle.ver)
   );
+}
+
+function optionalNonnegative(value: number | undefined) {
+  return value == null || (Number.isFinite(value) && value >= 0);
 }
 
 function validPositive(value: number) {
@@ -2121,6 +2483,39 @@ function dedupeNotes(notes: readonly RadarDataQualityNote[]) {
 function dedupeObservations(observations: readonly RadarMetricObservation[]) {
   return [...new Map(observations.map((item) => [item.observationId, item])).values()]
     .sort(compareObservations);
+}
+
+function dedupeHardGateEvidence(evidence: readonly RadarHardGateEvidence[]) {
+  return [...new Map(evidence.map((item) => [item.observationId, item])).values()].sort(
+    (left, right) => left.observationId.localeCompare(right.observationId),
+  );
+}
+
+function latestUniqueObservation<T extends { observationId: string }>(
+  observations: readonly T[],
+  precedence: (item: T) => readonly number[],
+  label: string,
+): T | null {
+  if (!observations.length) return null;
+  const ordered = [...observations].sort((left, right) => {
+    const leftKey = precedence(left);
+    const rightKey = precedence(right);
+    for (let index = 0; index < Math.max(leftKey.length, rightKey.length); index += 1) {
+      const difference = (leftKey[index] ?? -Infinity) - (rightKey[index] ?? -Infinity);
+      if (difference !== 0) return difference;
+    }
+    return left.observationId.localeCompare(right.observationId);
+  });
+  const selected = ordered.at(-1)!;
+  const selectedKey = precedence(selected);
+  const competing = ordered.filter((item) => {
+    const key = precedence(item);
+    return key.length === selectedKey.length && key.every((value, index) => value === selectedKey[index]);
+  });
+  if (new Set(competing.map((item) => item.observationId)).size > 1) {
+    throw new Error(`Conflicting ${label} observations at the same precedence`);
+  }
+  return selected;
 }
 
 function compareObservations(left: RadarMetricObservation, right: RadarMetricObservation) {
