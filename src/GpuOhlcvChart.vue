@@ -471,59 +471,66 @@
       :class="{ 'gpu-chart-badge-link': openOnChartClickActive }"
       v-bind="badgeProps"
     >
-      <span class="gpu-chart-dot" :class="{ live: streaming }"></span>
-      <span class="gpu-chart-symbol">{{ displaySymbol }}</span>
-      <button
-        v-if="chartSettingsEnabled"
-        type="button"
-        class="gpu-chart-badge-gear"
-        :aria-expanded="chartSettingsOpen"
-        :aria-label="`${displaySymbol} settings`"
-        :title="`${displaySymbol} settings`"
-        @click.stop.prevent="toggleChartSettings"
-      >
-        &#9881;
-      </button>
-      <span v-if="lastCloseText" class="gpu-chart-price">{{ lastCloseText }}</span>
-      <span v-if="changePctText" class="gpu-chart-change" :class="changeClass">
-        {{ changePctText }}
-      </span>
-      <select
-        v-if="timeframeSelectable"
-        class="gpu-chart-timeframe-select"
-        :value="displayTimeframe"
-        :aria-label="`${displaySymbol} timeframe`"
-        title="Timeframe"
-        @click.stop
-        @mousedown.stop
-        @dblclick.stop
-        @change="setDisplayTimeframe"
-      >
-        <option v-for="option in selectableTimeframes" :key="option" :value="option">
-          {{ option }}
-        </option>
-      </select>
-      <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
-      <span
-        v-if="extensionContextText"
-        class="gpu-chart-extension-context"
-        :class="extensionContextClass"
-      >
-        {{ extensionContextText }}
+      <span class="gpu-chart-badge-row gpu-chart-badge-primary">
+        <span class="gpu-chart-dot" :class="{ live: streaming }"></span>
+        <span class="gpu-chart-symbol">{{ displaySymbol }}</span>
+        <button
+          v-if="chartSettingsEnabled"
+          type="button"
+          class="gpu-chart-badge-gear"
+          :aria-expanded="chartSettingsOpen"
+          :aria-label="`${displaySymbol} settings`"
+          :title="`${displaySymbol} settings`"
+          @click.stop.prevent="toggleChartSettings"
+        >
+          &#9881;
+        </button>
+        <span v-if="lastCloseText" class="gpu-chart-price">{{ lastCloseText }}</span>
+        <span v-if="changePctText" class="gpu-chart-change" :class="changeClass">
+          {{ changePctText }}
+        </span>
+        <select
+          v-if="timeframeSelectable"
+          class="gpu-chart-timeframe-select"
+          :value="displayTimeframe"
+          :aria-label="`${displaySymbol} timeframe`"
+          title="Timeframe"
+          @click.stop
+          @mousedown.stop
+          @dblclick.stop
+          @change="setDisplayTimeframe"
+        >
+          <option v-for="option in selectableTimeframes" :key="option" :value="option">
+            {{ option }}
+          </option>
+        </select>
+        <span v-else class="gpu-chart-timeframe">{{ displayTimeframe }}</span>
       </span>
       <span
-        v-if="anchoredVwapDistanceText"
-        class="gpu-chart-avwap-distance"
-        :class="anchoredVwapDistanceClass"
+        v-if="badgeDetailsVisible"
+        class="gpu-chart-badge-row gpu-chart-badge-secondary"
       >
-        {{ anchoredVwapDistanceText }}
-      </span>
-      <span
-        v-if="structureSummaryText"
-        class="gpu-chart-structure-summary"
-        :class="structureSummaryClass"
-      >
-        {{ structureSummaryText }}
+        <span
+          v-if="extensionContextText"
+          class="gpu-chart-extension-context"
+          :class="extensionContextClass"
+        >
+          {{ extensionContextText }}
+        </span>
+        <span
+          v-if="anchoredVwapDistanceText"
+          class="gpu-chart-avwap-distance"
+          :class="anchoredVwapDistanceClass"
+        >
+          {{ anchoredVwapDistanceText }}
+        </span>
+        <span
+          v-if="structureSummaryText"
+          class="gpu-chart-structure-summary"
+          :class="structureSummaryClass"
+        >
+          {{ structureSummaryText }}
+        </span>
       </span>
     </component>
     <button
@@ -1793,6 +1800,13 @@ const badgeTitle = computed(() =>
   ]
     .filter(Boolean)
     .join(" "),
+);
+const badgeDetailsVisible = computed(() =>
+  Boolean(
+    extensionContextText.value ||
+      anchoredVwapDistanceText.value ||
+      structureSummaryText.value,
+  ),
 );
 const badgeProps = computed(() => {
   const attrs = {
@@ -6810,20 +6824,41 @@ function setError(message: string | null) {
   top: 5px;
   z-index: 2;
   display: inline-flex;
-  align-items: center;
-  gap: 5px;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 2px;
   max-width: calc(100% - 12px);
-  padding: 2px 6px;
+  padding: 3px 6px;
   border-radius: 4px;
   background: var(--gpu-chart-badge-bg, rgba(0, 0, 0, 0.42));
   color: var(--gpu-chart-text-color, rgba(255, 255, 255, 0.86));
   font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
   font-size: var(--gpu-chart-font-size, 11px);
-  line-height: 1.35;
+  line-height: 1.25;
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
   text-decoration: none;
+}
+
+.gpu-chart-badge-row {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.gpu-chart-badge-primary {
+  line-height: 1.2;
+}
+
+.gpu-chart-badge-secondary {
+  gap: 6px;
+  line-height: 1.25;
 }
 
 .gpu-chart-badge-link {
@@ -6865,6 +6900,7 @@ function setError(message: string | null) {
 
 .gpu-chart-symbol {
   min-width: 0;
+  max-width: 16ch;
   flex: 0 1 auto;
   font-weight: 700;
 }
