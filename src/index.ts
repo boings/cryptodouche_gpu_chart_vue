@@ -2,6 +2,7 @@ export * from "./appearance";
 export * from "./bars";
 export * from "./data";
 export * from "./indicators";
+export * from "./radar";
 export * from "./scheduler";
 export * from "./serialization";
 export * from "./strategy";
