@@ -1,0 +1,1018 @@
+{
+  "commands": [
+    {
+      "id": "continuation:start",
+      "payload": {},
+      "type": "StartSession"
+    },
+    {
+      "id": "continuation:wait-145",
+      "payload": {
+        "reason": "waiting_for_structure_break",
+        "thesis": "Review the first completed continuation candle",
+        "wakePlan": {
+          "conditions": [],
+          "deadlineAfterSeconds": 7200,
+          "scheduledReview": {
+            "mode": "nextCompletedCandle",
+            "timeframe": "1h"
+          }
+        }
+      },
+      "type": "Wait"
+    },
+    {
+      "id": "continuation:wait-170",
+      "payload": {
+        "reason": "waiting_for_structure_break",
+        "thesis": "Review one additional completed continuation candle",
+        "wakePlan": {
+          "conditions": [],
+          "deadlineAfterSeconds": 7200,
+          "scheduledReview": {
+            "mode": "nextCompletedCandle",
+            "timeframe": "1h"
+          }
+        }
+      },
+      "type": "Wait"
+    },
+    {
+      "id": "continuation:skip",
+      "payload": {
+        "reasons": [
+          "higherTimeframeContinuationTooStrong"
+        ],
+        "thesis": "Continuation invalidates the fade thesis"
+      },
+      "type": "Skip"
+    },
+    {
+      "id": "continuation:reveal",
+      "payload": {
+        "abandonActive": false
+      },
+      "type": "RevealOutcome"
+    }
+  ],
+  "config": {
+    "allowDiscretionaryOverrides": true,
+    "allowEarlyReveal": false,
+    "allowOutOfStrategyPlans": false,
+    "allowedWakeConditionTypes": [
+      "NextLifecycleTransition",
+      "LifecycleStateEntered",
+      "StructureEventConfirmed",
+      "AvwapEventConfirmed",
+      "RelativeStrengthEventConfirmed",
+      "PriceCrossesKnownLevel",
+      "PriceEntersKnownZone",
+      "RadarOrLifecycleTerminal",
+      "AnyOf"
+    ],
+    "canonicalConfigHash": "fnv1a64:a0ca41a59bdc5591",
+    "completedCandlesOnly": true,
+    "defaultWaitDeadline": 7200,
+    "displayPreRollByTimeframe": {
+      "1h": 172800
+    },
+    "endOnLifecycleTerminal": false,
+    "endOnRadarEpisodeTerminal": false,
+    "evaluationTimeframe": "1h",
+    "id": "replay-example.continuation.session",
+    "identityPresentationMode": "full",
+    "maximumCaseDuration": 21600,
+    "maximumSingleWaitDuration": 14400,
+    "replayEngineVersion": "replay-engine.1",
+    "schemaVersion": "replay-session-config.1",
+    "strategyProfileRef": {
+      "id": "replay-example.continuation.strategy",
+      "profileHash": "fnv1a64:b557794ee5c70b8f",
+      "version": "1"
+    },
+    "venueRulesRef": null,
+    "version": "1",
+    "visibleTimeframes": [
+      "1h"
+    ]
+  },
+  "data": {
+    "analysisStateHistory": [
+      {
+        "activeStructureLevels": [],
+        "avwapEvents": [],
+        "avwapState": null,
+        "candidateMetrics": null,
+        "dataQualityNotes": [],
+        "id": "replay-analysis-state:dc2d5639b0ce2936",
+        "knownAt": 1719878400,
+        "lifecycle": {
+          "activeBreakLevel": null,
+          "asOf": 1719878400,
+          "candidate": null,
+          "checks": [],
+          "confluence": [],
+          "currentState": "notCandidate",
+          "dataQuality": [],
+          "evidence": [],
+          "executionTimeframe": "1h",
+          "expiryReason": null,
+          "invalidationReason": null,
+          "label": "PUMP FADE NOT CANDIDATE",
+          "lifecycleConfigHash": "fnv1a64:761921830014999a",
+          "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+          "pendingConditions": [],
+          "reason": "Deterministic replay example initial state",
+          "retestLevel": null,
+          "setupFamily": "impulse_fade_v1",
+          "state": "notCandidate",
+          "stateSince": 1719878400,
+          "strategy": "pumpFade",
+          "transitions": [],
+          "updatedTs": 1719878400
+        },
+        "relativeStrengthEvents": [],
+        "relativeStrengthState": null,
+        "schemaVersion": "replay-analysis-state.1",
+        "source": "bybit",
+        "structureByTimeframe": {
+          "1h": null
+        },
+        "supportResistanceZones": [],
+        "symbol": "SOLUSDT",
+        "visibleOrSelectedReferenceLevels": []
+      }
+    ],
+    "candleRevisions": [],
+    "candles": [
+      {
+        "c": 100,
+        "closeTime": 1704330000,
+        "correctionPublishedAt": null,
+        "h": 100,
+        "knownAt": 1704330000,
+        "l": 100,
+        "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1704326400",
+        "o": 100,
+        "observationId": "replay-candle-observation:98eb18913d028ddf",
+        "openTime": 1704326400,
+        "revision": 1,
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "vBase": 1000,
+        "vQuote": 100000
+      },
+      {
+        "c": 100,
+        "closeTime": 1719874800,
+        "correctionPublishedAt": null,
+        "h": 100,
+        "knownAt": 1719874800,
+        "l": 100,
+        "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719871200",
+        "o": 100,
+        "observationId": "replay-candle-observation:fc0d21630cd0645d",
+        "openTime": 1719871200,
+        "revision": 1,
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "vBase": 1000,
+        "vQuote": 100000
+      },
+      {
+        "c": 120,
+        "closeTime": 1719878400,
+        "correctionPublishedAt": null,
+        "h": 120,
+        "knownAt": 1719878400,
+        "l": 120,
+        "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719874800",
+        "o": 120,
+        "observationId": "replay-candle-observation:b9d7eb5dbf0b2545",
+        "openTime": 1719874800,
+        "revision": 1,
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "vBase": 1000,
+        "vQuote": 120000
+      },
+      {
+        "c": 145,
+        "closeTime": 1719882000,
+        "correctionPublishedAt": null,
+        "h": 145,
+        "knownAt": 1719882000,
+        "l": 145,
+        "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719878400",
+        "o": 145,
+        "observationId": "replay-candle-observation:276c82cefb0ca298",
+        "openTime": 1719878400,
+        "revision": 1,
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "vBase": 1000,
+        "vQuote": 145000
+      },
+      {
+        "c": 170,
+        "closeTime": 1719885600,
+        "correctionPublishedAt": null,
+        "h": 170,
+        "knownAt": 1719885600,
+        "l": 170,
+        "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719882000",
+        "o": 170,
+        "observationId": "replay-candle-observation:ab55f30558737596",
+        "openTime": 1719882000,
+        "revision": 1,
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "vBase": 1000,
+        "vQuote": 170000
+      }
+    ],
+    "knownEvents": [],
+    "radarEpisodes": [
+      {
+        "activeUntil": 1719900000,
+        "contextObservations": [
+          {
+            "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 86400-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:aafbd9321686fa09",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:1056614cf3884ec0",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:56f4ef7852b5aada",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 86400,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:6b843299cda75e5e",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [
+              {
+                "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+                "message": "No completed 172800-second reference exists",
+                "severity": "warning"
+              }
+            ],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:00205e3d320d4aaa",
+            "metricCode": "elapsed_window_return",
+            "metricVersion": "elapsed-window-return.1",
+            "observationId": "radar-observation:6d8051079d8598af",
+            "percentile": null,
+            "referenceTime": null,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:73bc83e2ceb89f4e",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 0,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": null,
+            "window": 172800,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:3259907679a9e70d",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:ecded0f817aa69bf",
+            "metricCode": "rolling_trough_runup",
+            "metricVersion": "rolling-trough-runup.1",
+            "observationId": "radar-observation:8dd95dbc747114de",
+            "percentile": 100,
+            "referenceTime": 1719871200,
+            "referenceValue": 100,
+            "requestId": "radar-observation-request:81425517daf85569",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 1,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": 19.999999999999996,
+            "window": 172800,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:ec940ecaf0bf875d",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [
+              {
+                "code": "INSUFFICIENT_METRIC_HISTORY",
+                "message": "EMA/ATR displacement requires 20 completed 1h candles",
+                "severity": "error"
+              }
+            ],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:54551e0ac61b2510",
+            "metricCode": "ema_atr_displacement",
+            "metricVersion": "ema-atr-displacement.1",
+            "observationId": "radar-observation:959266e8db12ed6f",
+            "percentile": null,
+            "referenceTime": 1719874800,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:60af06bba4016dfd",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "atr",
+            "value": null,
+            "window": null,
+            "zScore": null
+          },
+          {
+            "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:f1b6090555fbe923",
+            "metricCode": "quote_notional",
+            "metricVersion": "quote-notional.1",
+            "observationId": "radar-observation:c8105cae0ccbc82d",
+            "percentile": null,
+            "referenceTime": 1719871200,
+            "referenceValue": null,
+            "requestId": "radar-observation-request:7b7a84d09b51efae",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 2,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "quoteNotional",
+            "value": 220000,
+            "window": 86400,
+            "zScore": null
+          }
+        ],
+        "dataQualityNotes": [
+          {
+            "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+            "message": "No completed 86400-second reference exists",
+            "severity": "warning"
+          },
+          {
+            "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+            "message": "No completed 172800-second reference exists",
+            "severity": "warning"
+          },
+          {
+            "code": "EXECUTION_VENUE_HISTORY_UNAVAILABLE",
+            "message": "No point-in-time execution-venue eligibility observation was supplied",
+            "severity": "warning"
+          },
+          {
+            "code": "INSUFFICIENT_METRIC_HISTORY",
+            "message": "EMA/ATR displacement requires 20 completed 1h candles",
+            "severity": "error"
+          }
+        ],
+        "detectedAt": 1719878400,
+        "effectiveAsOf": 1719878400,
+        "executionVenueEligibility": {
+          "dataQualityNotes": [
+            {
+              "code": "EXECUTION_VENUE_HISTORY_UNAVAILABLE",
+              "message": "No point-in-time execution-venue eligibility observation was supplied",
+              "severity": "warning"
+            }
+          ],
+          "effectiveFrom": 1719878400,
+          "effectiveTo": null,
+          "evidenceSource": "missingHistoricalObservation",
+          "executionVenue": "phemex",
+          "knownAt": 1719878400,
+          "logicalObjectId": "execution-venue:phemex:SOLUSDT",
+          "marketDataSource": "bybit",
+          "observationId": "execution-venue-observation:102c43c285e1c186",
+          "schemaVersion": "execution-venue-eligibility.1",
+          "status": "Unknown",
+          "symbol": "SOLUSDT"
+        },
+        "hardGateEvidence": [],
+        "hardGateResults": [],
+        "id": "radar-episode:a888b0d305dc92fd",
+        "initialLifecycleCandidateId": null,
+        "initialLifecycleCandidateRef": null,
+        "initialLifecycleState": null,
+        "initialLifecycleStateRef": null,
+        "initialMtfStructure": {},
+        "logicalObjectId": "radar-episode:a888b0d305dc92fd",
+        "observationId": "radar-episode-observation:ef41589137cc5195",
+        "pathContext": {
+          "contextTags": [
+            "unknown"
+          ],
+          "currentAtrDisplacement": null,
+          "mtfStructureStates": {},
+          "net24hReturnPct": null,
+          "net48hReturnPct": null,
+          "priorDrawdownPct": 0,
+          "priorPeakPrice": 100,
+          "priorPeakTime": 1719871200,
+          "quoteNotional": 220000,
+          "recoveryFraction": null,
+          "selectionAnchorAgeSeconds": 3600,
+          "selectionAnchorPrice": 100,
+          "selectionAnchorTime": 1719871200,
+          "triggeringDetectorId": "recent-trough-runup",
+          "triggeringLocalImpulseReturnPct": 19.999999999999996,
+          "triggeringPercentile": 100,
+          "triggeringWindowSeconds": 172800,
+          "triggeringZScore": null
+        },
+        "rearmState": "blockedUntilReset",
+        "scanTimeframe": "1h",
+        "schemaVersion": "radar-episode.1",
+        "selectionAnchor": {
+          "ageSeconds": 3600,
+          "logicalObjectId": "selection-anchor:74661aed924e4e11",
+          "observationId": "selection-anchor-observation:3c44b4fe15a8926c",
+          "price": 100,
+          "referenceField": "close",
+          "sourceObservationId": "radar-observation:8dd95dbc747114de",
+          "timestamp": 1719871200
+        },
+        "selectionGateEvaluationId": "radar-gate:dcddf32055a7383f",
+        "selectionProfileHash": "fnv1a64:f132a6c41afb646a",
+        "selectionProfileId": "replay-example.continuation.radar",
+        "selectionProfileVersion": "1",
+        "setupFamily": "impulse_fade_v1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "terminalAt": null,
+        "terminalReason": null,
+        "triggeringDetectorIds": [
+          "recent-trough-runup"
+        ],
+        "triggeringObservations": [
+          {
+            "configHash": "fnv1a64:3259907679a9e70d",
+            "dataOrigin": "generated-replay-example",
+            "dataQualityNotes": [],
+            "effectiveAsOf": 1719878400,
+            "historyEnd": 1719874800,
+            "historyStart": 1719871200,
+            "inputHash": "fnv1a64:69bafad87109084f",
+            "knownAt": 1719878400,
+            "logicalObjectId": "radar-metric:ecded0f817aa69bf",
+            "metricCode": "rolling_trough_runup",
+            "metricVersion": "rolling-trough-runup.1",
+            "observationId": "radar-observation:8dd95dbc747114de",
+            "percentile": 100,
+            "referenceTime": 1719871200,
+            "referenceValue": 100,
+            "requestId": "radar-observation-request:81425517daf85569",
+            "requestedAsOf": 1719878400,
+            "sampleCount": 1,
+            "schemaVersion": "radar-metric-observation.1",
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "unit": "percent",
+            "value": 19.999999999999996,
+            "window": 172800,
+            "zScore": null
+          }
+        ]
+      }
+    ],
+    "revisionHistoryAvailable": true,
+    "schemaVersion": "replay-json-data.1",
+    "source": "bybit",
+    "symbol": "SOLUSDT",
+    "universeEvidence": [],
+    "venueEvidence": []
+  },
+  "description": "Deterministic Replay Phase 1 continuation example",
+  "id": "replay-example.continuation",
+  "manifest": {
+    "availableTimeframes": [
+      "1h"
+    ],
+    "dataCoverageByTimeframe": {
+      "1h": {
+        "availableEnd": 1719874800,
+        "availableStart": 1719871200,
+        "completedCandleCount": 2,
+        "completedThrough": 1719878400
+      }
+    },
+    "dataQualityNotes": [
+      {
+        "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+        "message": "No completed 86400-second reference exists",
+        "severity": "warning"
+      },
+      {
+        "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+        "message": "No completed 172800-second reference exists",
+        "severity": "warning"
+      },
+      {
+        "code": "EXECUTION_VENUE_HISTORY_UNAVAILABLE",
+        "message": "No point-in-time execution-venue eligibility observation was supplied",
+        "severity": "warning"
+      },
+      {
+        "code": "INSUFFICIENT_METRIC_HISTORY",
+        "message": "EMA/ATR displacement requires 20 completed 1h candles",
+        "severity": "error"
+      }
+    ],
+    "detectedAt": 1719878400,
+    "executionVenueEligibility": {
+      "dataQualityNotes": [
+        {
+          "code": "EXECUTION_VENUE_HISTORY_UNAVAILABLE",
+          "message": "No point-in-time execution-venue eligibility observation was supplied",
+          "severity": "warning"
+        }
+      ],
+      "effectiveFrom": 1719878400,
+      "effectiveTo": null,
+      "evidenceSource": "missingHistoricalObservation",
+      "executionVenue": "phemex",
+      "knownAt": 1719878400,
+      "logicalObjectId": "execution-venue:phemex:SOLUSDT",
+      "marketDataSource": "bybit",
+      "observationId": "execution-venue-observation:102c43c285e1c186",
+      "schemaVersion": "execution-venue-eligibility.1",
+      "status": "Unknown",
+      "symbol": "SOLUSDT"
+    },
+    "futureOutcomeRef": null,
+    "id": "replay-case:f7a96594101b6f5e",
+    "initialHardGateEvidence": [],
+    "initialHardGateResults": [],
+    "initialLifecycleState": null,
+    "initialLifecycleStateRef": null,
+    "initialRadarObservations": [
+      {
+        "configHash": "fnv1a64:e2d0012a5f4fdcf0",
+        "dataOrigin": "generated-replay-example",
+        "dataQualityNotes": [
+          {
+            "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+            "message": "No completed 86400-second reference exists",
+            "severity": "warning"
+          }
+        ],
+        "effectiveAsOf": 1719878400,
+        "historyEnd": 1719874800,
+        "historyStart": 1719871200,
+        "inputHash": "fnv1a64:69bafad87109084f",
+        "knownAt": 1719878400,
+        "logicalObjectId": "radar-metric:aafbd9321686fa09",
+        "metricCode": "elapsed_window_return",
+        "metricVersion": "elapsed-window-return.1",
+        "observationId": "radar-observation:1056614cf3884ec0",
+        "percentile": null,
+        "referenceTime": null,
+        "referenceValue": null,
+        "requestId": "radar-observation-request:56f4ef7852b5aada",
+        "requestedAsOf": 1719878400,
+        "sampleCount": 0,
+        "schemaVersion": "radar-metric-observation.1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "unit": "percent",
+        "value": null,
+        "window": 86400,
+        "zScore": null
+      },
+      {
+        "configHash": "fnv1a64:6b843299cda75e5e",
+        "dataOrigin": "generated-replay-example",
+        "dataQualityNotes": [
+          {
+            "code": "ELAPSED_REFERENCE_UNAVAILABLE",
+            "message": "No completed 172800-second reference exists",
+            "severity": "warning"
+          }
+        ],
+        "effectiveAsOf": 1719878400,
+        "historyEnd": 1719874800,
+        "historyStart": 1719871200,
+        "inputHash": "fnv1a64:69bafad87109084f",
+        "knownAt": 1719878400,
+        "logicalObjectId": "radar-metric:00205e3d320d4aaa",
+        "metricCode": "elapsed_window_return",
+        "metricVersion": "elapsed-window-return.1",
+        "observationId": "radar-observation:6d8051079d8598af",
+        "percentile": null,
+        "referenceTime": null,
+        "referenceValue": null,
+        "requestId": "radar-observation-request:73bc83e2ceb89f4e",
+        "requestedAsOf": 1719878400,
+        "sampleCount": 0,
+        "schemaVersion": "radar-metric-observation.1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "unit": "percent",
+        "value": null,
+        "window": 172800,
+        "zScore": null
+      },
+      {
+        "configHash": "fnv1a64:3259907679a9e70d",
+        "dataOrigin": "generated-replay-example",
+        "dataQualityNotes": [],
+        "effectiveAsOf": 1719878400,
+        "historyEnd": 1719874800,
+        "historyStart": 1719871200,
+        "inputHash": "fnv1a64:69bafad87109084f",
+        "knownAt": 1719878400,
+        "logicalObjectId": "radar-metric:ecded0f817aa69bf",
+        "metricCode": "rolling_trough_runup",
+        "metricVersion": "rolling-trough-runup.1",
+        "observationId": "radar-observation:8dd95dbc747114de",
+        "percentile": 100,
+        "referenceTime": 1719871200,
+        "referenceValue": 100,
+        "requestId": "radar-observation-request:81425517daf85569",
+        "requestedAsOf": 1719878400,
+        "sampleCount": 1,
+        "schemaVersion": "radar-metric-observation.1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "unit": "percent",
+        "value": 19.999999999999996,
+        "window": 172800,
+        "zScore": null
+      },
+      {
+        "configHash": "fnv1a64:ec940ecaf0bf875d",
+        "dataOrigin": "generated-replay-example",
+        "dataQualityNotes": [
+          {
+            "code": "INSUFFICIENT_METRIC_HISTORY",
+            "message": "EMA/ATR displacement requires 20 completed 1h candles",
+            "severity": "error"
+          }
+        ],
+        "effectiveAsOf": 1719878400,
+        "historyEnd": 1719874800,
+        "historyStart": 1719871200,
+        "inputHash": "fnv1a64:69bafad87109084f",
+        "knownAt": 1719878400,
+        "logicalObjectId": "radar-metric:54551e0ac61b2510",
+        "metricCode": "ema_atr_displacement",
+        "metricVersion": "ema-atr-displacement.1",
+        "observationId": "radar-observation:959266e8db12ed6f",
+        "percentile": null,
+        "referenceTime": 1719874800,
+        "referenceValue": null,
+        "requestId": "radar-observation-request:60af06bba4016dfd",
+        "requestedAsOf": 1719878400,
+        "sampleCount": 2,
+        "schemaVersion": "radar-metric-observation.1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "unit": "atr",
+        "value": null,
+        "window": null,
+        "zScore": null
+      },
+      {
+        "configHash": "fnv1a64:2ffdc8e021ce6fe0",
+        "dataOrigin": "generated-replay-example",
+        "dataQualityNotes": [],
+        "effectiveAsOf": 1719878400,
+        "historyEnd": 1719874800,
+        "historyStart": 1719871200,
+        "inputHash": "fnv1a64:69bafad87109084f",
+        "knownAt": 1719878400,
+        "logicalObjectId": "radar-metric:f1b6090555fbe923",
+        "metricCode": "quote_notional",
+        "metricVersion": "quote-notional.1",
+        "observationId": "radar-observation:c8105cae0ccbc82d",
+        "percentile": null,
+        "referenceTime": 1719871200,
+        "referenceValue": null,
+        "requestId": "radar-observation-request:7b7a84d09b51efae",
+        "requestedAsOf": 1719878400,
+        "sampleCount": 2,
+        "schemaVersion": "radar-metric-observation.1",
+        "source": "bybit",
+        "symbol": "SOLUSDT",
+        "timeframe": "1h",
+        "unit": "quoteNotional",
+        "value": 220000,
+        "window": 86400,
+        "zScore": null
+      }
+    ],
+    "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+    "preRollRequirements": [
+      {
+        "minimumBars": 0,
+        "minimumDurationSeconds": 172800,
+        "purposes": [
+          "24h/48h path context",
+          "liquidity context",
+          "recent-trough-runup"
+        ],
+        "timeframe": "1h"
+      }
+    ],
+    "radarEpisodeId": "radar-episode:a888b0d305dc92fd",
+    "radarEpisodeObservationId": "radar-episode-observation:ef41589137cc5195",
+    "schemaVersion": "replay-case-manifest.1",
+    "selectionProfileRef": {
+      "canonicalConfigHash": "fnv1a64:f132a6c41afb646a",
+      "id": "replay-example.continuation.radar",
+      "version": "1"
+    },
+    "source": "bybit",
+    "startAsOf": 1719878400,
+    "strategyProfileRef": {
+      "id": "replay-example.continuation.strategy",
+      "profileHash": "fnv1a64:b557794ee5c70b8f",
+      "version": "1"
+    },
+    "symbol": "SOLUSDT"
+  },
+  "outcomes": {
+    "replay-case:f7a96594101b6f5e": {
+      "dataQualityNotes": [],
+      "futureCandlesByTimeframe": {
+        "1h": [
+          {
+            "c": 145,
+            "closeTime": 1719882000,
+            "correctionPublishedAt": null,
+            "h": 145,
+            "knownAt": 1719882000,
+            "l": 145,
+            "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719878400",
+            "o": 145,
+            "observationId": "replay-candle-observation:276c82cefb0ca298",
+            "openTime": 1719878400,
+            "revision": 1,
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "vBase": 1000,
+            "vQuote": 145000
+          },
+          {
+            "c": 170,
+            "closeTime": 1719885600,
+            "correctionPublishedAt": null,
+            "h": 170,
+            "knownAt": 1719885600,
+            "l": 170,
+            "logicalCandleId": "replay-candle:bybit:SOLUSDT:1h:1719882000",
+            "o": 170,
+            "observationId": "replay-candle-observation:ab55f30558737596",
+            "openTime": 1719882000,
+            "revision": 1,
+            "source": "bybit",
+            "symbol": "SOLUSDT",
+            "timeframe": "1h",
+            "vBase": 1000,
+            "vQuote": 170000
+          }
+        ]
+      },
+      "lifecycleStateTimestamps": {
+        "developing": 1719878400,
+        "invalidated": 1719882000
+      },
+      "lifecycleTimeline": [
+        {
+          "knownAt": 1719878400,
+          "state": "developing"
+        },
+        {
+          "knownAt": 1719882000,
+          "state": "invalidated"
+        }
+      ],
+      "maximumAdversePriceExcursionFromDetected": 50,
+      "maximumFavorablePriceExcursionFromDetected": 0,
+      "radarTerminalResult": {
+        "closePath": [
+          100,
+          120,
+          145,
+          170
+        ],
+        "scenario": "continuation"
+      }
+    }
+  },
+  "profiles": {
+    "radarSelection": {
+      "canonicalConfigHash": "fnv1a64:f132a6c41afb646a",
+      "createdAt": 1719792000,
+      "detectorCombination": {
+        "mode": "any"
+      },
+      "episodeExpiry": {
+        "maximumAgeSeconds": 21600
+      },
+      "evaluationCadence": {
+        "everyBars": 1,
+        "mode": "completedScanCandle"
+      },
+      "executionVenuePolicy": {
+        "intendedVenue": "phemex",
+        "mode": "allowUnknown"
+      },
+      "hardGates": [],
+      "id": "replay-example.continuation.radar",
+      "liquidityPolicy": {
+        "minimumQuoteNotional": null,
+        "missingData": "warn",
+        "windowSeconds": 86400
+      },
+      "moveDetectors": [
+        {
+          "historyLookbackSeconds": 15552000,
+          "id": "recent-trough-runup",
+          "lookbackSeconds": 172800,
+          "maximumTroughAgeSeconds": 172800,
+          "minimumPercentile": null,
+          "minimumRunupPct": 15,
+          "minimumSampleCount": 0,
+          "minimumZScore": null,
+          "referenceField": "close",
+          "type": "rollingTroughRunup"
+        }
+      ],
+      "name": "Replay example continuation radar",
+      "resetPolicy": {
+        "minimumFalseDurationSeconds": 7200
+      },
+      "scanTimeframe": "1h",
+      "schemaVersion": "radar-selection-profile.1",
+      "setupFamily": "impulse_fade_v1",
+      "sourcePolicy": {
+        "allowedSources": [
+          "bybit"
+        ]
+      },
+      "version": "1"
+    },
+    "strategy": {
+      "createdAt": 1719792000,
+      "entryPolicy": {
+        "confirmedRejectionRequired": true,
+        "eligibleLifecycleStates": [
+          "entryCandidate"
+        ],
+        "factors": {
+          "contextualConfluence": [
+            "higherTimeframeResistance",
+            "relativeStrengthWeakness",
+            "avwapFailure"
+          ],
+          "hardGate": [
+            "activeCandidate",
+            "entryCandidate",
+            "confirmedRetest",
+            "referenceIntegrity",
+            "dataQuality",
+            "risk",
+            "margin",
+            "rewardRisk"
+          ],
+          "informational": [
+            "stochRsi",
+            "volume",
+            "extensionBadges"
+          ]
+        },
+        "maxAgeSinceEntryCandidateSeconds": 21600,
+        "minimumRewardRisk": 1.5,
+        "permittedOrderPlanTypes": [
+          "marketNextAvailable",
+          "limit",
+          "stopMarket",
+          "manualReference"
+        ],
+        "requiredDataQuality": {
+          "candidateMetricsRequired": true,
+          "minimumHistoryCoverageRatio": 0.9,
+          "rejectedNoteSeverities": [
+            "error"
+          ]
+        },
+        "retestRequired": true
+      },
+      "executionAssumptions": {
+        "adverseEntrySlippageBps": 5,
+        "adverseStopSlippageBps": 5,
+        "adverseTargetSlippageBps": 5,
+        "entryFeeRate": 0.00055,
+        "stopExitFeeRate": 0.00055,
+        "targetExitFeeRate": 0.00055
+      },
+      "id": "replay-example.continuation.strategy",
+      "lifecycleConfigHash": "fnv1a64:761921830014999a",
+      "lifecycleVersion": "impulse_fade_v1.lifecycle.1",
+      "name": "Replay example continuation strategy",
+      "profileHash": "fnv1a64:b557794ee5c70b8f",
+      "riskPolicy": {
+        "maximumAccountRiskFraction": 0.01,
+        "maximumMarginAllocationFraction": 0.25,
+        "maximumNotional": null
+      },
+      "schemaVersion": "strategy-profile.1",
+      "setupFamily": "impulse_fade_v1",
+      "side": "short",
+      "stopPolicy": {
+        "permittedDerivations": [
+          "episodeHigh",
+          "structuralInvalidation",
+          "supportResistanceZoneBoundary",
+          "avwapReference",
+          "manual"
+        ],
+        "requireOutsideEpisodeHigh": true
+      },
+      "targetPolicy": {
+        "fractionTolerance": 1e-8,
+        "maximumTargets": 4,
+        "permittedDerivations": [
+          "supportZone",
+          "avwap",
+          "preImpulseBase",
+          "fixedRMultiple",
+          "manual"
+        ]
+      },
+      "timeframeRoles": {
+        "candidateTimeframe": "1h",
+        "contextTimeframes": [],
+        "executionTimeframe": "1h",
+        "structureTimeframe": "1h",
+        "triggerTimeframe": "1h"
+      },
+      "version": "1"
+    },
+    "venueRules": null
+  },
+  "schemaVersion": "replay-audit-fixture.1"
+}

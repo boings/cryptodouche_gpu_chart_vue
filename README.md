@@ -269,6 +269,34 @@ pnpm audit:radar --out ./radar-audit.json
 See [`docs/radar-selection-and-replay-manifests.md`](docs/radar-selection-and-replay-manifests.md)
 for detector definitions, causal cutoff semantics, and replay-manifest boundaries.
 
+### Headless causal replay
+
+Replay Phase 1 consumes a verified `ReplayCaseManifest`, loads separate analysis
+and display pre-roll, emits immutable cutoff-safe decision frames, and records
+Wait, Skip, and ProposeTrade commands through an event-sourced session. Future
+outcomes remain behind a separate explicit reveal boundary; fills and P/L are
+not simulated.
+
+```ts
+import {
+  JsonReplayHistoricalDataAdapter,
+  applyReplayCommand,
+  createReplayCommand,
+  createReplaySession,
+  loadReplayCase,
+} from "@cryptodouche/gpu-chart-vue/core";
+```
+
+Run a deterministic JSON command script with:
+
+```sh
+pnpm audit:replay ./path/to/replay-fixture.json --out ./replay-session.json
+```
+
+See [`docs/replay-phase-1.md`](docs/replay-phase-1.md) for schemas, completed-candle
+and `knownAt` semantics, supported wake conditions, pause/resume, and the future-data
+barrier. All bundled replay durations and thresholds are experimental and unoptimized.
+
 Consumers do not need Rust or `wasm-pack` when installing a built Git tag. Maintainers only need those tools when changing the renderer under `renderer/src`.
 
 Rebuild the renderer after Rust/WebGPU changes:
