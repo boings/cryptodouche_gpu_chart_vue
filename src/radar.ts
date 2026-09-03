@@ -48,6 +48,7 @@ export interface RadarDetectorThresholds {
   minimumZScore: number | null;
   minimumSampleCount: number;
   historyLookbackSeconds: number;
+  maximumReferenceStalenessSeconds: number | null;
 }
 
 export interface ElapsedWindowReturnDetector extends RadarDetectorThresholds {
@@ -143,6 +144,7 @@ export interface RadarMetricObservation {
   metricVersion: string;
   symbol: string;
   source: string;
+  dataOrigin: string | null;
   timeframe: string | null;
   requestedAsOf: number;
   effectiveAsOf: number;
@@ -341,6 +343,7 @@ export interface ReplayCaseManifest {
 export interface RadarSymbolSeries {
   symbol: string;
   source: string;
+  dataOrigin?: string | null;
   candlesByTimeframe: Record<string, readonly CandleRecord[]>;
 }
 
@@ -380,6 +383,7 @@ interface DetectorEvaluationInternal {
 interface MutableRadarState {
   previousGate: boolean;
   activeEpisode: RadarEpisode | null;
+  blockedEpisode: RadarEpisode | null;
   falseSince: number | null;
   armed: boolean;
 }
@@ -419,6 +423,7 @@ export const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE = createRadarSelectionProfi
       minimumZScore: 2,
       minimumSampleCount: 20,
       historyLookbackSeconds: 180 * 86_400,
+      maximumReferenceStalenessSeconds: 3_600,
     },
     {
       id: "recent-trough-runup",
@@ -471,22 +476,26 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
     const scanCandles = orderedCandles(series.candlesByTimeframe[input.selectionProfile.scanTimeframe] ?? []);
     const points = scanCandles
       .map((item) => candleCloseTime(item, input.selectionProfile.scanTimeframe))
-      .filter((asOf) => asOf >= input.from && asOf <= input.to)
+      .filter((asOf) => asOf <= input.to)
       .filter((asOf) => cadenceIncludes(asOf, input.selectionProfile));
     const state: MutableRadarState = {
       previousGate: false,
       activeEpisode: null,
+      blockedEpisode: null,
       falseSince: null,
       armed: true,
     };
 
     for (const asOf of points) {
+      const inRequestedRange = asOf >= input.from;
       const detectorEvaluations = input.selectionProfile.moveDetectors.map((detector) =>
         evaluateDetector(detector, series, asOf, input.selectionProfile.scanTimeframe),
       );
-      for (const evaluation of detectorEvaluations) {
-        for (const observation of evaluation.observations) {
-          observations.set(observation.observationId, observation);
+      if (inRequestedRange) {
+        for (const evaluation of detectorEvaluations) {
+          for (const observation of evaluation.observations) {
+            observations.set(observation.observationId, observation);
+          }
         }
       }
       const detectorGatePassed = combineDetectorResults(
@@ -518,12 +527,14 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         hardGatesPassed,
         compositePassed,
       );
-      gateEvaluations.push(evaluation);
+      if (inRequestedRange) gateEvaluations.push(evaluation);
 
       if (state.activeEpisode && asOf >= state.activeEpisode.activeUntil) {
-        episodeStatusObservations.push(
-          createStatusObservation(state.activeEpisode, asOf, "expired", "maximumAgeElapsed", "blockedUntilReset"),
-        );
+        if (inRequestedRange) {
+          episodeStatusObservations.push(
+            createStatusObservation(state.activeEpisode, asOf, "expired", "maximumAgeElapsed", "blockedUntilReset"),
+          );
+        }
         state.activeEpisode = null;
       }
 
@@ -533,12 +544,13 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           !state.armed &&
           asOf - state.falseSince >= input.selectionProfile.resetPolicy.minimumFalseDurationSeconds
         ) {
-          if (state.activeEpisode) {
+          if (inRequestedRange && state.blockedEpisode) {
             episodeStatusObservations.push(
-              createStatusObservation(state.activeEpisode, asOf, "reset", "radarGateReset", "armed"),
+              createStatusObservation(state.blockedEpisode, asOf, "reset", "radarGateReset", "armed"),
             );
           }
           state.activeEpisode = null;
+          state.blockedEpisode = null;
           state.armed = true;
         }
       } else {
@@ -555,16 +567,19 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           venueEligibility,
           lifecycleHistory: input.lifecycleHistory?.[seriesKey] ?? [],
         });
-        episodes.push(episode);
-        episodeStatusObservations.push(
-          createStatusObservation(episode, asOf, "active", "detected", "blockedUntilReset"),
-        );
-        const manifest = createReplayCaseManifest(episode, series, input.selectionProfile, strategyProfile);
-        replayCaseManifests.push(manifest);
-        for (const observation of episode.contextObservations) {
-          observations.set(observation.observationId, observation);
+        if (inRequestedRange) {
+          episodes.push(episode);
+          episodeStatusObservations.push(
+            createStatusObservation(episode, asOf, "active", "detected", "blockedUntilReset"),
+          );
+          const manifest = createReplayCaseManifest(episode, series, input.selectionProfile, strategyProfile);
+          replayCaseManifests.push(manifest);
+          for (const observation of episode.contextObservations) {
+            observations.set(observation.observationId, observation);
+          }
         }
         state.activeEpisode = episode;
+        state.blockedEpisode = episode;
         state.armed = false;
       }
 
@@ -591,22 +606,16 @@ function evaluateDetector(
   asOf: number,
   scanTimeframe: string,
 ): DetectorEvaluationInternal {
-  if (detector.type !== "rollingTroughRunup") {
-    const observation = missingObservation(
-      detector,
-      series,
-      asOf,
-      detector.type === "emaAtrDisplacement" ? detector.analysisTimeframe : scanTimeframe,
-      "DETECTOR_NOT_IMPLEMENTED",
-      `Detector ${detector.type} is not implemented`,
-    );
-    return {
-      result: detectorResult(detector, false, [observation], null, "Detector unavailable"),
-      observations: [observation],
-      anchor: null,
-    };
+  if (detector.type === "rollingTroughRunup") {
+    return evaluateRollingTroughRunup(detector, series, asOf, scanTimeframe);
   }
-  return evaluateRollingTroughRunup(detector, series, asOf, scanTimeframe);
+  if (detector.type === "elapsedWindowReturn") {
+    return evaluateElapsedWindowReturn(detector, series, asOf, scanTimeframe);
+  }
+  if (detector.type === "maximumWindowReturn") {
+    return evaluateMaximumWindowReturn(detector, series, asOf, scanTimeframe);
+  }
+  return evaluateEmaAtrDisplacement(detector, series, asOf);
 }
 
 function evaluateRollingTroughRunup(
@@ -633,6 +642,8 @@ function evaluateRollingTroughRunup(
     return selected;
   }, null);
   const value = current && trough && validPositive(trough.c) ? (current.c / trough.c - 1) * 100 : null;
+  const historicalValues = historicalRunups(candles, current, detector);
+  const statistics = distributionStatistics(historicalValues, value, detector.minimumSampleCount);
   const notes: RadarDataQualityNote[] = [];
   if (!current) notes.push(note("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff"));
   if (!trough) notes.push(note("NO_ELIGIBLE_TROUGH", "error", "No eligible completed-close trough exists"));
@@ -649,12 +660,12 @@ function evaluateRollingTroughRunup(
     referenceValue: trough?.c ?? null,
     value,
     unit: "percent",
-    percentile: null,
-    zScore: null,
-    sampleCount: 0,
-    historyCandles: candles,
+    percentile: statistics.percentile,
+    zScore: statistics.zScore,
+    sampleCount: historicalValues.length,
+    historyCandles: relevantHistoryCandles(candles, current, detector.historyLookbackSeconds + detector.lookbackSeconds),
     configHash,
-    notes,
+    notes: [...notes, ...statistics.notes],
   });
   const thresholdsPass =
     value != null &&
@@ -678,6 +689,211 @@ function evaluateRollingTroughRunup(
     observations: [observation],
     anchor,
   };
+}
+
+function evaluateElapsedWindowReturn(
+  detector: ElapsedWindowReturnDetector,
+  series: RadarSymbolSeries,
+  asOf: number,
+  timeframe: string,
+): DetectorEvaluationInternal {
+  const observation = computeElapsedReturnObservation(detector, series, asOf, timeframe);
+  const passed = returnThresholdsPass(observation, detector);
+  return {
+    result: detectorResult(
+      detector,
+      passed,
+      [observation],
+      passed ? observation.observationId : null,
+      observation.value == null
+        ? "Elapsed return unavailable"
+        : `${formatDuration(detector.windowSeconds)} return ${formatPct(observation.value)}`,
+    ),
+    observations: [observation],
+    anchor: null,
+  };
+}
+
+function evaluateMaximumWindowReturn(
+  detector: MaximumWindowReturnDetector,
+  series: RadarSymbolSeries,
+  asOf: number,
+  timeframe: string,
+): DetectorEvaluationInternal {
+  const individual = [...new Set(detector.windowsSeconds)]
+    .sort((left, right) => left - right)
+    .map((windowSeconds) =>
+      computeElapsedReturnObservation(
+        {
+          ...detector,
+          id: `${detector.id}:${windowSeconds}`,
+          type: "elapsedWindowReturn",
+          windowSeconds,
+        },
+        series,
+        asOf,
+        timeframe,
+      ),
+    );
+  const winner = individual
+    .filter((item) => item.value != null)
+    .sort((left, right) =>
+      (right.value ?? -Infinity) - (left.value ?? -Infinity) ||
+      (left.window ?? Infinity) - (right.window ?? Infinity),
+    )[0] ?? null;
+  const historyCandles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, asOf);
+  const aggregate = createMetricObservation({
+    detector,
+    series,
+    asOf,
+    timeframe,
+    metricCode: "maximum_window_return",
+    metricVersion: "maximum-window-return.1",
+    window: winner?.window ?? null,
+    referenceTime: winner?.referenceTime ?? null,
+    referenceValue: winner?.referenceValue ?? null,
+    value: winner?.value ?? null,
+    unit: "percent",
+    percentile: winner?.percentile ?? null,
+    zScore: winner?.zScore ?? null,
+    sampleCount: winner?.sampleCount ?? 0,
+    historyCandles: relevantHistoryCandles(
+      historyCandles,
+      historyCandles.at(-1) ?? null,
+      detector.historyLookbackSeconds + Math.max(...detector.windowsSeconds),
+    ),
+    configHash: canonicalHash(detector),
+    notes: winner
+      ? winner.dataQualityNotes
+      : [note("NO_WINDOW_RETURN_AVAILABLE", "error", "No configured elapsed window has a reference")],
+  });
+  const passed = returnThresholdsPass(aggregate, detector);
+  const observations = [...individual, aggregate];
+  return {
+    result: detectorResult(
+      detector,
+      passed,
+      observations,
+      passed ? winner?.observationId ?? null : null,
+      winner?.value == null
+        ? "Maximum elapsed return unavailable"
+        : `Winning ${formatDuration(winner.window ?? 0)} return ${formatPct(winner.value)}`,
+    ),
+    observations,
+    anchor: null,
+  };
+}
+
+function evaluateEmaAtrDisplacement(
+  detector: EmaAtrDisplacementDetector,
+  series: RadarSymbolSeries,
+  asOf: number,
+): DetectorEvaluationInternal {
+  const timeframe = detector.analysisTimeframe;
+  const candles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, asOf);
+  const current = candles.at(-1) ?? null;
+  const ema = emaValues(candles, detector.emaPeriod).at(-1) ?? null;
+  const atr = atrValues(candles, detector.atrPeriod).at(-1) ?? null;
+  const value = current && ema != null && atr != null && atr > 0 ? (current.c - ema) / atr : null;
+  const requiredSamples = Math.max(detector.minimumSampleCount, detector.emaPeriod, detector.atrPeriod);
+  const notes: RadarDataQualityNote[] = [];
+  if (!current) notes.push(note("NO_COMPLETED_CANDLE", "error", `No completed ${timeframe} candle exists at cutoff`));
+  if (candles.length < requiredSamples || value == null) {
+    notes.push(
+      note(
+        "INSUFFICIENT_METRIC_HISTORY",
+        "error",
+        `EMA/ATR displacement requires ${requiredSamples} completed ${timeframe} candles`,
+      ),
+    );
+  }
+  const observation = createMetricObservation({
+    detector,
+    series,
+    asOf,
+    timeframe,
+    metricCode: "ema_atr_displacement",
+    metricVersion: "ema-atr-displacement.1",
+    window: null,
+    referenceTime: current?.bucket ?? null,
+    referenceValue: ema,
+    value,
+    unit: "atr",
+    percentile: null,
+    zScore: null,
+    sampleCount: candles.length,
+    historyCandles: candles.slice(-requiredSamples),
+    configHash: canonicalHash(detector),
+    notes: dedupeNotes(notes),
+  });
+  const passed =
+    value != null &&
+    candles.length >= requiredSamples &&
+    value + 1e-12 >= detector.minimumAtrDisplacement;
+  return {
+    result: detectorResult(
+      detector,
+      passed,
+      [observation],
+      passed ? observation.observationId : null,
+      value == null ? "EMA/ATR displacement unavailable" : `EMA displacement ${value.toFixed(2)} ATR`,
+    ),
+    observations: [observation],
+    anchor: null,
+  };
+}
+
+function computeElapsedReturnObservation(
+  detector: ElapsedWindowReturnDetector,
+  series: RadarSymbolSeries,
+  asOf: number,
+  timeframe: string,
+) {
+  const candles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, asOf);
+  const current = candles.at(-1) ?? null;
+  const reference = current ? latestAtOrBefore(candles, current.bucket - detector.windowSeconds) : null;
+  const referenceStaleness = current && reference
+    ? current.bucket - detector.windowSeconds - reference.bucket
+    : null;
+  const stale =
+    referenceStaleness != null &&
+    detector.maximumReferenceStalenessSeconds != null &&
+    referenceStaleness > detector.maximumReferenceStalenessSeconds;
+  const value = current && reference && !stale && validPositive(reference.c)
+    ? (current.c / reference.c - 1) * 100
+    : null;
+  const historicalValues = historicalElapsedReturns(candles, current, detector);
+  const statistics = distributionStatistics(historicalValues, value, detector.minimumSampleCount);
+  const notes = [...statistics.notes];
+  if (!current) notes.push(note("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff"));
+  if (!reference) {
+    notes.push(note("ELAPSED_REFERENCE_UNAVAILABLE", "error", "No completed elapsed-window reference exists"));
+  } else if (stale) {
+    notes.push(note("ELAPSED_REFERENCE_STALE", "error", "Elapsed-window reference exceeds allowed staleness"));
+  }
+  return createMetricObservation({
+    detector,
+    series,
+    asOf,
+    timeframe,
+    metricCode: "elapsed_window_return",
+    metricVersion: "elapsed-window-return.1",
+    window: detector.windowSeconds,
+    referenceTime: reference?.bucket ?? null,
+    referenceValue: reference?.c ?? null,
+    value,
+    unit: "percent",
+    percentile: statistics.percentile,
+    zScore: statistics.zScore,
+    sampleCount: historicalValues.length,
+    historyCandles: relevantHistoryCandles(
+      candles,
+      current,
+      detector.historyLookbackSeconds + detector.windowSeconds,
+    ),
+    configHash: canonicalHash(detector),
+    notes: dedupeNotes(notes),
+  });
 }
 
 function createRadarEpisode(input: {
@@ -845,6 +1061,7 @@ function elapsedReturnObservation(
     minimumZScore: null,
     minimumSampleCount: 0,
     historyLookbackSeconds: windowSeconds,
+    maximumReferenceStalenessSeconds: null,
   };
   const candles = completedCandles(series.candlesByTimeframe[timeframe] ?? [], timeframe, asOf);
   const current = candles.at(-1) ?? null;
@@ -958,6 +1175,7 @@ function createMetricObservation(input: {
     metricCode: input.metricCode,
     symbol: input.series.symbol,
     source: input.series.source,
+    dataOrigin: input.series.dataOrigin ?? null,
     timeframe: input.timeframe,
     window: input.window,
     configHash: input.configHash,
@@ -969,6 +1187,7 @@ function createMetricObservation(input: {
     metricVersion: input.metricVersion,
     symbol: input.series.symbol,
     source: input.series.source,
+    dataOrigin: input.series.dataOrigin ?? null,
     timeframe: input.timeframe,
     requestedAsOf: input.asOf,
     effectiveAsOf: input.asOf,
@@ -1301,6 +1520,133 @@ function latestAtOrBefore(candles: readonly CandleRecord[], target: number) {
   return null;
 }
 
+function historicalElapsedReturns(
+  candles: readonly CandleRecord[],
+  current: CandleRecord | null,
+  detector: ElapsedWindowReturnDetector,
+) {
+  if (!current) return [];
+  const earliest = current.bucket - detector.historyLookbackSeconds;
+  const values: number[] = [];
+  for (const candidate of candles) {
+    if (candidate.bucket < earliest || candidate.bucket >= current.bucket) continue;
+    const reference = latestAtOrBefore(candles, candidate.bucket - detector.windowSeconds);
+    if (!reference || !validPositive(reference.c)) continue;
+    const staleness = candidate.bucket - detector.windowSeconds - reference.bucket;
+    if (
+      detector.maximumReferenceStalenessSeconds != null &&
+      staleness > detector.maximumReferenceStalenessSeconds
+    ) {
+      continue;
+    }
+    values.push((candidate.c / reference.c - 1) * 100);
+  }
+  return values;
+}
+
+function historicalRunups(
+  candles: readonly CandleRecord[],
+  current: CandleRecord | null,
+  detector: RollingTroughRunupDetector,
+) {
+  if (!current) return [];
+  const earliest = current.bucket - detector.historyLookbackSeconds;
+  const values: number[] = [];
+  for (const candidate of candles) {
+    if (candidate.bucket < earliest || candidate.bucket >= current.bucket) continue;
+    const trough = candles
+      .filter(
+        (item) =>
+          item.bucket <= candidate.bucket &&
+          item.bucket >= candidate.bucket - detector.lookbackSeconds &&
+          candidate.bucket - item.bucket <= detector.maximumTroughAgeSeconds &&
+          validPositive(item.c),
+      )
+      .sort((left, right) => left.c - right.c || left.bucket - right.bucket)[0];
+    if (trough) values.push((candidate.c / trough.c - 1) * 100);
+  }
+  return values;
+}
+
+function distributionStatistics(
+  values: readonly number[],
+  currentValue: number | null,
+  minimumSampleCount: number,
+) {
+  const notes: RadarDataQualityNote[] = [];
+  if (values.length < minimumSampleCount) {
+    notes.push(
+      note(
+        "INSUFFICIENT_METRIC_HISTORY",
+        "error",
+        `Metric requires ${minimumSampleCount} historical samples but has ${values.length}`,
+      ),
+    );
+  }
+  if (currentValue == null || values.length === 0 || values.length < minimumSampleCount) {
+    return { percentile: null, zScore: null, notes };
+  }
+  const percentile =
+    (values.filter((value) => value <= currentValue).length / values.length) * 100;
+  const mean = values.reduce((sum, value) => sum + value, 0) / values.length;
+  const variance =
+    values.reduce((sum, value) => sum + (value - mean) ** 2, 0) / values.length;
+  const standardDeviation = Math.sqrt(variance);
+  const zScore = standardDeviation > 0 ? (currentValue - mean) / standardDeviation : null;
+  return { percentile, zScore, notes };
+}
+
+function relevantHistoryCandles(
+  candles: readonly CandleRecord[],
+  current: CandleRecord | null,
+  durationSeconds: number,
+) {
+  if (!current) return [];
+  return candles.filter((item) => item.bucket >= current.bucket - durationSeconds);
+}
+
+function returnThresholdsPass(
+  observation: RadarMetricObservation,
+  detector: RadarDetectorThresholds,
+) {
+  return (
+    observation.value != null &&
+    optionalMinimum(observation.value, detector.minimumReturnPct) &&
+    optionalMinimum(observation.percentile, detector.minimumPercentile) &&
+    optionalMinimum(observation.zScore, detector.minimumZScore) &&
+    observation.sampleCount >= detector.minimumSampleCount
+  );
+}
+
+function emaValues(candles: readonly CandleRecord[], period: number) {
+  const values: Array<number | null> = new Array(candles.length).fill(null);
+  if (candles.length < period) return values;
+  let ema = candles.slice(0, period).reduce((sum, item) => sum + item.c, 0) / period;
+  values[period - 1] = ema;
+  const alpha = 2 / (period + 1);
+  for (let index = period; index < candles.length; index += 1) {
+    ema = candles[index].c * alpha + ema * (1 - alpha);
+    values[index] = ema;
+  }
+  return values;
+}
+
+function atrValues(candles: readonly CandleRecord[], period: number) {
+  const values: Array<number | null> = new Array(candles.length).fill(null);
+  if (candles.length < period) return values;
+  const ranges = candles.map((item, index) => {
+    const previousClose = candles[index - 1]?.c ?? item.c;
+    return Math.max(item.h - item.l, Math.abs(item.h - previousClose), Math.abs(item.l - previousClose));
+  });
+  let atr = ranges.slice(0, period).reduce((sum, value) => sum + value, 0) / period;
+  values[period - 1] = atr;
+  for (let index = period; index < ranges.length; index += 1) {
+    atr = (atr * (period - 1) + ranges[index]) / period;
+    values[index] = atr;
+  }
+  return values;
+}
+
 function latestLifecycleAt(history: readonly SetupStateSnapshot[], asOf: number) {
   return [...history]
     .filter((item) => item.asOf != null && item.asOf <= asOf)
@@ -1524,6 +1870,13 @@ function profileRef(profile: RadarSelectionProfile) {
 
 function formatPct(value: number) {
   return `${value >= 0 ? "+" : ""}${value.toFixed(2)}%`;
+}
+
+function formatDuration(seconds: number) {
+  if (seconds % 86_400 === 0) return `${seconds / 86_400}d`;
+  if (seconds % 3_600 === 0) return `${seconds / 3_600}h`;
+  if (seconds % 60 === 0) return `${seconds / 60}m`;
+  return `${seconds}s`;
 }
 
 function hashSuffix(value: unknown) {

@@ -24,6 +24,7 @@ export interface RadarDetectorThresholds {
     minimumZScore: number | null;
     minimumSampleCount: number;
     historyLookbackSeconds: number;
+    maximumReferenceStalenessSeconds: number | null;
 }
 export interface ElapsedWindowReturnDetector extends RadarDetectorThresholds {
     id: string;
@@ -110,6 +111,7 @@ export interface RadarMetricObservation {
     metricVersion: string;
     symbol: string;
     source: string;
+    dataOrigin: string | null;
     timeframe: string | null;
     requestedAsOf: number;
     effectiveAsOf: number;
@@ -293,6 +295,7 @@ export interface ReplayCaseManifest {
 export interface RadarSymbolSeries {
     symbol: string;
     source: string;
+    dataOrigin?: string | null;
     candlesByTimeframe: Record<string, readonly CandleRecord[]>;
 }
 export interface RadarScanInput {
