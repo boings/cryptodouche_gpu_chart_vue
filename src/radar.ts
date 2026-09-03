@@ -1,6 +1,11 @@
 import { candleCloseTime, IMPULSE_FADE_LIFECYCLE_VERSION, type SetupFamily, type SetupStateSnapshot } from "./indicators";
 import { timeframeToSeconds } from "./data";
-import { canonicalHash, canonicalSerialize, immutableJsonClone } from "./serialization";
+import {
+  canonicalHash,
+  canonicalSerialize,
+  immutableJsonClone,
+  type JsonValue,
+} from "./serialization";
 import {
   DEFAULT_IMPULSE_FADE_RESEARCH_PROFILE,
   type DataQualitySeverity,
@@ -16,6 +21,10 @@ export const RADAR_SCAN_RESULT_SCHEMA_VERSION = "radar-scan-result.1" as const;
 export const RADAR_STATUS_OBSERVATION_SCHEMA_VERSION = "radar-episode-status.1" as const;
 export const EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION =
   "execution-venue-eligibility.1" as const;
+export const RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION =
+  "radar-structure-observation.1" as const;
+export const RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION =
+  "radar-universe-membership.1" as const;
 
 export type RadarMetricUnit = "percent" | "atr" | "quoteNotional";
 export type RadarHardGateCode =
@@ -191,6 +200,7 @@ export interface RadarPathContext {
   triggeringPercentile: number | null;
   triggeringZScore: number | null;
   quoteNotional: number | null;
+  mtfStructureStates: Record<string, string>;
   contextTags: RadarContextTag[];
 }
 
@@ -200,7 +210,26 @@ export interface DurableObjectReference {
   objectType: string;
   eventTime: number | null;
   knownAt: number;
+  snapshot: JsonValue;
 }
+
+export interface RadarStructureObservation {
+  schemaVersion: typeof RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION;
+  logicalObjectId: string;
+  observationId: string;
+  symbol: string;
+  source: string;
+  timeframe: string;
+  state: string;
+  eventTime: number;
+  knownAt: number;
+  snapshot: JsonValue;
+}
+
+export type CreateRadarStructureObservationInput = Omit<
+  RadarStructureObservation,
+  "schemaVersion" | "observationId"
+>;
 
 export interface ExecutionVenueEligibilityObservation {
   schemaVersion: typeof EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION;
@@ -223,6 +252,7 @@ export type CreateExecutionVenueEligibilityObservationInput = Omit<
 >;
 
 export interface UniverseMembershipObservation {
+  schemaVersion: typeof RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION;
   logicalObjectId: string;
   observationId: string;
   symbol: string;
@@ -232,6 +262,11 @@ export interface UniverseMembershipObservation {
   effectiveTo: number | null;
   knownAt: number;
 }
+
+export type CreateUniverseMembershipObservationInput = Omit<
+  UniverseMembershipObservation,
+  "schemaVersion" | "logicalObjectId" | "observationId"
+>;
 
 export interface RadarHardGateResult {
   code: RadarHardGateCode;
@@ -282,6 +317,7 @@ export interface RadarEpisode {
   initialLifecycleCandidateId: string | null;
   initialLifecycleCandidateRef: DurableObjectReference | null;
   initialLifecycleState: string | null;
+  initialLifecycleStateRef: DurableObjectReference | null;
   initialMtfStructure: Record<string, DurableObjectReference>;
   activeUntil: number;
   terminalAt: null;
@@ -340,6 +376,7 @@ export interface ReplayCaseManifest {
   >;
   initialRadarObservations: RadarMetricObservation[];
   initialLifecycleState: string | null;
+  initialLifecycleStateRef: DurableObjectReference | null;
   executionVenueEligibility: ExecutionVenueEligibilityObservation;
   dataQualityNotes: RadarDataQualityNote[];
   futureOutcomeRef: null;
@@ -361,6 +398,7 @@ export interface RadarScanInput {
   lifecycleHistory?: Record<string, readonly SetupStateSnapshot[]>;
   universeHistory?: readonly UniverseMembershipObservation[];
   venueEligibilityHistory?: readonly ExecutionVenueEligibilityObservation[];
+  structureHistory?: readonly RadarStructureObservation[];
 }
 
 export interface RadarScanResult {
@@ -436,6 +474,101 @@ export function createExecutionVenueEligibilityObservation(
   });
 }
 
+export function createRadarStructureObservation(
+  input: CreateRadarStructureObservationInput,
+): RadarStructureObservation {
+  if (
+    !input.logicalObjectId.trim() ||
+    !input.symbol.trim() ||
+    !input.source.trim() ||
+    !input.timeframe.trim() ||
+    !input.state.trim() ||
+    !Number.isFinite(input.eventTime) ||
+    !Number.isFinite(input.knownAt) ||
+    input.knownAt < input.eventTime
+  ) {
+    throw new RangeError("Radar structure observation is invalid");
+  }
+  const definition = {
+    schemaVersion: RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION,
+    ...input,
+  };
+  return immutableJsonClone({
+    ...definition,
+    observationId: radarStructureObservationId(definition),
+  });
+}
+
+export function createUniverseMembershipObservation(
+  input: CreateUniverseMembershipObservationInput,
+): UniverseMembershipObservation {
+  if (
+    !input.symbol.trim() ||
+    !input.source.trim() ||
+    !Number.isFinite(input.effectiveFrom) ||
+    !Number.isFinite(input.knownAt) ||
+    (input.effectiveTo != null &&
+      (!Number.isFinite(input.effectiveTo) || input.effectiveTo < input.effectiveFrom))
+  ) {
+    throw new RangeError("Universe membership observation is invalid");
+  }
+  const definition = {
+    schemaVersion: RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION,
+    logicalObjectId: `radar-universe:${input.source}:${input.symbol.toUpperCase()}`,
+    ...input,
+  };
+  return immutableJsonClone({
+    ...definition,
+    observationId: universeMembershipObservationId(definition),
+  });
+}
+
+export function universeMembershipObservationId(
+  observation: Omit<UniverseMembershipObservation, "observationId"> | UniverseMembershipObservation,
+) {
+  const { observationId: _observationId, ...definition } = observation as UniverseMembershipObservation;
+  return `radar-universe-observation:${hashSuffix(definition)}`;
+}
+
+export function radarStructureObservationId(
+  observation: Omit<RadarStructureObservation, "observationId"> | RadarStructureObservation,
+) {
+  const { observationId: _observationId, ...definition } = observation as RadarStructureObservation;
+  return `radar-structure-observation:${hashSuffix(definition)}`;
+}
+
+export function createDurableObjectReference(input: {
+  logicalObjectId: string;
+  objectType: string;
+  eventTime: number | null;
+  knownAt: number;
+  snapshot: unknown;
+}): DurableObjectReference {
+  if (
+    !input.logicalObjectId.trim() ||
+    !input.objectType.trim() ||
+    !Number.isFinite(input.knownAt) ||
+    (input.eventTime != null &&
+      (!Number.isFinite(input.eventTime) || input.eventTime > input.knownAt))
+  ) {
+    throw new RangeError("Durable object reference is invalid");
+  }
+  const snapshot = JSON.parse(canonicalSerialize(input.snapshot)) as JsonValue;
+  return immutableJsonClone({
+    logicalObjectId: input.logicalObjectId,
+    observationId: `${input.objectType.toLowerCase()}-observation:${hashSuffix({
+      logicalObjectId: input.logicalObjectId,
+      eventTime: input.eventTime,
+      knownAt: input.knownAt,
+      snapshot,
+    })}`,
+    objectType: input.objectType,
+    eventTime: input.eventTime,
+    knownAt: input.knownAt,
+    snapshot,
+  });
+}
+
 export function executionVenueEligibilityObservationId(
   observation: Omit<ExecutionVenueEligibilityObservation, "observationId"> | ExecutionVenueEligibilityObservation,
 ) {
@@ -490,7 +623,7 @@ export const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE = createRadarSelectionProfi
   hardGates: ["dataQuality", "sourcePolicy", "executionVenueEligibility", "liquidity"],
   resetPolicy: { minimumFalseDurationSeconds: 4 * 3_600 },
   episodeExpiry: { maximumAgeSeconds: 72 * 3_600 },
-  sourcePolicy: { allowedSources: ["external", "local"] },
+  sourcePolicy: { allowedSources: ["bybit", "binance", "okx"] },
   executionVenuePolicy: { intendedVenue: "phemex", mode: "allowUnknown" },
   liquidityPolicy: {
     minimumQuoteNotional: 1_000_000,
@@ -508,10 +641,16 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
   const episodes: RadarEpisode[] = [];
   const episodeStatusObservations: RadarEpisodeStatusObservation[] = [];
   const replayCaseManifests: ReplayCaseManifest[] = [];
+  const seriesIdentities = new Set<string>();
 
   for (const [seriesKey, series] of Object.entries(input.candlesBySymbolAndTimeframe).sort(
     ([left], [right]) => left.localeCompare(right),
   )) {
+    const seriesIdentity = `${series.symbol.toUpperCase()}\u0000${series.source.toLowerCase()}`;
+    if (seriesIdentities.has(seriesIdentity)) {
+      throw new Error(`Duplicate radar series identity for ${series.symbol} from ${series.source}`);
+    }
+    seriesIdentities.add(seriesIdentity);
     const scanCandles = orderedCandles(series.candlesByTimeframe[input.selectionProfile.scanTimeframe] ?? []);
     const points = scanCandles
       .map((item) => candleCloseTime(item, input.selectionProfile.scanTimeframe))
@@ -605,6 +744,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           detectorEvaluations,
           venueEligibility,
           lifecycleHistory: input.lifecycleHistory?.[seriesKey] ?? [],
+          structureHistory: input.structureHistory ?? [],
         });
         if (inRequestedRange) {
           episodes.push(episode);
@@ -943,6 +1083,7 @@ function createRadarEpisode(input: {
   detectorEvaluations: DetectorEvaluationInternal[];
   venueEligibility: ExecutionVenueEligibilityObservation;
   lifecycleHistory: readonly SetupStateSnapshot[];
+  structureHistory: readonly RadarStructureObservation[];
 }): RadarEpisode {
   const passing = input.detectorEvaluations.filter((item) => item.result.passed);
   const triggeringObservations = dedupeObservations(
@@ -961,11 +1102,33 @@ function createRadarEpisode(input: {
   const net24h = elapsedReturnObservation(input.series, input.asOf, input.profile.scanTimeframe, 86_400);
   const net48h = elapsedReturnObservation(input.series, input.asOf, input.profile.scanTimeframe, 172_800);
   const volume = quoteNotionalObservation(input.series, input.asOf, input.profile);
+  const configuredAtrObservation = input.detectorEvaluations
+    .flatMap((item) => item.observations)
+    .find((item) => item.metricCode === "ema_atr_displacement") ?? null;
+  const atrObservation = configuredAtrObservation ?? evaluateEmaAtrDisplacement(
+    {
+      id: "context-ema-atr-displacement",
+      type: "emaAtrDisplacement",
+      analysisTimeframe: input.profile.scanTimeframe,
+      emaPeriod: 20,
+      atrPeriod: 14,
+      minimumAtrDisplacement: 0,
+      minimumSampleCount: 20,
+    },
+    input.series,
+    input.asOf,
+  ).observations[0];
+  const initialMtfStructure = structureAt(
+    input.structureHistory,
+    input.series,
+    input.asOf,
+  );
   const contextObservations = dedupeObservations([
     ...triggeringObservations,
     net24h,
     net48h,
     volume,
+    atrObservation,
   ]);
   const primaryResult = passing[0];
   const primaryObservation = primaryResult
@@ -981,17 +1144,29 @@ function createRadarEpisode(input: {
     net24h,
     net48h,
     volume,
+    atrObservation,
+    initialMtfStructure,
   );
   const lifecycle = latestLifecycleAt(input.lifecycleHistory, input.asOf);
   const candidate = lifecycle?.candidate ?? null;
+  const lifecycleKnownAt = lifecycle?.asOf ?? null;
+  const lifecycleStateRef = lifecycle && lifecycleKnownAt != null
+    ? createDurableObjectReference({
+        logicalObjectId: candidate?.id ?? `impulse-fade-lifecycle:${input.series.source}:${input.series.symbol}`,
+        objectType: "SetupStateSnapshot",
+        eventTime: lifecycle.updatedTs,
+        knownAt: lifecycleKnownAt,
+        snapshot: lifecycle,
+      })
+    : null;
   const candidateRef = candidate
-    ? durableReference(
-        candidate.id,
-        "SetupCandidateEpisode",
-        candidate.detectionEventTime,
-        candidate.detectedAt,
-        candidate,
-      )
+    ? createDurableObjectReference({
+        logicalObjectId: candidate.id,
+        objectType: "SetupCandidateEpisode",
+        eventTime: candidate.detectionEventTime,
+        knownAt: lifecycleKnownAt ?? candidate.detectedAt,
+        snapshot: candidate,
+      })
     : null;
   const episodeBase = {
     schemaVersion: RADAR_EPISODE_SCHEMA_VERSION,
@@ -1012,7 +1187,8 @@ function createRadarEpisode(input: {
     initialLifecycleCandidateId: candidate?.id ?? null,
     initialLifecycleCandidateRef: candidateRef,
     initialLifecycleState: lifecycle?.state ?? null,
-    initialMtfStructure: {},
+    initialLifecycleStateRef: lifecycleStateRef,
+    initialMtfStructure,
     activeUntil: input.asOf + input.profile.episodeExpiry.maximumAgeSeconds,
     terminalAt: null,
     terminalReason: null,
@@ -1078,6 +1254,7 @@ function createReplayCaseManifest(
     dataCoverageByTimeframe,
     initialRadarObservations: episode.contextObservations,
     initialLifecycleState: episode.initialLifecycleState,
+    initialLifecycleStateRef: episode.initialLifecycleStateRef,
     executionVenueEligibility: episode.executionVenueEligibility,
     dataQualityNotes: episode.dataQualityNotes,
     futureOutcomeRef: null,
@@ -1262,6 +1439,8 @@ function buildPathContext(
   net24h: RadarMetricObservation,
   net48h: RadarMetricObservation,
   volume: RadarMetricObservation,
+  atrObservation: RadarMetricObservation,
+  initialMtfStructure: Record<string, DurableObjectReference>,
 ): RadarPathContext {
   const anchorCandle = anchor
     ? candles.find((item) => item.bucket === anchor.timestamp) ?? null
@@ -1299,10 +1478,21 @@ function buildPathContext(
     priorPeakTime: priorPeak?.bucket ?? null,
     priorDrawdownPct,
     recoveryFraction,
-    currentAtrDisplacement: trigger?.unit === "atr" ? trigger.value : null,
+    currentAtrDisplacement: atrObservation.value,
     triggeringPercentile: trigger?.percentile ?? null,
     triggeringZScore: trigger?.zScore ?? null,
     quoteNotional: volume.value,
+    mtfStructureStates: Object.fromEntries(
+      Object.entries(initialMtfStructure).map(([timeframe, reference]) => [
+        timeframe,
+        typeof reference.snapshot === "object" &&
+        reference.snapshot != null &&
+        !Array.isArray(reference.snapshot) &&
+        typeof reference.snapshot.state === "string"
+          ? reference.snapshot.state
+          : "unknown",
+      ]),
+    ),
     contextTags,
   };
 }
@@ -1451,22 +1641,6 @@ function createStatusObservation(
   });
 }
 
-function durableReference(
-  logicalObjectId: string,
-  objectType: string,
-  eventTime: number | null,
-  knownAt: number,
-  snapshot: unknown,
-): DurableObjectReference {
-  return immutableJsonClone({
-    logicalObjectId,
-    observationId: `${objectType.toLowerCase()}-observation:${hashSuffix({ logicalObjectId, knownAt, snapshot })}`,
-    objectType,
-    eventTime,
-    knownAt,
-  });
-}
-
 function createGateEvaluation(
   series: RadarSymbolSeries,
   asOf: number,
@@ -1549,9 +1723,65 @@ function completedCandles(
 function orderedCandles(candles: readonly CandleRecord[]) {
   const byBucket = new Map<number, CandleRecord>();
   for (const candle of [...candles].sort((left, right) => left.bucket - right.bucket || left.ts - right.ts)) {
-    if (validCandle(candle)) byBucket.set(candle.bucket, candle);
+    if (!validCandle(candle)) continue;
+    const existing = byBucket.get(candle.bucket);
+    if (existing && canonicalCandle(existing) !== canonicalCandle(candle)) {
+      throw new Error(
+        `Conflicting candle revisions for bucket ${candle.bucket}; supply cutoff-resolved history`,
+      );
+    }
+    byBucket.set(candle.bucket, candle);
   }
   return [...byBucket.values()].sort((left, right) => left.bucket - right.bucket);
+}
+
+function structureAt(
+  history: readonly RadarStructureObservation[],
+  series: RadarSymbolSeries,
+  asOf: number,
+) {
+  const latest = new Map<string, RadarStructureObservation>();
+  for (const item of history
+    .filter(
+      (entry) =>
+        entry.symbol.toUpperCase() === series.symbol.toUpperCase() &&
+        entry.source === series.source &&
+        entry.knownAt <= asOf,
+    )
+    .sort((left, right) => left.knownAt - right.knownAt || left.observationId.localeCompare(right.observationId))) {
+    if (radarStructureObservationId(item) !== item.observationId) {
+      throw new Error("Radar structure observation failed deterministic verification");
+    }
+    latest.set(item.timeframe, item);
+  }
+  return Object.fromEntries(
+    [...latest.entries()].sort(([left], [right]) => compareTimeframes(left, right)).map(
+      ([timeframe, item]) => [
+        timeframe,
+        createDurableObjectReference({
+          logicalObjectId: item.logicalObjectId,
+          objectType: "MarketStructure",
+          eventTime: item.eventTime,
+          knownAt: item.knownAt,
+          snapshot: { state: item.state, detail: item.snapshot },
+        }),
+      ],
+    ),
+  );
+}
+
+function canonicalCandle(candle: CandleRecord) {
+  return canonicalSerialize({
+    bucket: candle.bucket,
+    ts: candle.ts,
+    o: candle.o,
+    h: candle.h,
+    l: candle.l,
+    c: candle.c,
+    vBase: finite(candle.v_base) ? candle.v_base : null,
+    vQuote: finite(candle.v_quote) ? candle.v_quote : null,
+    ver: finite(candle.ver) ? candle.ver : null,
+  });
 }
 
 function latestAtOrBefore(candles: readonly CandleRecord[], target: number) {
@@ -1700,7 +1930,7 @@ function latestUniverseAt(
   series: RadarSymbolSeries,
   asOf: number,
 ) {
-  return [...history]
+  const match = [...history]
     .filter(
       (item) =>
         item.symbol.toUpperCase() === series.symbol.toUpperCase() &&
@@ -1711,6 +1941,10 @@ function latestUniverseAt(
     )
     .sort((left, right) => left.effectiveFrom - right.effectiveFrom || left.knownAt - right.knownAt)
     .at(-1) ?? null;
+  if (match && universeMembershipObservationId(match) !== match.observationId) {
+    throw new Error("Universe membership observation failed deterministic verification");
+  }
+  return match;
 }
 
 function preRollRequirements(profile: RadarSelectionProfile) {
@@ -1789,7 +2023,7 @@ function validateProfile(definition: RadarSelectionProfileDefinition) {
   if (definition.setupFamily !== "impulse_fade_v1") {
     createProfileError("Only impulse_fade_v1 radar profiles are supported");
   }
-  if (!Number.isFinite(timeframeToSeconds(definition.scanTimeframe))) {
+  if (!validPositive(timeframeToSeconds(definition.scanTimeframe))) {
     createProfileError("scanTimeframe must be valid");
   }
   if (!Number.isInteger(definition.evaluationCadence.everyBars) || definition.evaluationCadence.everyBars < 1) {

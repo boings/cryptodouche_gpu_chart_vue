@@ -4,6 +4,8 @@ import {
   createRadarSelectionProfile,
   createExecutionVenueEligibilityObservation,
   scanRadarEpisodes,
+  createRadarStructureObservation,
+  EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE,
   type ElapsedWindowReturnDetector,
   type EmaAtrDisplacementDetector,
   type MaximumWindowReturnDetector,
@@ -531,5 +533,117 @@ describe("path-aware radar scanning", () => {
     expect(result.episodes).toHaveLength(1);
     expect(result.episodes[0].detectedAt).toBe(START + 2 * HOUR);
     expect(result.replayCaseManifests).toHaveLength(1);
+  });
+
+  it("labels the bundled research profile as experimental and unoptimized", () => {
+    expect(EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE).toMatchObject({
+      id: "impulse_fade_v1.radar.experimental",
+      version: "1",
+      schemaVersion: "radar-selection-profile.1",
+    });
+    expect(EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE.name.toLowerCase()).toContain("unoptimized");
+  });
+
+  it("does not rearm from one noisy false candle", () => {
+    const candles = [100, 120, 100, 120].map((close, index) =>
+      candle(START + index * HOUR, close),
+    );
+    const result = scan(
+      { "1h": candles },
+      { resetPolicy: { minimumFalseDurationSeconds: 2 * HOUR } },
+      START + 4 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(1);
+    expect(result.episodeStatusObservations.some((item) => item.reason === "radarGateReset")).toBe(false);
+  });
+
+  it("expires an episode without rearming while the radar gate remains true", () => {
+    const candles = [100, 120, 125, 130, 135].map((close, index) =>
+      candle(START + index * HOUR, close),
+    );
+    const result = scan(
+      { "1h": candles },
+      { episodeExpiry: { maximumAgeSeconds: 2 * HOUR } },
+      START + 5 * HOUR,
+    );
+
+    expect(result.episodes).toHaveLength(1);
+    expect(result.episodeStatusObservations).toEqual(
+      expect.arrayContaining([
+        expect.objectContaining({ status: "expired", reason: "maximumAgeElapsed" }),
+      ]),
+    );
+  });
+
+  it("captures only structure observations known at detection", () => {
+    const known = createRadarStructureObservation({
+      logicalObjectId: "fil-structure-1h",
+      symbol: "FILUSDT",
+      source: "bybit",
+      timeframe: "1h",
+      state: "Bullish",
+      eventTime: START,
+      knownAt: START + HOUR,
+      snapshot: { trend: "up" },
+    });
+    const future = createRadarStructureObservation({
+      logicalObjectId: "fil-structure-4h",
+      symbol: "FILUSDT",
+      source: "bybit",
+      timeframe: "4h",
+      state: "Bearish",
+      eventTime: START + 2 * HOUR,
+      knownAt: START + 3 * HOUR,
+      snapshot: { trend: "down" },
+    });
+    const result = scan(
+      { "1h": [candle(START, 100), candle(START + HOUR, 120)] },
+      {},
+      START + 2 * HOUR,
+      { structureHistory: [known, future] },
+    );
+
+    expect(Object.keys(result.episodes[0].initialMtfStructure)).toEqual(["1h"]);
+    expect(result.episodes[0].initialMtfStructure["1h"]).toMatchObject({
+      logicalObjectId: "fil-structure-1h",
+      objectType: "MarketStructure",
+      snapshot: { state: "Bullish", detail: { trend: "up" } },
+    });
+    expect(result.episodes[0].pathContext.mtfStructureStates).toEqual({ "1h": "Bullish" });
+  });
+
+  it("changes a metric revision ID when cutoff-resolved candle data changes", () => {
+    const first = scan(
+      { "1h": [candle(START, 100), candle(START + HOUR, 120)] },
+      {},
+      START + 2 * HOUR,
+    );
+    const corrected = scan(
+      { "1h": [candle(START, 100), candle(START + HOUR, 121)] },
+      {},
+      START + 2 * HOUR,
+    );
+    const firstObservation = first.observations.find(
+      (item) =>
+        item.metricCode === "rolling_trough_runup" && item.effectiveAsOf === START + 2 * HOUR,
+    )!;
+    const correctedObservation = corrected.observations.find(
+      (item) =>
+        item.metricCode === "rolling_trough_runup" && item.effectiveAsOf === START + 2 * HOUR,
+    )!;
+
+    expect(correctedObservation.logicalObjectId).toBe(firstObservation.logicalObjectId);
+    expect(correctedObservation.observationId).not.toBe(firstObservation.observationId);
+  });
+
+  it("rejects conflicting same-bucket candles instead of using array order", () => {
+    expect(() =>
+      scan(
+        { "1h": [candle(START, 100), candle(START, 101), candle(START + HOUR, 120)] },
+        {},
+        START + 2 * HOUR,
+      ),
+    ).toThrow("Conflicting candle revisions");
   });
 });

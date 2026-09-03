@@ -1,4 +1,5 @@
 import { IMPULSE_FADE_LIFECYCLE_VERSION, type SetupFamily, type SetupStateSnapshot } from "./indicators";
+import { type JsonValue } from "./serialization";
 import { type DataQualitySeverity, type StrategyProfile } from "./strategy";
 import type { CandleRecord } from "./types";
 export declare const RADAR_SELECTION_PROFILE_SCHEMA_VERSION: "radar-selection-profile.1";
@@ -8,6 +9,8 @@ export declare const RADAR_METRIC_OBSERVATION_SCHEMA_VERSION: "radar-metric-obse
 export declare const RADAR_SCAN_RESULT_SCHEMA_VERSION: "radar-scan-result.1";
 export declare const RADAR_STATUS_OBSERVATION_SCHEMA_VERSION: "radar-episode-status.1";
 export declare const EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION: "execution-venue-eligibility.1";
+export declare const RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION: "radar-structure-observation.1";
+export declare const RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION: "radar-universe-membership.1";
 export type RadarMetricUnit = "percent" | "atr" | "quoteNotional";
 export type RadarHardGateCode = "dataQuality" | "liquidity" | "selectedUniverse" | "sourcePolicy" | "executionVenueEligibility";
 export type RadarContextTag = "rebound_after_drawdown" | "fresh_high_extension" | "continuation_leg" | "unknown";
@@ -156,6 +159,7 @@ export interface RadarPathContext {
     triggeringPercentile: number | null;
     triggeringZScore: number | null;
     quoteNotional: number | null;
+    mtfStructureStates: Record<string, string>;
     contextTags: RadarContextTag[];
 }
 export interface DurableObjectReference {
@@ -164,7 +168,21 @@ export interface DurableObjectReference {
     objectType: string;
     eventTime: number | null;
     knownAt: number;
+    snapshot: JsonValue;
 }
+export interface RadarStructureObservation {
+    schemaVersion: typeof RADAR_STRUCTURE_OBSERVATION_SCHEMA_VERSION;
+    logicalObjectId: string;
+    observationId: string;
+    symbol: string;
+    source: string;
+    timeframe: string;
+    state: string;
+    eventTime: number;
+    knownAt: number;
+    snapshot: JsonValue;
+}
+export type CreateRadarStructureObservationInput = Omit<RadarStructureObservation, "schemaVersion" | "observationId">;
 export interface ExecutionVenueEligibilityObservation {
     schemaVersion: typeof EXECUTION_VENUE_ELIGIBILITY_SCHEMA_VERSION;
     logicalObjectId: string;
@@ -181,6 +199,7 @@ export interface ExecutionVenueEligibilityObservation {
 }
 export type CreateExecutionVenueEligibilityObservationInput = Omit<ExecutionVenueEligibilityObservation, "schemaVersion" | "logicalObjectId" | "observationId">;
 export interface UniverseMembershipObservation {
+    schemaVersion: typeof RADAR_UNIVERSE_MEMBERSHIP_SCHEMA_VERSION;
     logicalObjectId: string;
     observationId: string;
     symbol: string;
@@ -190,6 +209,7 @@ export interface UniverseMembershipObservation {
     effectiveTo: number | null;
     knownAt: number;
 }
+export type CreateUniverseMembershipObservationInput = Omit<UniverseMembershipObservation, "schemaVersion" | "logicalObjectId" | "observationId">;
 export interface RadarHardGateResult {
     code: RadarHardGateCode;
     passed: boolean;
@@ -236,6 +256,7 @@ export interface RadarEpisode {
     initialLifecycleCandidateId: string | null;
     initialLifecycleCandidateRef: DurableObjectReference | null;
     initialLifecycleState: string | null;
+    initialLifecycleStateRef: DurableObjectReference | null;
     initialMtfStructure: Record<string, DurableObjectReference>;
     activeUntil: number;
     terminalAt: null;
@@ -289,6 +310,7 @@ export interface ReplayCaseManifest {
     }>;
     initialRadarObservations: RadarMetricObservation[];
     initialLifecycleState: string | null;
+    initialLifecycleStateRef: DurableObjectReference | null;
     executionVenueEligibility: ExecutionVenueEligibilityObservation;
     dataQualityNotes: RadarDataQualityNote[];
     futureOutcomeRef: null;
@@ -308,6 +330,7 @@ export interface RadarScanInput {
     lifecycleHistory?: Record<string, readonly SetupStateSnapshot[]>;
     universeHistory?: readonly UniverseMembershipObservation[];
     venueEligibilityHistory?: readonly ExecutionVenueEligibilityObservation[];
+    structureHistory?: readonly RadarStructureObservation[];
 }
 export interface RadarScanResult {
     schemaVersion: typeof RADAR_SCAN_RESULT_SCHEMA_VERSION;
@@ -327,6 +350,17 @@ export interface RadarScanResult {
 export declare function radarSelectionProfileHash(profile: RadarSelectionProfileDefinition | RadarSelectionProfile): string;
 export declare function createRadarSelectionProfile(definition: RadarSelectionProfileDefinition): RadarSelectionProfile;
 export declare function createExecutionVenueEligibilityObservation(input: CreateExecutionVenueEligibilityObservationInput): ExecutionVenueEligibilityObservation;
+export declare function createRadarStructureObservation(input: CreateRadarStructureObservationInput): RadarStructureObservation;
+export declare function createUniverseMembershipObservation(input: CreateUniverseMembershipObservationInput): UniverseMembershipObservation;
+export declare function universeMembershipObservationId(observation: Omit<UniverseMembershipObservation, "observationId"> | UniverseMembershipObservation): string;
+export declare function radarStructureObservationId(observation: Omit<RadarStructureObservation, "observationId"> | RadarStructureObservation): string;
+export declare function createDurableObjectReference(input: {
+    logicalObjectId: string;
+    objectType: string;
+    eventTime: number | null;
+    knownAt: number;
+    snapshot: unknown;
+}): DurableObjectReference;
 export declare function executionVenueEligibilityObservationId(observation: Omit<ExecutionVenueEligibilityObservation, "observationId"> | ExecutionVenueEligibilityObservation): string;
 export declare const EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE: RadarSelectionProfile;
 export declare function scanRadarEpisodes(input: RadarScanInput): RadarScanResult;
