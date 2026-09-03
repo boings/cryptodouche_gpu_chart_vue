@@ -1290,7 +1290,7 @@ function createRadarEpisode(input: {
   const exact = { ...episodeBase, id, logicalObjectId: id };
   return immutableJsonClone({
     ...exact,
-    observationId: `radar-episode-observation:${hashSuffix(exact)}`,
+    observationId: radarEpisodeObservationId(exact),
   });
 }
 
@@ -1353,8 +1353,22 @@ function createReplayCaseManifest(
   };
   return immutableJsonClone({
     ...definition,
-    id: `replay-case:${hashSuffix(definition)}`,
+    id: replayCaseManifestId(definition),
   });
+}
+
+export function replayCaseManifestId(
+  manifest: ReplayCaseManifest | Omit<ReplayCaseManifest, "id">,
+) {
+  const { id: _id, ...definition } = manifest as ReplayCaseManifest;
+  return `replay-case:${hashSuffix(definition)}`;
+}
+
+export function radarEpisodeObservationId(
+  episode: RadarEpisode | Omit<RadarEpisode, "observationId">,
+) {
+  const { observationId: _observationId, ...definition } = episode as RadarEpisode;
+  return `radar-episode-observation:${hashSuffix(definition)}`;
 }
 
 function elapsedReturnObservation(

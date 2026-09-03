@@ -8,6 +8,8 @@ import {
   radarSelectionProfileHash,
   scanRadarEpisodes,
   createRadarStructureObservation,
+  radarEpisodeObservationId,
+  replayCaseManifestId,
   EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE,
   type ElapsedWindowReturnDetector,
   type EmaAtrDisplacementDetector,
@@ -720,6 +722,12 @@ describe("path-aware radar scanning", () => {
       lifecycleVersion: "impulse_fade_v1.lifecycle.1",
       futureOutcomeRef: null,
     });
+    expect(replayCaseManifestId(result.replayCaseManifests[0])).toBe(
+      result.replayCaseManifests[0].id,
+    );
+    expect(radarEpisodeObservationId(result.episodes[0])).toBe(
+      result.episodes[0].observationId,
+    );
 
     const tampered = JSON.parse(JSON.stringify(profile));
     tampered.moveDetectors[0].minimumRunupPct = 1;
