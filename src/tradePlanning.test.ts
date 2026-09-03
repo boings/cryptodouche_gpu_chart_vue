@@ -572,6 +572,19 @@ describe("trade-plan compliance and decision records", () => {
     );
   });
 
+  it("allows an execution venue distinct from the candidate market-data venue", () => {
+    const snapshot = decisionSnapshot();
+    const base = tradePlanInput(snapshot);
+    const plan = createTradePlan({
+      ...base,
+      venueRules: { ...base.venueRules, venue: "phemex" },
+    });
+
+    expect(plan.complianceResult.hardErrors.map((error) => error.code)).not.toContain(
+      "INSTRUMENT_IDENTITY_MISMATCH",
+    );
+  });
+
   it("surfaces profile and lifecycle version mismatches", () => {
     const snapshot = decisionSnapshot();
     const changedProfile = createImpulseFadeResearchProfile({

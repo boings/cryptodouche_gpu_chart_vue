@@ -735,15 +735,11 @@ export function evaluateTradePlanCompliance(input: {
     );
   }
 
-  if (
-    plan.venueRules.symbol.toUpperCase() !== snapshot.symbol.toUpperCase() ||
-    (snapshot.candidateEpisode?.venue &&
-      plan.venueRules.venue.toLowerCase() !== snapshot.candidateEpisode.venue.toLowerCase())
-  ) {
+  if (plan.venueRules.symbol.toUpperCase() !== snapshot.symbol.toUpperCase()) {
     addIssue(
       hardErrors,
       "INSTRUMENT_IDENTITY_MISMATCH",
-      "Venue risk rules do not match the snapshot instrument",
+      "Venue risk rules do not match the snapshot symbol",
     );
   }
 
