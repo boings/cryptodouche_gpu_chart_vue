@@ -217,6 +217,25 @@ describe("deterministic execution session", () => {
     expect(missing.result?.actualNetPnl).toBeNull();
   });
 
+  it("fails closed when funding and a candle-derived fill share an unresolved interval", async () => {
+    const result = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.8, 0.78, 0.795)],
+      funding: [createFundingObservation({
+        venue: "bybit",
+        symbol: "FILUSDT",
+        fundingTime: firstOpen + 100,
+        rate: 0.001,
+        markPrice: 0.79,
+        dataProvenance: "deterministic test",
+      })],
+    }));
+
+    expect(result.state).toBe("Ambiguous");
+    expect(result.result?.ambiguity?.code).toBe("FUNDING_AND_FILL_ORDER_UNKNOWN");
+    expect(result.fundingRecords).toEqual([]);
+  });
+
   it("keeps an open position open at horizon and separates marked unrealized P&L", async () => {
     const loaded = await fixture({
       plan: marketPlan(),
@@ -233,6 +252,45 @@ describe("deterministic execution session", () => {
     expect(result.positionLedger.remainingQuantity).toBe(2725.1);
     expect(result.positionLedger.realizedGrossPnl).toBe(0);
     expect(result.positionLedger.unrealizedGrossPnl).toBeGreaterThan(0);
+  });
+
+  it("excludes pre-entry extrema from MAE/MFE and preserves excursion resolution", async () => {
+    const result = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      horizonSeconds: 3_600,
+      profileOverrides: { orderActivationPolicy: { delaySeconds: 1_800 } },
+      candles: [
+        candle(0, 0.79, 1.5, 0.2, 0.79),
+        candle(1, 0.79, 1.4, 0.3, 0.79),
+        candle(2, 0.79, 0.8, 0.78, 0.79),
+        candle(3, 0.79, 0.81, 0.77, 0.78),
+        candle(4, 0.78, 0.805, 0.775, 0.79),
+        candle(5, 0.79, 0.8, 0.78, 0.79),
+      ],
+    }));
+
+    expect(result.state).toBe("OpenAtHorizon");
+    expect(result.result).toMatchObject({
+      maePrice: 0.81,
+      mfePrice: 0.77,
+      excursionResolution: "15m",
+    });
+  });
+
+  it("changes isolated margin without changing the frozen risk-sized quantity", async () => {
+    const candles = [candle(0, 0.79, 0.8, 0.78, 0.795), candle(1, 0.8, 0.83, 0.79, 0.82)];
+    const base = simulateExecutionToHorizon(await fixture({ plan: marketPlan(), candles }));
+    const leveragedPlan = replan(marketPlan(), {
+      sizingResult: {
+        ...basePlan.sizingResult,
+        selectedLeverage: 2,
+        initialMargin: basePlan.sizingResult.grossNotional / 2,
+      },
+    });
+    const leveraged = simulateExecutionToHorizon(await fixture({ plan: leveragedPlan, candles }));
+
+    expect(leveraged.fills[0]?.quantity).toBe(base.fills[0]?.quantity);
+    expect(leveraged.positionLedger.initialMargin).toBe(base.positionLedger.initialMargin / 2);
   });
 
   it("keeps incremental, batch, serialized resume, truncation, and idempotent advance equivalent", async () => {
