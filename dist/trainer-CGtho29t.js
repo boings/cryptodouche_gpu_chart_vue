@@ -9530,8 +9530,8 @@ function ld(e, t) {
     return "Discretionary overrides are disabled by the replay configuration";
   if (e.venueRules && C(t.venueRules) !== C(e.venueRules))
     return "Trade plan venue rules differ from the loaded replay rules";
-  const n = e.manifest.executionVenueEligibility.executionVenue;
-  return n && t.venueRules.venue.toLowerCase() !== n.toLowerCase() ? "Trade plan venue does not match the manifest execution venue" : ud(e, t.createdAt, n) === "Unavailable" ? "Execution venue was unavailable at the replay decision time" : null;
+  const n = e.manifest.executionVenueEligibility.executionVenue, i = e.manifest.executionVenueEligibility.marketDataSource, r = t.venueRules.venue.toLowerCase();
+  return n && r !== n.toLowerCase() && r !== i.toLowerCase() ? "Trade plan venue does not match the intended or proxy execution venue" : ud(e, t.createdAt, n) === "Unavailable" ? "Execution venue was unavailable at the replay decision time" : null;
 }
 function ud(e, t, n) {
   const i = Z(e).venueEvidence.filter(

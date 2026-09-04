@@ -1143,8 +1143,14 @@ function tradePlanRejectionReason(loaded: ReplayLoadedCase, plan: TradePlan): st
     return "Trade plan venue rules differ from the loaded replay rules";
   }
   const executionVenue = loaded.manifest.executionVenueEligibility.executionVenue;
-  if (executionVenue && plan.venueRules.venue.toLowerCase() !== executionVenue.toLowerCase()) {
-    return "Trade plan venue does not match the manifest execution venue";
+  const executionPriceSource = loaded.manifest.executionVenueEligibility.marketDataSource;
+  const planVenue = plan.venueRules.venue.toLowerCase();
+  if (
+    executionVenue &&
+    planVenue !== executionVenue.toLowerCase() &&
+    planVenue !== executionPriceSource.toLowerCase()
+  ) {
+    return "Trade plan venue does not match the intended or proxy execution venue";
   }
   const eligibility = executionVenueEligibilityAt(loaded, plan.createdAt, executionVenue);
   if (eligibility === "Unavailable") {

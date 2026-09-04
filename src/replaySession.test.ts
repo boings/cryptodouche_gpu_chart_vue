@@ -598,6 +598,54 @@ describe("Replay Phase 1 session engine", () => {
     expectNoFillOrPnlKeys(invalid.session);
   });
 
+  it("accepts source-market rules for explicit research-proxy execution", async () => {
+    const episodeHigh = candidateEpisodeReference(DETECTION);
+    const proxyRules = { ...venueRulesFixture(), venue: SOURCE };
+    const proxyFixture = await buildReplayFixture({
+      venueRules: proxyRules,
+      initialLifecycleState: "entryCandidate",
+      initialCandidateMetrics: candidateMetrics(DETECTION),
+      initialReferences: [episodeHigh],
+    });
+    const started = await startSession(proxyFixture.loaded, "start:trade-proxy");
+    const accepted = await applyReplayCommand(
+      proxyFixture.loaded,
+      started,
+      proposeTradeCommand(started, tradePlanProposal(started), "trade:proxy"),
+    );
+
+    expect(proxyFixture.manifest.executionVenueEligibility).toMatchObject({
+      executionVenue: "phemex",
+      marketDataSource: SOURCE,
+    });
+    expect(accepted.session.state).toBe("TradePlanRecorded");
+    expect(accepted.session.planningAttempts[0]).toMatchObject({
+      accepted: true,
+      rejectionReason: null,
+      tradePlan: { venueRules: { venue: SOURCE } },
+    });
+
+    const unrelatedRules = { ...venueRulesFixture(), venue: "okx" };
+    const unrelatedFixture = await buildReplayFixture({
+      venueRules: unrelatedRules,
+      initialLifecycleState: "entryCandidate",
+      initialCandidateMetrics: candidateMetrics(DETECTION),
+      initialReferences: [episodeHigh],
+    });
+    const unrelatedStarted = await startSession(unrelatedFixture.loaded, "start:trade-unrelated");
+    const rejected = await applyReplayCommand(
+      unrelatedFixture.loaded,
+      unrelatedStarted,
+      proposeTradeCommand(unrelatedStarted, tradePlanProposal(unrelatedStarted), "trade:unrelated"),
+    );
+
+    expect(rejected.session.state).toBe("Active");
+    expect(rejected.session.planningAttempts[0]).toMatchObject({
+      accepted: false,
+      rejectionReason: "Trade plan venue does not match the intended or proxy execution venue",
+    });
+  });
+
   it("makes repeated command IDs idempotent and rejects reused payloads or stale revisions", async () => {
     const fixture = await buildReplayFixture();
     const created = createReplaySession(fixture.loaded);
