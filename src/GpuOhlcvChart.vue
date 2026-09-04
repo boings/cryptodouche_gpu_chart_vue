@@ -562,6 +562,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from "vue"
 import type {
   CandidateMetrics,
   CandleRecord,
+  GpuChartAvwapAnchor,
   GpuChartDataAdapter,
   GpuChartDataQuery,
   GpuChartOpenPayload,
@@ -702,6 +703,7 @@ const MOVING_AVERAGE_COLOR_SUGGESTIONS = [
   "#e879f9",
   "#38bdf8",
 ];
+const AVWAP_ANCHOR_COLORS = ["#d946ef", "#22d3ee", "#f59e0b"] as const;
 
 interface IndicatorPaneLayout {
   id: GpuChartIndicatorPane;
@@ -1380,6 +1382,7 @@ const props = withDefaults(
     syncId?: string | number;
     timeSyncCommand?: GpuChartTimeSyncCommand | null;
     candidateMetrics?: CandidateMetrics | null;
+    anchoredVwapAnchors?: GpuChartAvwapAnchor[];
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -1400,6 +1403,7 @@ const props = withDefaults(
     syncId: "",
     timeSyncCommand: null,
     candidateMetrics: null,
+    anchoredVwapAnchors: () => [],
   },
 );
 
@@ -2174,6 +2178,17 @@ watch(
 );
 
 watch(
+  () => props.anchoredVwapAnchors,
+  () => {
+    if (!chart || !state) return;
+    updateOverlays();
+    drawHud(mousePos);
+    scheduleGpuRender(renderNow);
+  },
+  { deep: true },
+);
+
+watch(
   resolvedAppearance,
   () => {
     if (!chart) return;
@@ -2851,6 +2866,14 @@ function indicatorSeries() {
     series.push({ slot, line, color, alpha });
   };
 
+  for (const anchor of resolvedAvwapAnchors()) {
+    add(
+      computeAnchoredVwapLine(state.candles, { anchorBucket: anchor.anchorBucket }),
+      anchor.color,
+      0.95,
+    );
+  }
+
   for (const indicator of appearance.indicators) {
     if (!indicator.enabled || !gpuChartIndicatorCanAddInstance(indicator.type)) continue;
     if (indicator.type === "sma" && !props.showSma) continue;
@@ -2865,7 +2888,7 @@ function indicatorSeries() {
       add(computeWmaLine(state.candles, period), color);
     }
   }
-  if (chartIndicatorEnabled("anchoredVwap", appearance)) {
+  if (chartIndicatorEnabled("anchoredVwap", appearance) && !resolvedAvwapAnchors().length) {
     add(
       computeAnchoredVwapLine(state.candles, {
         anchorBucket: appearance.anchoredVwapAnchorBucket,
@@ -4731,57 +4754,85 @@ function drawAnchoredVwapAnchor(
   scale: number,
   labelRects: HudLabelRect[],
 ) {
-  const candle = anchoredVwapAnchorCandle();
-  if (!candle || priceBottom <= 0) return;
-  const x = xToPx(candle.x, ctx.canvas.width);
-  if (x < -24 * scale || x > ctx.canvas.width + 24 * scale) return;
-
   const appearance = resolvedAppearance.value;
-  const y = Math.max(
-    0,
-    Math.min(priceBottom, yToPx((candle.h + candle.l + candle.c) / 3, ctx.canvas.height)),
-  );
-  const label = "AVWAP";
-  const padX = 5 * scale;
-  const boxHeight = Math.max(14 * scale, appearance.fontSize * scale * 0.95);
-  const boxWidth = ctx.measureText(label).width + padX * 2;
-  const boxX = x + 5 * scale;
-  const boxY = y - boxHeight / 2;
-
-  ctx.save();
-  ctx.setLineDash([3 * scale, 5 * scale]);
-  ctx.lineWidth = Math.max(1, scale);
-  ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.56);
-  ctx.beginPath();
-  ctx.moveTo(x + 0.5, 0);
-  ctx.lineTo(x + 0.5, priceBottom);
-  ctx.stroke();
-  ctx.setLineDash([]);
-
-  const rect = placeHudLabelRect(
-    ctx,
-    labelRects,
-    boxX,
-    boxY,
-    boxWidth,
-    boxHeight,
-    priceBottom,
-    scale,
-    [0, -1, 1, -2, 2],
-    [0, 1, -1, 2, -2],
-  );
-  if (!rect) {
-    ctx.restore();
-    return;
+  const anchors = resolvedAvwapAnchors();
+  if (!anchors.length && appearance.anchoredVwapAnchorBucket != null) {
+    anchors.push({
+      id: "appearance-anchor",
+      label: "AVWAP",
+      anchorBucket: appearance.anchoredVwapAnchorBucket,
+      color: appearance.anchoredVwapAnchorColor,
+    });
   }
-  drawHudLeaderLine(ctx, x, y, rect, appearance.anchoredVwapAnchorColor, scale);
-  ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.2);
-  ctx.strokeStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.72);
-  ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
-  ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
-  ctx.fillStyle = hexToRgba(appearance.anchoredVwapAnchorColor, 0.98);
-  ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
+  if (!anchors.length || priceBottom <= 0) return;
+  ctx.save();
+  for (const anchor of anchors) {
+    const candle = anchoredVwapAnchorCandle(anchor.anchorBucket);
+    if (!candle) continue;
+    const x = xToPx(candle.x, ctx.canvas.width);
+    if (x < -24 * scale || x > ctx.canvas.width + 24 * scale) continue;
+    const y = Math.max(
+      0,
+      Math.min(priceBottom, yToPx((candle.h + candle.l + candle.c) / 3, ctx.canvas.height)),
+    );
+    const label = anchor.label || "AVWAP";
+    const padX = 5 * scale;
+    const boxHeight = Math.max(14 * scale, appearance.fontSize * scale * 0.95);
+    const boxWidth = ctx.measureText(label).width + padX * 2;
+
+    ctx.setLineDash([3 * scale, 5 * scale]);
+    ctx.lineWidth = Math.max(1, scale);
+    ctx.strokeStyle = hexToRgba(anchor.color, 0.56);
+    ctx.beginPath();
+    ctx.moveTo(x + 0.5, 0);
+    ctx.lineTo(x + 0.5, priceBottom);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    const rect = placeHudLabelRect(
+      ctx,
+      labelRects,
+      x + 5 * scale,
+      y - boxHeight / 2,
+      boxWidth,
+      boxHeight,
+      priceBottom,
+      scale,
+      [0, -1, 1, -2, 2],
+      [0, 1, -1, 2, -2],
+    );
+    if (!rect) continue;
+    drawHudLeaderLine(ctx, x, y, rect, anchor.color, scale);
+    ctx.fillStyle = hexToRgba(anchor.color, 0.2);
+    ctx.strokeStyle = hexToRgba(anchor.color, 0.72);
+    ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+    ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
+    ctx.fillStyle = hexToRgba(anchor.color, 0.98);
+    ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
+  }
   ctx.restore();
+}
+
+function resolvedAvwapAnchors(): Array<GpuChartAvwapAnchor & { color: string }> {
+  if (!chartIndicatorEnabled("anchoredVwap", resolvedAppearance.value)) return [];
+  return props.anchoredVwapAnchors
+    .filter((anchor) => anchor.visible !== false && Number.isFinite(anchor.anchorBucket))
+    .slice(0, 3)
+    .map((anchor, index) => ({
+      ...anchor,
+      color: AVWAP_ANCHOR_COLORS[index % AVWAP_ANCHOR_COLORS.length]!,
+    }));
+}
+
+function anchoredVwapAnchorCandle(anchorBucket = resolvedAppearance.value.anchoredVwapAnchorBucket) {
+  if (!state?.candles.length) return null;
+  const bucket = anchorBucket;
+  if (bucket == null || !Number.isFinite(bucket)) return null;
+  return (
+    state.candles.find((candle) => candle.bucket === bucket) ??
+    state.candles.find((candle) => candle.bucket >= bucket) ??
+    null
+  );
 }
 
 function drawAnchoredVwapSignals(
@@ -6191,17 +6242,6 @@ function nearestCandle(x: number) {
     }
   }
   return best;
-}
-
-function anchoredVwapAnchorCandle() {
-  if (!state?.candles.length) return null;
-  const bucket = resolvedAppearance.value.anchoredVwapAnchorBucket;
-  if (bucket == null || !Number.isFinite(bucket)) return null;
-  return (
-    state.candles.find((candle) => candle.bucket === bucket) ??
-    state.candles.find((candle) => candle.bucket >= bucket) ??
-    null
-  );
 }
 
 function yToPx(y: number, height: number) {
