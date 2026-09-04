@@ -29,6 +29,36 @@ test("paginates backward, canonicalizes rows, and reuses the immutable snapshot 
   assert.deepEqual(offline, online);
 });
 
+test("retries a bounded Bybit rate-limit response before accepting the page", async () => {
+  const snapshotDir = await mkdtemp(path.join(os.tmpdir(), "trainer-bybit-retry-"));
+  const start = 1_704_067_200;
+  let calls = 0;
+  const fetchImpl = async () => {
+    calls += 1;
+    if (calls === 1) {
+      return {
+        ok: true,
+        status: 200,
+        json: async () => ({ retCode: 10006, retMsg: "Too many visits. Exceeded the API Rate Limit." }),
+      };
+    }
+    return {
+      ok: true,
+      status: 200,
+      json: async () => ({ retCode: 0, result: { list: [nativeRow(start, 100)] } }),
+    };
+  };
+  const query = { source: "bybit", symbol: "FILUSDT", timeframe: "1h", from: start, to: start + 3_600 };
+  const snapshot = await loadBybitSnapshot(query, {
+    snapshotDir,
+    fetchImpl,
+    maximumAttempts: 2,
+    retryBaseDelayMs: 0,
+  });
+  assert.equal(calls, 2);
+  assert.equal(snapshot.nativeRows.length, 1);
+});
+
 function nativeRow(openTime, close) {
   return [String(openTime * 1000), String(close), String(close + 1), String(close - 1), String(close), "1000", String(close * 1000)];
 }

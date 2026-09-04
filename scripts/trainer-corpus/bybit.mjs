@@ -26,7 +26,11 @@ export async function loadBybitSnapshot(query, options = {}) {
     return parseSnapshot(await readFile(path.join(directory, existing[0]), "utf8"), query);
   }
 
-  const nativeRows = await fetchBackward(query, options.fetchImpl ?? fetch);
+  const nativeRows = await fetchBackward(query, options.fetchImpl ?? fetch, {
+    maximumAttempts: options.maximumAttempts ?? 6,
+    retryBaseDelayMs: options.retryBaseDelayMs ?? (options.fetchImpl ? 0 : 1_000),
+    requestIntervalMs: options.requestIntervalMs ?? (options.fetchImpl ? 0 : 125),
+  });
   const definition = {
     schemaVersion: "bybit-kline-snapshot.1",
     source: "bybit",
@@ -68,7 +72,7 @@ export function nativeRowsToCandles(snapshot) {
   }));
 }
 
-export async function fetchBackward(query, fetchImpl) {
+export async function fetchBackward(query, fetchImpl, options = {}) {
   const interval = BYBIT_INTERVALS[query.timeframe];
   const fromMs = query.from * 1000;
   const toMs = query.to * 1000;
@@ -86,12 +90,7 @@ export async function fetchBackward(query, fetchImpl) {
       end: String(cursorEnd),
       limit: "1000",
     }).toString();
-    const response = await fetchImpl(url, { headers: { Accept: "application/json" } });
-    if (!response.ok) throw new Error(`Bybit HTTP ${response.status} for ${query.symbol} ${query.timeframe}`);
-    const body = await response.json();
-    if (body?.retCode !== 0 || !Array.isArray(body?.result?.list)) {
-      throw new Error(`Bybit rejected ${query.symbol} ${query.timeframe}: ${body?.retMsg ?? "invalid response"}`);
-    }
+    const body = await fetchPageWithRetry(url, query, fetchImpl, options);
     const page = body.result.list.map(normalizeNativeRow);
     if (page.length === 0) break;
     let oldest = Number.POSITIVE_INFINITY;
@@ -105,8 +104,35 @@ export async function fetchBackward(query, fetchImpl) {
     if (!Number.isFinite(oldest) || oldest > cursorEnd) throw new Error("Bybit pagination did not move backward");
     if (oldest <= fromMs || page.length < 1000) break;
     cursorEnd = oldest - 1;
+    if ((options.requestIntervalMs ?? 0) > 0) await sleep(options.requestIntervalMs);
   }
   return rows.sort((left, right) => Number(left[0]) - Number(right[0]) || canonicalJson(left).localeCompare(canonicalJson(right)));
+}
+
+async function fetchPageWithRetry(url, query, fetchImpl, options) {
+  const maximumAttempts = Math.max(1, Number(options.maximumAttempts ?? 1));
+  const baseDelay = Math.max(0, Number(options.retryBaseDelayMs ?? 0));
+  for (let attempt = 1; attempt <= maximumAttempts; attempt += 1) {
+    const response = await fetchImpl(url, { headers: { Accept: "application/json" } });
+    const body = response.ok ? await response.json() : null;
+    if (response.ok && body?.retCode === 0 && Array.isArray(body?.result?.list)) return body;
+    const rejectedForRateLimit = response.status === 429 || response.status === 403 ||
+      body?.retCode === 10006 || /too many visits|rate limit/i.test(String(body?.retMsg ?? ""));
+    if (!rejectedForRateLimit || attempt === maximumAttempts) {
+      if (!response.ok) {
+        throw new Error(`Bybit HTTP ${response.status} for ${query.symbol} ${query.timeframe}`);
+      }
+      throw new Error(`Bybit rejected ${query.symbol} ${query.timeframe}: ${body?.retMsg ?? "invalid response"}`);
+    }
+    await sleep(baseDelay * 2 ** (attempt - 1));
+  }
+  throw new Error(`Bybit request exhausted retries for ${query.symbol} ${query.timeframe}`);
+}
+
+function sleep(milliseconds) {
+  return milliseconds > 0
+    ? new Promise((resolve) => setTimeout(resolve, milliseconds))
+    : Promise.resolve();
 }
 
 function normalizeNativeRow(row) {
