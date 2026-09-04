@@ -419,6 +419,12 @@ export interface RadarScanInput {
   selectionProfile: RadarSelectionProfile;
   from: number;
   to: number;
+  /**
+   * Optional conservative prefilter output. Points omitted here are treated as
+   * evaluated false for state-machine continuity, without materializing the
+   * expensive detector evidence that cannot pass at those points.
+   */
+  candidateEvaluationPoints?: readonly number[];
   strategyProfile?: StrategyProfile;
   lifecycleHistory?: Record<string, readonly SetupStateSnapshot[]>;
   universeHistory?: readonly UniverseMembershipObservation[];
@@ -697,6 +703,9 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       .filter((asOf) => asOf >= stateWarmupStart)
       .filter((asOf) => asOf <= input.to)
       .filter((asOf) => cadenceIncludes(asOf, input.selectionProfile));
+    const candidateEvaluationPoints = input.candidateEvaluationPoints
+      ? new Set(input.candidateEvaluationPoints)
+      : null;
     const state: MutableRadarState = {
       previousGate: null,
       previousEvaluationAsOf: null,
@@ -718,9 +727,12 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         state.falseSince = null;
       }
       const inRequestedRange = asOf >= input.from;
-      const detectorEvaluations = input.selectionProfile.moveDetectors.map((detector) =>
-        evaluateDetector(detector, series, asOf, input.selectionProfile.scanTimeframe),
-      );
+      const materializeEvidence = candidateEvaluationPoints == null || candidateEvaluationPoints.has(asOf);
+      const detectorEvaluations = materializeEvidence
+        ? input.selectionProfile.moveDetectors.map((detector) =>
+            evaluateDetector(detector, series, asOf, input.selectionProfile.scanTimeframe),
+          )
+        : [];
       if (inRequestedRange) {
         for (const evaluation of detectorEvaluations) {
           for (const observation of evaluation.observations) {
@@ -728,47 +740,57 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           }
         }
       }
-      const detectorGate = combineDetectorResults(
-        detectorEvaluations.map((item) => item.result),
-        input.selectionProfile.detectorCombination,
-      );
-      const venueEligibility = venueEligibilityAt(
-        series,
-        asOf,
-        input.selectionProfile,
-        input.venueEligibilityHistory ?? [],
-      );
-      const hardGateEvaluation = evaluateHardGates(
-        series,
-        asOf,
-        input.selectionProfile,
-        detectorEvaluations,
-        venueEligibility,
-        input.universeHistory ?? [],
-      );
-      const hardGateResults = hardGateEvaluation.results;
-      const hardGatesPassed = hardGateResults.every((gate) => gate.passed);
-      const compositePassed = detectorGate.passed && hardGatesPassed;
-      const compositeEvaluable = !hardGatesPassed || detectorGate.evaluable;
-      if (inRequestedRange) {
-        for (const evidence of hardGateEvaluation.evidence) {
-          if (evidence.schemaVersion === RADAR_METRIC_OBSERVATION_SCHEMA_VERSION) {
-            observations.set(evidence.requestId, evidence);
+      const venueEligibility = materializeEvidence
+        ? venueEligibilityAt(
+            series,
+            asOf,
+            input.selectionProfile,
+            input.venueEligibilityHistory ?? [],
+          )
+        : null;
+      let hardGateResults: RadarHardGateResult[] = [];
+      let hardGateEvidence: RadarHardGateEvidence[] = [];
+      let compositePassed = false;
+      let compositeEvaluable = true;
+      let evaluation: RadarGateEvaluation | null = null;
+      if (materializeEvidence) {
+        const detectorGate = combineDetectorResults(
+          detectorEvaluations.map((item) => item.result),
+          input.selectionProfile.detectorCombination,
+        );
+        const hardGateEvaluation = evaluateHardGates(
+          series,
+          asOf,
+          input.selectionProfile,
+          detectorEvaluations,
+          venueEligibility!,
+          input.universeHistory ?? [],
+        );
+        hardGateResults = hardGateEvaluation.results;
+        hardGateEvidence = hardGateEvaluation.evidence;
+        const hardGatesPassed = hardGateResults.every((gate) => gate.passed);
+        compositePassed = detectorGate.passed && hardGatesPassed;
+        compositeEvaluable = !hardGatesPassed || detectorGate.evaluable;
+        if (inRequestedRange) {
+          for (const evidence of hardGateEvidence) {
+            if (evidence.schemaVersion === RADAR_METRIC_OBSERVATION_SCHEMA_VERSION) {
+              observations.set(evidence.requestId, evidence);
+            }
           }
         }
+        evaluation = createGateEvaluation(
+          series,
+          asOf,
+          detectorEvaluations.map((item) => item.result),
+          hardGateResults,
+          hardGateEvidence,
+          detectorGate.passed,
+          hardGatesPassed,
+          compositePassed,
+          compositeEvaluable,
+        );
+        if (inRequestedRange) gateEvaluations.push(evaluation);
       }
-      const evaluation = createGateEvaluation(
-        series,
-        asOf,
-        detectorEvaluations.map((item) => item.result),
-        hardGateResults,
-        hardGateEvaluation.evidence,
-        detectorGate.passed,
-        hardGatesPassed,
-        compositePassed,
-        compositeEvaluable,
-      );
-      if (inRequestedRange) gateEvaluations.push(evaluation);
 
       if (state.activeEpisode && asOf >= state.activeEpisode.activeUntil) {
         if (
@@ -809,7 +831,15 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
         state.falseSince = null;
       }
 
-      if (compositeEvaluable && compositePassed && state.previousGate === false && state.armed) {
+      if (
+        materializeEvidence &&
+        evaluation &&
+        venueEligibility &&
+        compositeEvaluable &&
+        compositePassed &&
+        state.previousGate === false &&
+        state.armed
+      ) {
         const episode = createRadarEpisode({
           series,
           seriesKey,
@@ -818,7 +848,7 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
           strategyProfile,
           detectorEvaluations,
           selectionEvaluation: evaluation,
-          hardGateEvidence: hardGateEvaluation.evidence,
+          hardGateEvidence,
           venueEligibility,
           lifecycleHistory: input.lifecycleHistory?.[seriesKey] ?? [],
           structureHistory: input.structureHistory ?? [],

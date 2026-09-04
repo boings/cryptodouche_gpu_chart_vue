@@ -16,44 +16,15 @@ export function prefilterRadarPoints(candles, profile) {
 
 export function scanPrefilteredRadar(input, candidatePoints, options = {}) {
   if (candidatePoints.length === 0) return emptyLike(input);
+  const stateWarmupSeconds = Math.max(
+    input.selectionProfile.episodeExpiry.maximumAgeSeconds,
+    input.selectionProfile.resetPolicy.minimumFalseDurationSeconds,
+  ) + HOUR * input.selectionProfile.evaluationCadence.everyBars;
   const points = [...new Set(candidatePoints)]
-    .filter((point) => point >= input.from && point <= input.to)
+    .filter((point) => point >= input.from - stateWarmupSeconds && point <= input.to)
     .sort((left, right) => left - right);
   if (points.length === 0) return emptyLike(input);
-  const blocks = groupCandidatePoints(points, options.maximumGapSeconds ?? 6 * HOUR);
-  const episodeMap = new Map();
-  const manifestMap = new Map();
-  const observationMap = new Map();
-  const evaluationMap = new Map();
-  const statusMap = new Map();
-  for (const block of blocks) {
-    const result = scanRadarEpisodes({ ...input, from: block[0], to: block.at(-1) });
-    const accepted = new Set(block);
-    for (const episode of result.episodes) {
-      if (accepted.has(episode.detectedAt)) episodeMap.set(episode.id, episode);
-    }
-    for (const manifest of result.replayCaseManifests) {
-      if (episodeMap.has(manifest.radarEpisodeId)) manifestMap.set(manifest.id, manifest);
-    }
-    for (const item of result.observations) observationMap.set(item.observationId, item);
-    for (const item of result.gateEvaluations) evaluationMap.set(item.id, item);
-    for (const item of result.episodeStatusObservations) statusMap.set(item.observationId, item);
-  }
-  return {
-    schemaVersion: "radar-scan-result.1",
-    selectionProfileRef: {
-      id: input.selectionProfile.id,
-      version: input.selectionProfile.version,
-      canonicalConfigHash: input.selectionProfile.canonicalConfigHash,
-    },
-    from: input.from,
-    to: input.to,
-    observations: sorted(observationMap),
-    gateEvaluations: sorted(evaluationMap),
-    episodes: [...episodeMap.values()].sort(compareEpisodes),
-    episodeStatusObservations: sorted(statusMap),
-    replayCaseManifests: [...manifestMap.values()].sort((left, right) => left.id.localeCompare(right.id)),
-  };
+  return scanRadarEpisodes({ ...input, candidateEvaluationPoints: points });
 }
 
 export function comparePrefilteredWithFullScan(input, candidatePoints) {
@@ -133,24 +104,6 @@ function atrLast(candles, period) {
   let value = ranges.slice(0, period).reduce((sum, item) => sum + item, 0) / period;
   for (let index = period; index < ranges.length; index += 1) value = (value * (period - 1) + ranges[index]) / period;
   return value;
-}
-
-function groupCandidatePoints(points, maximumGapSeconds) {
-  const blocks = [];
-  for (const point of points) {
-    const current = blocks.at(-1);
-    if (!current || point - current.at(-1) > maximumGapSeconds) blocks.push([point]);
-    else current.push(point);
-  }
-  return blocks;
-}
-
-function sorted(map) {
-  return [...map.values()].sort((left, right) => JSON.stringify(left).localeCompare(JSON.stringify(right)));
-}
-
-function compareEpisodes(left, right) {
-  return left.detectedAt - right.detectedAt || left.symbol.localeCompare(right.symbol) || left.id.localeCompare(right.id);
 }
 
 function emptyLike(input) {
