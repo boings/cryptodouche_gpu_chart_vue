@@ -267,7 +267,10 @@ export function resolveProfiles(options) {
     strategy,
     analysis,
     replay,
-    execution: createExperimentalExecutionProfile(["1m"]),
+    execution: createExperimentalExecutionProfile([
+      "1m",
+      strategy.timeframeRoles.executionTimeframe,
+    ]),
   });
 }
 

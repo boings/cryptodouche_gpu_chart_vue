@@ -44,6 +44,10 @@ test("builds a deterministic dashboard-importable real corpus without authored o
   assert.equal(bundle.schemaVersion, "trainer-case-bundle.1");
   assert.equal(bundle.bundleFingerprint, bundleFingerprint(bundle));
   assert.equal(bundle.executionData.funding.availability, "unavailable");
+  assert.deepEqual(
+    bundle.executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst,
+    ["1m", bundle.strategyProfile.timeframeRoles.executionTimeframe],
+  );
   assert.equal(bundle.provenance.executionSimulationMode, "ResearchProxyExecution");
   assert.equal(bundle.venueExecutionRules.assumptionStatus, "researchAssumption");
   assert.equal(bundle.feeSchedule.assumptionStatus, "researchAssumption");
