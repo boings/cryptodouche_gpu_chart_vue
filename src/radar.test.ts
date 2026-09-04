@@ -456,6 +456,38 @@ describe("path-aware radar scanning", () => {
     expect(result.episodeStatusObservations.filter((item) => item.reason === "detected")).toHaveLength(1);
   });
 
+  it("warms episode state near the requested range without replaying all analysis history", () => {
+    const from = START + 200 * DAY;
+    const history = Array.from({ length: 200 * 24 - 4 }, (_, index) =>
+      candle(START + index * HOUR, 100),
+    );
+    const candles = [
+      ...history,
+      candle(from - 4 * HOUR, 80),
+      candle(from - 3 * HOUR, 92),
+      candle(from - 2 * HOUR, 92),
+      candle(from - HOUR, 92),
+      candle(from, 92),
+      candle(from + HOUR, 92),
+    ];
+    const result = scanRadarEpisodes({
+      candlesBySymbolAndTimeframe: {
+        FILUSDT: {
+          symbol: "FILUSDT",
+          source: "bybit",
+          candlesByTimeframe: { "1h": candles },
+        },
+      },
+      selectionProfile: createRadarSelectionProfile(profileDefinition()),
+      from,
+      to: from + 2 * HOUR,
+    });
+
+    expect(result.episodes).toHaveLength(0);
+    expect(result.gateEvaluations).toHaveLength(3);
+    expect(result.gateEvaluations.every((item) => item.compositePassed)).toBe(true);
+  });
+
   it("requires a continuous false duration before rearming a later crossing", () => {
     const candles = [100, 120, 121, 100, 100, 120].map((close, index) =>
       candle(START + index * HOUR, close),

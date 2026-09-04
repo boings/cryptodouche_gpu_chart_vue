@@ -688,8 +688,13 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
       input.selectionProfile.scanTimeframe,
       input.to,
     );
+    const stateWarmupStart = Math.max(
+      0,
+      input.from - radarStateWarmupSeconds(input.selectionProfile),
+    );
     const points = scanCandles
       .map((item) => candleCloseTime(item, input.selectionProfile.scanTimeframe))
+      .filter((asOf) => asOf >= stateWarmupStart)
       .filter((asOf) => asOf <= input.to)
       .filter((asOf) => cadenceIncludes(asOf, input.selectionProfile));
     const state: MutableRadarState = {
@@ -850,6 +855,15 @@ export function scanRadarEpisodes(input: RadarScanInput): RadarScanResult {
     episodeStatusObservations: episodeStatusObservations.sort(compareStatusObservations),
     replayCaseManifests: replayCaseManifests.sort((left, right) => left.id.localeCompare(right.id)),
   });
+}
+
+function radarStateWarmupSeconds(profile: RadarSelectionProfile) {
+  const cadenceSeconds =
+    strictTimeframeSeconds(profile.scanTimeframe) * profile.evaluationCadence.everyBars;
+  return Math.max(
+    profile.episodeExpiry.maximumAgeSeconds,
+    profile.resetPolicy.minimumFalseDurationSeconds,
+  ) + cadenceSeconds;
 }
 
 function evaluateDetector(
