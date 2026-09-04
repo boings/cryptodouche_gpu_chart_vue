@@ -23,6 +23,7 @@
   },
   "scripts": {
     "build": "COPYFILE_DISABLE=1 vite build && COPYFILE_DISABLE=1 vue-tsc -p tsconfig.json --declaration --emitDeclarationOnly && find dist -name '._*' -delete",
+    "build:trainer-corpus": "pnpm build && node scripts/build-trainer-corpus.mjs",
     "clean:appledouble": "find . -name '._*' -not -path './node_modules/*' -delete",
     "test": "vitest run",
     "audit:impulse-fade": "pnpm build && node scripts/audit-impulse-fade.mjs",
