@@ -2023,7 +2023,7 @@ function historicalElapsedReturns(
   const values: number[] = [];
   for (const candidate of candles) {
     if (candidate.bucket < earliest || candidate.bucket >= current.bucket) continue;
-    const reference = latestAtOrBefore(candles, candidate.bucket - detector.windowSeconds);
+    const reference = latestAtOrBeforeSorted(candles, candidate.bucket - detector.windowSeconds);
     if (!reference || !validPositive(reference.c)) continue;
     const staleness = candidate.bucket - detector.windowSeconds - reference.bucket;
     if (
@@ -2045,20 +2045,49 @@ function historicalRunups(
   if (!current) return [];
   const earliest = current.bucket - detector.historyLookbackSeconds;
   const values: number[] = [];
-  for (const candidate of candles) {
+  const minimumByClose: number[] = [];
+  let head = 0;
+  for (let index = 0; index < candles.length; index += 1) {
+    const candidate = candles[index];
+    const minimumBucket = Math.max(
+      candidate.bucket - detector.lookbackSeconds,
+      candidate.bucket - detector.maximumTroughAgeSeconds,
+    );
+    while (head < minimumByClose.length && candles[minimumByClose[head]].bucket < minimumBucket) {
+      head += 1;
+    }
+    if (validPositive(candidate.c)) {
+      while (
+        minimumByClose.length > head &&
+        candles[minimumByClose[minimumByClose.length - 1]].c > candidate.c
+      ) {
+        minimumByClose.pop();
+      }
+      minimumByClose.push(index);
+    }
     if (candidate.bucket < earliest || candidate.bucket >= current.bucket) continue;
-    const trough = candles
-      .filter(
-        (item) =>
-          item.bucket <= candidate.bucket &&
-          item.bucket >= candidate.bucket - detector.lookbackSeconds &&
-          candidate.bucket - item.bucket <= detector.maximumTroughAgeSeconds &&
-          validPositive(item.c),
-      )
-      .sort((left, right) => left.c - right.c || left.bucket - right.bucket)[0];
+    const troughIndex = minimumByClose[head];
+    const trough = troughIndex == null ? null : candles[troughIndex];
     if (trough) values.push((candidate.c / trough.c - 1) * 100);
   }
   return values;
+}
+
+function latestAtOrBeforeSorted(candles: readonly CandleRecord[], target: number) {
+  let low = 0;
+  let high = candles.length - 1;
+  let selected: CandleRecord | null = null;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    const candle = candles[middle];
+    if (candle.bucket <= target) {
+      selected = candle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
+    }
+  }
+  return selected;
 }
 
 function distributionStatistics(
