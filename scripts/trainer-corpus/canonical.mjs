@@ -1,5 +1,7 @@
 import { createHash } from "node:crypto";
-import { mkdir, writeFile } from "node:fs/promises";
+import { createWriteStream } from "node:fs";
+import { mkdir } from "node:fs/promises";
+import { once } from "node:events";
 import path from "node:path";
 
 export function canonicalJson(value) {
@@ -18,7 +20,42 @@ export function hashSuffix(value, length = 20) {
 
 export async function writeCanonicalJson(file, value) {
   await mkdir(path.dirname(file), { recursive: true });
-  await writeFile(file, `${canonicalJson(value)}\n`, { encoding: "utf8", flag: "w" });
+  const stream = createWriteStream(file, { encoding: "utf8", flags: "w" });
+  try {
+    for (const chunk of canonicalChunks(value)) {
+      if (!stream.write(chunk)) await once(stream, "drain");
+    }
+    stream.end("\n");
+    await once(stream, "finish");
+  } catch (error) {
+    stream.destroy();
+    throw error;
+  }
+}
+
+function* canonicalChunks(value) {
+  if (value === null || typeof value !== "object") {
+    yield JSON.stringify(value);
+    return;
+  }
+  if (Array.isArray(value)) {
+    yield "[";
+    for (let index = 0; index < value.length; index += 1) {
+      if (index > 0) yield ",";
+      yield* canonicalChunks(value[index]);
+    }
+    yield "]";
+    return;
+  }
+  yield "{";
+  const keys = Object.keys(value).sort();
+  for (let index = 0; index < keys.length; index += 1) {
+    if (index > 0) yield ",";
+    const key = keys[index];
+    yield `${JSON.stringify(key)}:`;
+    yield* canonicalChunks(value[key]);
+  }
+  yield "}";
 }
 
 export function bundleFingerprint(bundle) {
