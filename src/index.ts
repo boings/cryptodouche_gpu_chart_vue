@@ -9,6 +9,7 @@ export * from "./indicators";
 export * from "./radar";
 export * from "./replay";
 export * from "./replayAnalysis";
+export * from "./replayAnalysisSession";
 export * from "./replayJsonAdapter";
 export * from "./replaySession";
 export * from "./scheduler";
