@@ -83,6 +83,12 @@ export interface GpuChartOpenPayload {
   timeframe: string | number;
 }
 
+export interface GpuChartPointSelectionPayload extends GpuChartOpenPayload {
+  mode: string;
+  price: number;
+  candle: OhlcvPoint;
+}
+
 export interface CandidateExtensionMetrics {
   windowSeconds: number;
   historyDays: number;

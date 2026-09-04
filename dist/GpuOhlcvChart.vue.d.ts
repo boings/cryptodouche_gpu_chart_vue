@@ -1,4 +1,4 @@
-import type { CandidateMetrics, GpuChartDataAdapter, GpuChartOpenPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
+import type { CandidateMetrics, GpuChartDataAdapter, GpuChartOpenPayload, GpuChartPointSelectionPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
 import { type GpuChartAppearance } from "./appearance";
 type __VLS_Props = {
     symbol: string;
@@ -15,6 +15,7 @@ type __VLS_Props = {
     synthetic?: boolean;
     title?: string;
     openOnChartClick?: boolean;
+    pointSelectionMode?: string | null;
     showIndicatorPanes?: boolean;
     showChartSettings?: boolean;
     syncId?: string | number;
@@ -26,6 +27,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     open: (payload: GpuChartOpenPayload) => any;
     error: (message: string | null) => any;
     streaming: (active: boolean) => any;
+    "select-point": (payload: GpuChartPointSelectionPayload) => any;
     "update:timeframe": (value: string) => any;
     "update:appearance": (value: GpuChartAppearance) => any;
     "save-appearance": (value: GpuChartAppearance) => any;
@@ -35,6 +37,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     onOpen?: ((payload: GpuChartOpenPayload) => any) | undefined;
     onError?: ((message: string | null) => any) | undefined;
     onStreaming?: ((active: boolean) => any) | undefined;
+    "onSelect-point"?: ((payload: GpuChartPointSelectionPayload) => any) | undefined;
     "onUpdate:timeframe"?: ((value: string) => any) | undefined;
     "onUpdate:appearance"?: ((value: GpuChartAppearance) => any) | undefined;
     "onSave-appearance"?: ((value: GpuChartAppearance) => any) | undefined;
@@ -53,6 +56,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     dataAdapter: GpuChartDataAdapter;
     synthetic: boolean;
     openOnChartClick: boolean;
+    pointSelectionMode: string | null;
     showIndicatorPanes: boolean;
     showChartSettings: boolean;
     syncId: string | number;

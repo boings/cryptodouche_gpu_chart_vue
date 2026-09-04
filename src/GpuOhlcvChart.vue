@@ -565,6 +565,7 @@ import type {
   GpuChartDataAdapter,
   GpuChartDataQuery,
   GpuChartOpenPayload,
+  GpuChartPointSelectionPayload,
   GpuChartTimeSyncAction,
   GpuChartTimeSyncCommand,
   GpuChartTimeWindow,
@@ -1373,6 +1374,7 @@ const props = withDefaults(
     synthetic?: boolean;
     title?: string;
     openOnChartClick?: boolean;
+    pointSelectionMode?: string | null;
     showIndicatorPanes?: boolean;
     showChartSettings?: boolean;
     syncId?: string | number;
@@ -1392,6 +1394,7 @@ const props = withDefaults(
     synthetic: false,
     title: "",
     openOnChartClick: false,
+    pointSelectionMode: null,
     showIndicatorPanes: false,
     showChartSettings: false,
     syncId: "",
@@ -1404,6 +1407,7 @@ const emit = defineEmits<{
   streaming: [active: boolean];
   error: [message: string | null];
   open: [payload: GpuChartOpenPayload];
+  "select-point": [payload: GpuChartPointSelectionPayload];
   "update:timeframe": [value: string];
   "update:appearance": [value: GpuChartAppearance];
   "save-appearance": [value: GpuChartAppearance];
@@ -2063,8 +2067,41 @@ function handleShellClick(event: MouseEvent) {
     setAnchoredVwapAnchorFromPointer(event);
     return;
   }
+  if (props.pointSelectionMode) {
+    emitPointSelection(event);
+    return;
+  }
   if (!props.openOnChartClick) return;
   emit("open", openPayload());
+}
+
+function emitPointSelection(event: MouseEvent) {
+  const canvas = canvasRef.value;
+  if (!canvas || !state?.candles.length || !props.pointSelectionMode) return;
+  const rect = canvas.getBoundingClientRect();
+  const localY = event.clientY - rect.top;
+  if (rect.width <= 0 || rect.height <= 0 || localY < 0 || localY > pricePaneHeightCss(rect)) return;
+  const scale = canvasScale(canvas);
+  const candle = nearestCandle(pxToX((event.clientX - rect.left) * scale, canvas.width));
+  if (!candle) return;
+  const price = pxToY(localY * scale, canvas.height);
+  if (!Number.isFinite(price)) return;
+  emit("select-point", {
+    ...openPayload(),
+    mode: props.pointSelectionMode,
+    price,
+    candle: {
+      ts: candle.ts,
+      o: candle.o,
+      h: candle.h,
+      l: candle.l,
+      c: candle.c,
+      v_base: candle.v_base,
+      v_quote: candle.v_quote,
+      ver: candle.ver,
+      knownAt: candle.knownAt,
+    },
+  });
 }
 
 onMounted(async () => {
@@ -3943,7 +3980,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onMouseDown = (event: MouseEvent) => {
     if (event.button !== 0) return;
-    if (anchoredVwapPickMode.value) {
+    if (anchoredVwapPickMode.value || props.pointSelectionMode) {
       draggedDuringPointer = false;
       canvas.style.cursor = "crosshair";
       return;
@@ -3962,7 +3999,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
 
   const onMouseUp = () => {
     dragging = false;
-    canvas.style.cursor = anchoredVwapPickMode.value ? "crosshair" : "";
+    canvas.style.cursor = anchoredVwapPickMode.value || props.pointSelectionMode ? "crosshair" : "";
   };
 
   const onMouseMove = (event: MouseEvent) => {
@@ -4001,7 +4038,7 @@ function attachInteractions(canvas: HTMLCanvasElement, hud: HTMLCanvasElement) {
       applyView();
       scheduleGpuRender(renderNow);
     } else {
-      canvas.style.cursor = anchoredVwapPickMode.value
+      canvas.style.cursor = anchoredVwapPickMode.value || props.pointSelectionMode
         ? "crosshair"
         : isPriceScaleDragZone(event, rect)
           ? "ns-resize"
