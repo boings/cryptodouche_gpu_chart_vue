@@ -1,6 +1,6 @@
 import { type DecisionDataQualityNote, type DecisionSnapshot } from "./strategy";
 import { type CreateTradePlanInput, type DecisionRecord, type SkipReasonCode, type TradePlan } from "./tradePlanning";
-import { REPLAY_COMMAND_SCHEMA_VERSION, REPLAY_DECISION_FRAME_SCHEMA_VERSION, REPLAY_ENGINE_VERSION, REPLAY_EVENT_SCHEMA_VERSION, REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION, REPLAY_SESSION_SCHEMA_VERSION, REPLAY_WAKE_CONDITION_SCHEMA_VERSION, REPLAY_WAKE_PLAN_SCHEMA_VERSION, REPLAY_WAKE_RESULT_SCHEMA_VERSION, type ReplayCandleRecord, type ReplayLoadedCase, type ReplayRadarContext, type ReplaySessionState, type ReplayTerminalReason, type ReplayWaitReason, type ReplayWakeConditionType } from "./replay";
+import { REPLAY_COMMAND_SCHEMA_VERSION, REPLAY_DECISION_FRAME_SCHEMA_VERSION, REPLAY_EVENT_SCHEMA_VERSION, REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION, REPLAY_SESSION_SCHEMA_VERSION, REPLAY_WAKE_CONDITION_SCHEMA_VERSION, REPLAY_WAKE_PLAN_SCHEMA_VERSION, REPLAY_WAKE_RESULT_SCHEMA_VERSION, type ReplayCandleRecord, type ReplayLoadedCase, type ReplayEngineVersion, type ReplayMaterializedAnalysisBinding, type ReplayMaterializedAnalysisStateRef, type ReplayRadarContext, type ReplaySessionState, type ReplayTerminalReason, type ReplayWaitReason, type ReplayWakeConditionType } from "./replay";
 import { type JsonValue } from "./serialization";
 import type { SetupStateName } from "./indicators";
 export type ReplayStructureEventType = "BOS" | "Shift" | string;
@@ -164,6 +164,7 @@ export interface ReplayDecisionFrame {
     activeWakeResult: ReplayWakeResult | null;
     dataQualityNotes: DecisionDataQualityNote[];
     generatedAtLogicalTime: number;
+    materializedAnalysisStateRef?: ReplayMaterializedAnalysisStateRef;
 }
 export interface ReplayPlanningAttempt {
     id: string;
@@ -176,7 +177,7 @@ export interface ReplayPlanningAttempt {
 export interface ReplaySessionIdentity {
     schemaVersion: typeof REPLAY_SESSION_SCHEMA_VERSION;
     id: string;
-    replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+    replayEngineVersion: ReplayEngineVersion;
     manifestId: string;
     manifestSchemaVersion: string;
     radarEpisodeId: string;
@@ -205,6 +206,7 @@ export interface ReplaySessionIdentity {
         hash: string;
     } | null;
     createdAtLogicalTime: number;
+    materializedAnalysisRef?: ReplayMaterializedAnalysisBinding;
 }
 export interface ReplaySession extends ReplaySessionIdentity {
     revision: number;

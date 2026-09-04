@@ -5,6 +5,8 @@ import { type AnchoredVwapDecisionState, type DecisionDataQualityNote, type Deci
 import { type VenueRiskRules } from "./tradePlanning";
 import type { CandidateMetrics } from "./types";
 export declare const REPLAY_ENGINE_VERSION: "replay-engine.1";
+export declare const REPLAY_MATERIALIZED_ENGINE_VERSION: "replay-engine.2";
+export type ReplayEngineVersion = typeof REPLAY_ENGINE_VERSION | typeof REPLAY_MATERIALIZED_ENGINE_VERSION;
 export declare const REPLAY_SESSION_CONFIG_SCHEMA_VERSION: "replay-session-config.1";
 export declare const REPLAY_SESSION_SCHEMA_VERSION: "replay-session.1";
 export declare const REPLAY_COMMAND_SCHEMA_VERSION: "replay-command.1";
@@ -25,7 +27,7 @@ export interface ReplaySessionConfigDefinition {
     id: string;
     version: string;
     schemaVersion: typeof REPLAY_SESSION_CONFIG_SCHEMA_VERSION;
-    replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+    replayEngineVersion: ReplayEngineVersion;
     evaluationTimeframe?: string;
     visibleTimeframes: string[];
     displayPreRollByTimeframe: Record<string, number>;
@@ -133,6 +135,31 @@ export interface ReplayAnalysisStateObservation {
     relativeStrengthEvents: RelativeStrengthDivergence[];
     visibleOrSelectedReferenceLevels: DecisionReferenceLevel[];
     dataQualityNotes: DecisionDataQualityNote[];
+    materializedStateRef?: ReplayMaterializedAnalysisStateRef;
+}
+export interface ReplayMaterializedAnalysisStateRef {
+    id: string;
+    schemaVersion: string;
+    analysisEngineVersion: string;
+    analysisProfileHash: string;
+    dataBundleFingerprint: string;
+}
+export interface ReplayMaterializedAnalysisBinding {
+    replayEngineVersion: typeof REPLAY_MATERIALIZED_ENGINE_VERSION;
+    analysisEngineVersion: string;
+    analysisProfileRef: {
+        id: string;
+        version: string;
+        hash: string;
+    };
+    referenceMarket: {
+        symbol: string;
+        source: string;
+    };
+    causalDataBundleFingerprint: string;
+    lifecycleConfigHash: string;
+    radarProfileHash: string;
+    strategyProfileHash: string;
 }
 export type ReplayKnownEventKind = "lifecycleTransition" | "structure" | "avwap" | "relativeStrength" | "radarTerminal" | "lifecycleTerminal";
 export interface ReplayKnownEvent {
@@ -192,6 +219,7 @@ export interface ReplayLoadedCase {
     radarSelectionProfile: RadarSelectionProfile;
     venueRules: VenueRiskRules | null;
     dataBundle: ReplayDataBundle;
+    materializedAnalysisBinding?: ReplayMaterializedAnalysisBinding;
 }
 export interface LoadReplayCaseInput {
     manifest: ReplayCaseManifest;
@@ -200,6 +228,7 @@ export interface LoadReplayCaseInput {
     strategyProfile: StrategyProfile;
     radarSelectionProfile: RadarSelectionProfile;
     venueRules?: VenueRiskRules | null;
+    materializedAnalysisBinding?: ReplayMaterializedAnalysisBinding;
 }
 export interface InMemoryReplayAdapterInput {
     candles: ReplayCandleRecord[];
@@ -242,3 +271,4 @@ export declare function createReplayKnownEvent(input: CreateReplayKnownEventInpu
 export declare function loadReplayCase(input: LoadReplayCaseInput): Promise<ReplayLoadedCase>;
 export declare function replayDataFingerprintAt(loaded: ReplayLoadedCase, asOf: number): Promise<string>;
 export declare function replaySha256(value: unknown): Promise<string>;
+export declare function isSupportedReplayEngineVersion(value: unknown): value is ReplayEngineVersion;

@@ -1,4 +1,4 @@
-import { REPLAY_ENGINE_VERSION, type ReplayCandleRecord } from "./replay";
+import { type ReplayCandleRecord, type ReplayEngineVersion } from "./replay";
 import type { ReplayDecisionFrame, ReplaySession } from "./replaySession";
 import { type StrategyProfile } from "./strategy";
 import { SIZING_MODEL_VERSION, TRADE_PLAN_SCHEMA_VERSION, type TradePlan, type VenueRiskRules } from "./tradePlanning";
@@ -515,7 +515,7 @@ export interface ExecutionResult {
     lifecycleVersion: string;
     lifecycleConfigHash: string;
     sizingModelVersion: typeof SIZING_MODEL_VERSION;
-    replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+    replayEngineVersion: ReplayEngineVersion;
     executionProfileRef: ExecutionVersionedRef;
     venueRulesRef: ExecutionVersionedRef;
     feeScheduleRef: ExecutionVersionedRef;
@@ -585,7 +585,7 @@ export interface ExecutionSessionIdentity {
     lifecycleVersion: string;
     lifecycleConfigHash: string;
     sizingModelVersion: typeof SIZING_MODEL_VERSION;
-    replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+    replayEngineVersion: ReplayEngineVersion;
     executionEngineVersion: typeof EXECUTION_ENGINE_VERSION;
     executionProfileRef: ExecutionVersionedRef;
     venueRulesRef: ExecutionVersionedRef;

@@ -11,13 +11,13 @@ The package is not currently published to npm. Install it from a Git tag or a lo
 Use a tag or commit SHA for reproducible installs.
 
 ```sh
-pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.25'
+pnpm add 'git+https://github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.26'
 ```
 
 SSH works too:
 
 ```sh
-pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.25'
+pnpm add 'git+ssh://git@github.com/boings/cryptodouche_gpu_chart_vue.git#v0.1.26'
 ```
 
 Import the component and CSS:
@@ -369,7 +369,7 @@ pnpm build
 git status
 git add README.md AGENTS.md package.json pnpm-lock.yaml docs fixtures scripts src dist renderer/pkg renderer/src
 git commit -m "Describe change"
-git tag v0.1.25
+git tag v0.1.26
 git push origin main --tags
 ```
 
