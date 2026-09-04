@@ -274,6 +274,37 @@ describe("replay analysis materializer", () => {
       index === 0 || event.knownAt >= events[index - 1]!.knownAt)).toBe(true);
   });
 
+  it("does not backdate AVWAP events created by a later manual selection", () => {
+    const input = fixture();
+    const anchorCandle = input.candlesByTimeframe["15m"][3]!;
+    const selectedAt = START + 8 * HOUR;
+    const anchor = createAvwapAnchorSpec({
+      id: "late-manual-anchor",
+      type: "manual",
+      symbol: SYMBOL,
+      source: SOURCE,
+      timeframe: "15m",
+      anchorCandleLogicalId: anchorCandle.logicalCandleId,
+      anchorCandleObservationId: anchorCandle.observationId,
+      anchorTime: anchorCandle.openTime,
+      priceBasis: "typical",
+      volumeBasis: "baseThenQuote",
+      selectedAt,
+      knownAt: anchorCandle.knownAt,
+      provenance: "selected during replay",
+    });
+    const state = materializeReplayAnalysis({ ...input, asOf: selectedAt, avwapAnchors: [anchor] });
+
+    expect(state.avwapStates[0]!.observation.knownAt).toBe(selectedAt);
+    expect(state.avwapEvents.length).toBeGreaterThan(0);
+    expect(state.avwapEvents.every((event) =>
+      event.knownAt >= selectedAt &&
+      event.evaluatedAt >= selectedAt &&
+      event.value.knownAt >= selectedAt)).toBe(true);
+    expect(state.lifecycleResult.evidence.every((evidence) => evidence.knownAt >= selectedAt ||
+      evidence.kind !== "avwapFailure")).toBe(true);
+  });
+
   it("keeps valid components when synchronized reference data is missing", () => {
     const input = fixture();
     input.referenceCandlesByTimeframe["15m"] = input.referenceCandlesByTimeframe["15m"].filter(

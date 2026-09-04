@@ -1148,7 +1148,11 @@ function materializeAvwap(
       component: "avwap",
       timeframe: anchor.timeframe,
       eventTime: anchor.anchorTime,
-      knownAt: Math.max(anchor.knownAt, selected.replay.at(-1)?.knownAt ?? anchor.knownAt),
+      knownAt: Math.max(
+        anchor.knownAt,
+        anchor.selectedAt,
+        selected.replay.at(-1)?.knownAt ?? anchor.knownAt,
+      ),
       evaluatedAt: effectiveAsOf,
       configurationHash: canonicalHash({ anchor, config: input.analysisProfile.avwapConfig }),
       sourceObservationIds: [anchor.anchorCandleObservationId, ...sourceObservationIds],
@@ -1165,19 +1169,20 @@ function materializeAvwap(
       options,
       input.analysisProfile.avwapConfig.maxSignals,
     )) {
+      const knownAt = Math.max(event.knownAt, anchor.selectedAt);
       events.push(createAnalysisObservation({
         logicalId: `avwap-event:${anchor.id}:${event.kind}:${event.bucket}`,
         component: "avwapEvent",
         timeframe: anchor.timeframe,
         eventTime: event.eventTime,
-        knownAt: event.knownAt,
+        knownAt,
         evaluatedAt: eventEvaluationAsOf(
-          event.knownAt,
+          knownAt,
           input.analysisProfile.executionTimeframe,
         ),
         configurationHash: observation.configurationHash,
         sourceObservationIds: [anchor.anchorCandleObservationId, ...sourceIdsThrough(selected, event.knownAt)],
-        value: event,
+        value: { ...event, knownAt },
       }));
     }
     freshness = freshnessFor(
