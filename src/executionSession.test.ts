@@ -113,7 +113,9 @@ describe("deterministic execution session", () => {
   });
 
   it("expires an unfilled sell limit without creating a position or P&L", async () => {
-    const plan = replan(basePlan, { entryPlan: { ...basePlan.entryPlan, intendedPrice: 0.9 } });
+    const plan = replan(basePlan, {
+      entryPlan: { ...basePlan.entryPlan, intendedPrice: 0.9, expiresAt: null },
+    });
     const loaded = await fixture({
       plan,
       candles: [
@@ -128,6 +130,25 @@ describe("deterministic execution session", () => {
     expect(result.state).toBe("EntryExpired");
     expect(result.fills).toEqual([]);
     expect(result.result).toMatchObject({ actualRealizedLossOrProfit: 0, netPnlExcludingUnknownFunding: 0 });
+  });
+
+  it("records long candle paths without snapshot-heavy per-path events", async () => {
+    const plan = replan(basePlan, {
+      entryPlan: { ...basePlan.entryPlan, intendedPrice: 0.9, expiresAt: null },
+    });
+    const candles = Array.from({ length: 96 }, (_, index) =>
+      candle(index, 0.79, 0.8, 0.78, 0.79));
+    const loaded = await fixture({
+      plan,
+      candles,
+      horizonSeconds: 96 * 900 + 100,
+    });
+    const result = simulateExecutionToHorizon(loaded);
+
+    expect(result.pathResolutionRecords).toHaveLength(96);
+    expect(result.executionEvents.some((event) => event.type === "PathResolved")).toBe(false);
+    expect(result.executionEvents.length).toBeLessThan(10);
+    expect(result.state).toBe("EntryExpired");
   });
 
   it("uses the gap opening reference and permits actual stop loss to exceed projected risk", async () => {

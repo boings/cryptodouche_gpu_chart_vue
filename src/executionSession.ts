@@ -143,11 +143,13 @@ export function advanceExecutionTo(
   if (targetAsOf < session.currentAsOf) throw new RangeError("Execution cannot move backward");
   if (TERMINAL_STATES.has(session.state)) return immutableJsonClone(session);
   const recomputed = runExecutionTo(loaded, targetAsOf);
-  if (recomputed.executionEvents.length < session.executionEvents.length) {
+  const priorEvents = session.executionEvents.filter((event) => event.type !== "PathResolved");
+  const recomputedEvents = recomputed.executionEvents.filter((event) => event.type !== "PathResolved");
+  if (recomputedEvents.length < priorEvents.length) {
     throw new Error("Execution target precedes already processed causal events");
   }
-  const prefix = recomputed.executionEvents.slice(0, session.executionEvents.length);
-  if (canonicalSerialize(prefix) !== canonicalSerialize(session.executionEvents)) {
+  const prefix = recomputedEvents.slice(0, priorEvents.length);
+  if (canonicalSerialize(prefix) !== canonicalSerialize(priorEvents)) {
     throw new Error("Execution history changed under the same session identity");
   }
   return recomputed;
@@ -206,15 +208,7 @@ function runExecutionTo(loaded: ExecutionLoadedCase, cutoff: number): ExecutionS
       applyFunding(working, loaded, funding[fundingIndex++]!, fillsInPath ? path : null);
       if (TERMINAL_STATES.has(working.state)) break;
     }
-    if (!TERMINAL_STATES.has(working.state)) {
-      appendEvent(working, {
-        type: "PathResolved",
-        eventTime: path.intervalEnd,
-        processingAsOf: path.processingAsOf,
-        sourceObservationIds: [path.id],
-        explanation: `Execution interval resolved with ${path.resolution} ${path.exact ? "ordered" : "OHLC"} data`,
-      });
-    }
+    working.currentAsOf = Math.max(working.currentAsOf, path.processingAsOf);
   }
   while (
     !TERMINAL_STATES.has(working.state) &&
@@ -223,6 +217,16 @@ function runExecutionTo(loaded: ExecutionLoadedCase, cutoff: number): ExecutionS
   ) applyFunding(working, loaded, funding[fundingIndex++]!, null);
 
   if (!TERMINAL_STATES.has(working.state)) finishAtCutoff(working, loaded, paths, cutoff);
+  const checkpoint = paths.at(-1);
+  if (!TERMINAL_STATES.has(working.state) && checkpoint) {
+    appendEvent(working, {
+      type: "PathResolved",
+      eventTime: checkpoint.intervalEnd,
+      processingAsOf: checkpoint.processingAsOf,
+      sourceObservationIds: [checkpoint.id],
+      explanation: `Execution processed through ${checkpoint.resolution} ${checkpoint.exact ? "ordered" : "OHLC"} data`,
+    });
+  }
   return sealSession(working);
 }
 
