@@ -44,12 +44,13 @@ import {
   type JsonValue,
 } from "./serialization";
 import {
+  REPLAY_MATERIALIZED_ENGINE_VERSION,
   replayCandleObservationId,
   type ReplayCandleRecord,
 } from "./replay";
 import type { CandidateMetrics, CandleRecord } from "./types";
 
-export const MATERIALIZED_REPLAY_ENGINE_VERSION = "replay-engine.2" as const;
+export const MATERIALIZED_REPLAY_ENGINE_VERSION = REPLAY_MATERIALIZED_ENGINE_VERSION;
 export const REPLAY_ANALYSIS_ENGINE_VERSION = "replay-analysis-engine.1" as const;
 export const REPLAY_ANALYSIS_PROFILE_SCHEMA_VERSION = "replay-analysis-profile.1" as const;
 // replay-analysis-state.1 is retained by replay-engine.1 for supplied observations.
@@ -513,7 +514,7 @@ export function materializeReplayAnalysis(
         timeframe,
         eventTime: event.eventTime,
         knownAt: event.knownAt,
-        evaluatedAt: effectiveAsOf,
+        evaluatedAt: eventEvaluationAsOf(event.knownAt, profile.executionTimeframe),
         configurationHash: structureConfigHash,
         sourceObservationIds: sourceIdsThrough(selected, event.knownAt),
         value: event,
@@ -606,7 +607,10 @@ export function materializeReplayAnalysis(
         timeframe: rsTimeframe,
         eventTime: event.eventTime,
         knownAt: event.knownAt,
-        evaluatedAt: effectiveAsOf,
+        evaluatedAt: eventEvaluationAsOf(
+          event.knownAt,
+          input.analysisProfile.executionTimeframe,
+        ),
         configurationHash: canonicalHash(profile.relativeStrengthConfig),
         sourceObservationIds: alignedSourceIdsThrough(rsTarget, rsReference, event.knownAt),
         value: event,
@@ -809,6 +813,11 @@ function linePoints(line: Float32Array): ReplayAnalysisLinePoint[] {
     points.push({ x: line[index]!, value: line[index + 1]! });
   }
   return points;
+}
+
+function eventEvaluationAsOf(knownAt: number, executionTimeframe: string) {
+  const seconds = strictTimeframeToSeconds(executionTimeframe);
+  return Math.ceil(knownAt / seconds) * seconds;
 }
 
 function createAnalysisObservation<T>(
@@ -1063,7 +1072,10 @@ function materializeAvwap(
         timeframe: anchor.timeframe,
         eventTime: event.eventTime,
         knownAt: event.knownAt,
-        evaluatedAt: effectiveAsOf,
+        evaluatedAt: eventEvaluationAsOf(
+          event.knownAt,
+          input.analysisProfile.executionTimeframe,
+        ),
         configurationHash: observation.configurationHash,
         sourceObservationIds: [anchor.anchorCandleObservationId, ...sourceIdsThrough(selected, event.knownAt)],
         value: event,
@@ -1331,8 +1343,10 @@ export function replayAnalysisAvwapDecisionState(
     sourceObject: {
       objectType: "AnchoredVwap",
       objectId: avwap.observation.logicalId,
-      observationId: avwap.observation.observationId,
-      snapshot: immutableJsonClone(avwap.snapshot) as unknown as { [key: string]: JsonValue },
+      snapshot: immutableJsonClone({
+        ...avwap.snapshot,
+        analysisObservationId: avwap.observation.observationId,
+      }) as unknown as { [key: string]: JsonValue },
     },
   });
   return {
@@ -1375,8 +1389,10 @@ export function replayAnalysisSupportResistanceReferences(
     sourceObject: {
       objectType: "SupportResistanceZone",
       objectId: zone.logicalId,
-      observationId: zone.observationId,
-      snapshot: immutableJsonClone(zone.value) as unknown as { [key: string]: JsonValue },
+      snapshot: immutableJsonClone({
+        ...zone.value,
+        analysisObservationId: zone.observationId,
+      }) as unknown as { [key: string]: JsonValue },
     },
   }));
 }

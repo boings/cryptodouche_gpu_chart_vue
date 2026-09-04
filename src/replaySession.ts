@@ -17,6 +17,7 @@ import {
   REPLAY_COMMAND_SCHEMA_VERSION,
   REPLAY_DECISION_FRAME_SCHEMA_VERSION,
   REPLAY_ENGINE_VERSION,
+  REPLAY_MATERIALIZED_ENGINE_VERSION,
   REPLAY_EVENT_SCHEMA_VERSION,
   REPLAY_OUTCOME_ENVELOPE_SCHEMA_VERSION,
   REPLAY_SESSION_SCHEMA_VERSION,
@@ -26,10 +27,14 @@ import {
   replayAnalysisStateObservationId,
   replaySessionConfigHash,
   replaySha256,
+  isSupportedReplayEngineVersion,
   type ReplayAnalysisStateObservation,
   type ReplayCandleRecord,
   type ReplayKnownEvent,
   type ReplayLoadedCase,
+  type ReplayEngineVersion,
+  type ReplayMaterializedAnalysisBinding,
+  type ReplayMaterializedAnalysisStateRef,
   type ReplayRadarContext,
   type ReplaySessionState,
   type ReplayTerminalReason,
@@ -211,6 +216,7 @@ export interface ReplayDecisionFrame {
   activeWakeResult: ReplayWakeResult | null;
   dataQualityNotes: DecisionDataQualityNote[];
   generatedAtLogicalTime: number;
+  materializedAnalysisStateRef?: ReplayMaterializedAnalysisStateRef;
 }
 
 export interface ReplayPlanningAttempt {
@@ -225,7 +231,7 @@ export interface ReplayPlanningAttempt {
 export interface ReplaySessionIdentity {
   schemaVersion: typeof REPLAY_SESSION_SCHEMA_VERSION;
   id: string;
-  replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+  replayEngineVersion: ReplayEngineVersion;
   manifestId: string;
   manifestSchemaVersion: string;
   radarEpisodeId: string;
@@ -238,6 +244,7 @@ export interface ReplaySessionIdentity {
   marketDataBundleFingerprint: string;
   venueRulesRef: { id: string; version: string; hash: string } | null;
   createdAtLogicalTime: number;
+  materializedAnalysisRef?: ReplayMaterializedAnalysisBinding;
 }
 
 export interface ReplaySession extends ReplaySessionIdentity {
@@ -481,7 +488,7 @@ export function createReplaySession(loaded: ReplayLoadedCase): ReplaySession {
   const definition: ReplaySessionIdentity = {
     schemaVersion: REPLAY_SESSION_SCHEMA_VERSION,
     id: replaySessionId(loaded),
-    replayEngineVersion: REPLAY_ENGINE_VERSION,
+    replayEngineVersion: loaded.sessionConfig.replayEngineVersion,
     manifestId: loaded.manifest.id,
     manifestSchemaVersion: loaded.manifest.schemaVersion,
     radarEpisodeId: loaded.dataBundle.radarEpisode.id,
@@ -506,6 +513,9 @@ export function createReplaySession(loaded: ReplayLoadedCase): ReplaySession {
     marketDataBundleFingerprint: loaded.dataBundle.causalPrefixFingerprint,
     venueRulesRef: loaded.sessionConfig.venueRulesRef,
     createdAtLogicalTime: loaded.manifest.startAsOf,
+    ...(loaded.materializedAnalysisBinding
+      ? { materializedAnalysisRef: loaded.materializedAnalysisBinding }
+      : {}),
   };
   return withSessionIntegrity({
     ...definition,
@@ -548,7 +558,8 @@ async function createDecisionFrame(input: {
   const dataQualityNotes = [
     ...dataBundle.dataQualityNotes,
     ...analysis.dataQualityNotes,
-    ...(analysis.lifecycle.asOf != null && analysis.lifecycle.asOf < effectiveAsOf
+    ...(loaded.sessionConfig.replayEngineVersion === REPLAY_ENGINE_VERSION &&
+      analysis.lifecycle.asOf != null && analysis.lifecycle.asOf < effectiveAsOf
       ? [{
           code: "CARRIED_FORWARD_ANALYSIS_STATE",
           severity: "warning" as const,
@@ -624,6 +635,9 @@ async function createDecisionFrame(input: {
     activeWakeResult: input.wakeResult ?? null,
     dataQualityNotes,
     generatedAtLogicalTime: effectiveAsOf,
+    ...(analysis.materializedStateRef
+      ? { materializedAnalysisStateRef: analysis.materializedStateRef }
+      : {}),
   };
   return immutableJsonClone({
     ...definition,
@@ -1781,6 +1795,9 @@ function replaySessionIdentity(session: ReplaySession): ReplaySessionIdentity {
     marketDataBundleFingerprint: session.marketDataBundleFingerprint,
     venueRulesRef: session.venueRulesRef,
     createdAtLogicalTime: session.createdAtLogicalTime,
+    ...(session.materializedAnalysisRef
+      ? { materializedAnalysisRef: session.materializedAnalysisRef }
+      : {}),
   });
 }
 
@@ -1794,7 +1811,7 @@ function withSessionIntegrity(
 function validateSessionIntegrity(session: ReplaySession) {
   if (
     session.schemaVersion !== REPLAY_SESSION_SCHEMA_VERSION ||
-    session.replayEngineVersion !== REPLAY_ENGINE_VERSION
+    !isSupportedReplayEngineVersion(session.replayEngineVersion)
   ) throw new Error("Unsupported replay session schema or engine version");
   const { integrityHash, ...definition } = session;
   if (integrityHash !== canonicalHash(definition)) throw new Error("Replay session integrity mismatch");
@@ -1804,7 +1821,9 @@ function validateSessionIntegrity(session: ReplaySession) {
 function validateLoadedIdentity(loaded: ReplayLoadedCase) {
   if (
     replaySessionConfigHash(loaded.sessionConfig) !== loaded.sessionConfig.canonicalConfigHash ||
-    loaded.sessionConfig.replayEngineVersion !== REPLAY_ENGINE_VERSION ||
+    !isSupportedReplayEngineVersion(loaded.sessionConfig.replayEngineVersion) ||
+    (loaded.sessionConfig.replayEngineVersion === REPLAY_MATERIALIZED_ENGINE_VERSION &&
+      !loaded.materializedAnalysisBinding) ||
     loaded.manifest.radarEpisodeId !== loaded.dataBundle.radarEpisode.id ||
     loaded.manifest.radarEpisodeObservationId !== loaded.dataBundle.radarEpisode.observationId ||
     loaded.manifest.selectionProfileRef.canonicalConfigHash !==
@@ -1827,6 +1846,9 @@ function assertSessionMatchesLoaded(session: ReplaySession, loaded: ReplayLoaded
     session.lifecycleConfigHash !== loaded.strategyProfile.lifecycleConfigHash ||
     session.sessionConfigRef.hash !== loaded.sessionConfig.canonicalConfigHash ||
     session.marketDataBundleFingerprint !== loaded.dataBundle.causalPrefixFingerprint ||
+    session.replayEngineVersion !== loaded.sessionConfig.replayEngineVersion ||
+    canonicalSerialize(session.materializedAnalysisRef ?? null) !==
+      canonicalSerialize(loaded.materializedAnalysisBinding ?? null) ||
     canonicalSerialize(session.venueRulesRef) !== canonicalSerialize(loaded.sessionConfig.venueRulesRef)
   ) {
     throw new Error("Replay session cannot use this loaded manifest/profile/data bundle");

@@ -51,6 +51,10 @@ import type { CandidateMetrics, CandleRecord } from "./types";
 import { registerReplayPrivilegedDataBundle } from "./replayInternal";
 
 export const REPLAY_ENGINE_VERSION = "replay-engine.1" as const;
+export const REPLAY_MATERIALIZED_ENGINE_VERSION = "replay-engine.2" as const;
+export type ReplayEngineVersion =
+  | typeof REPLAY_ENGINE_VERSION
+  | typeof REPLAY_MATERIALIZED_ENGINE_VERSION;
 export const REPLAY_SESSION_CONFIG_SCHEMA_VERSION = "replay-session-config.1" as const;
 export const REPLAY_SESSION_SCHEMA_VERSION = "replay-session.1" as const;
 export const REPLAY_COMMAND_SCHEMA_VERSION = "replay-command.1" as const;
@@ -106,7 +110,7 @@ export interface ReplaySessionConfigDefinition {
   id: string;
   version: string;
   schemaVersion: typeof REPLAY_SESSION_CONFIG_SCHEMA_VERSION;
-  replayEngineVersion: typeof REPLAY_ENGINE_VERSION;
+  replayEngineVersion: ReplayEngineVersion;
   evaluationTimeframe?: string;
   visibleTimeframes: string[];
   displayPreRollByTimeframe: Record<string, number>;
@@ -225,6 +229,26 @@ export interface ReplayAnalysisStateObservation {
   relativeStrengthEvents: RelativeStrengthDivergence[];
   visibleOrSelectedReferenceLevels: DecisionReferenceLevel[];
   dataQualityNotes: DecisionDataQualityNote[];
+  materializedStateRef?: ReplayMaterializedAnalysisStateRef;
+}
+
+export interface ReplayMaterializedAnalysisStateRef {
+  id: string;
+  schemaVersion: string;
+  analysisEngineVersion: string;
+  analysisProfileHash: string;
+  dataBundleFingerprint: string;
+}
+
+export interface ReplayMaterializedAnalysisBinding {
+  replayEngineVersion: typeof REPLAY_MATERIALIZED_ENGINE_VERSION;
+  analysisEngineVersion: string;
+  analysisProfileRef: { id: string; version: string; hash: string };
+  referenceMarket: { symbol: string; source: string };
+  causalDataBundleFingerprint: string;
+  lifecycleConfigHash: string;
+  radarProfileHash: string;
+  strategyProfileHash: string;
 }
 
 export type ReplayKnownEventKind =
@@ -294,6 +318,7 @@ export interface ReplayLoadedCase {
   radarSelectionProfile: RadarSelectionProfile;
   venueRules: VenueRiskRules | null;
   dataBundle: ReplayDataBundle;
+  materializedAnalysisBinding?: ReplayMaterializedAnalysisBinding;
 }
 
 export interface LoadReplayCaseInput {
@@ -303,6 +328,7 @@ export interface LoadReplayCaseInput {
   strategyProfile: StrategyProfile;
   radarSelectionProfile: RadarSelectionProfile;
   venueRules?: VenueRiskRules | null;
+  materializedAnalysisBinding?: ReplayMaterializedAnalysisBinding;
 }
 
 export interface InMemoryReplayAdapterInput {
@@ -430,7 +456,7 @@ export function createReplaySessionConfig(
 ): ReplaySessionConfig {
   if (
     definition.schemaVersion !== REPLAY_SESSION_CONFIG_SCHEMA_VERSION ||
-    definition.replayEngineVersion !== REPLAY_ENGINE_VERSION
+    !isSupportedReplayEngineVersion(definition.replayEngineVersion)
   ) {
     throw new RangeError("Unsupported replay session configuration version");
   }
@@ -806,6 +832,9 @@ export async function loadReplayCase(input: LoadReplayCaseInput): Promise<Replay
     radarSelectionProfile: immutableJsonClone(input.radarSelectionProfile),
     venueRules: immutableJsonClone(input.venueRules ?? null),
     dataBundle,
+    ...(input.materializedAnalysisBinding
+      ? { materializedAnalysisBinding: immutableJsonClone(input.materializedAnalysisBinding) }
+      : {}),
   };
   registerReplayPrivilegedDataBundle(loaded, privilegedDataBundle);
   return loaded;
@@ -886,10 +915,26 @@ function validateReplayProvenance(input: LoadReplayCaseInput) {
   }
   if (
     config.schemaVersion !== REPLAY_SESSION_CONFIG_SCHEMA_VERSION ||
-    config.replayEngineVersion !== REPLAY_ENGINE_VERSION ||
+    !isSupportedReplayEngineVersion(config.replayEngineVersion) ||
     replaySessionConfigHash(config) !== config.canonicalConfigHash
   ) {
     throw new Error("Replay configuration failed version or hash verification");
+  }
+  if (
+    config.replayEngineVersion === REPLAY_MATERIALIZED_ENGINE_VERSION &&
+    (!input.materializedAnalysisBinding ||
+      input.materializedAnalysisBinding.replayEngineVersion !== REPLAY_MATERIALIZED_ENGINE_VERSION ||
+      input.materializedAnalysisBinding.lifecycleConfigHash !== strategyProfile.lifecycleConfigHash ||
+      input.materializedAnalysisBinding.radarProfileHash !== radarSelectionProfile.canonicalConfigHash ||
+      input.materializedAnalysisBinding.strategyProfileHash !== strategyProfile.profileHash)
+  ) {
+    throw new Error("Materialized replay configuration is missing its analysis binding");
+  }
+  if (
+    config.replayEngineVersion === REPLAY_ENGINE_VERSION &&
+    input.materializedAnalysisBinding
+  ) {
+    throw new Error("replay-engine.1 cannot accept a materialized analysis binding");
   }
   assertStrategyProfileRef(config.strategyProfileRef, strategyProfile);
   if (config.evaluationTimeframe !== strategyProfile.timeframeRoles.executionTimeframe) {
@@ -904,6 +949,10 @@ function validateReplayProvenance(input: LoadReplayCaseInput) {
       throw new Error("Venue rules reference mismatch");
     }
   }
+}
+
+export function isSupportedReplayEngineVersion(value: unknown): value is ReplayEngineVersion {
+  return value === REPLAY_ENGINE_VERSION || value === REPLAY_MATERIALIZED_ENGINE_VERSION;
 }
 
 function validateRadarEpisode(manifest: ReplayCaseManifest, episode: RadarEpisode) {
