@@ -18,6 +18,7 @@ export * from "./scheduler";
 export * from "./serialization";
 export * from "./strategy";
 export * from "./timeAxis";
+export * from "./trainer";
 export * from "./tradePlanning";
 export * from "./types";
 export * from "./viewport";

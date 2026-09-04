@@ -14,5 +14,6 @@ export * from "./replayMaterialized";
 export * from "./replaySession";
 export * from "./serialization";
 export * from "./strategy";
+export * from "./trainer";
 export * from "./tradePlanning";
 export * from "./types";
