@@ -26,11 +26,13 @@
     "clean:appledouble": "find . -name '._*' -not -path './node_modules/*' -delete",
     "test": "vitest run",
     "audit:impulse-fade": "pnpm build && node scripts/audit-impulse-fade.mjs",
+    "audit:analysis": "pnpm build && node scripts/audit-analysis.mjs",
     "audit:radar": "pnpm build && node scripts/audit-radar.mjs",
     "audit:replay": "pnpm build && node scripts/audit-replay.mjs",
     "audit:trade-plan": "pnpm build && node scripts/audit-trade-planning.mjs",
     "audit:execution": "pnpm build && node scripts/audit-execution.mjs",
     "generate:execution-examples": "pnpm build && node scripts/generate-execution-examples.mjs && pnpm clean:appledouble",
+    "generate:analysis-examples": "pnpm build && node scripts/generate-analysis-examples.mjs && pnpm clean:appledouble",
     "generate:replay-examples": "pnpm build && node scripts/generate-replay-examples.mjs",
     "pack:local": "pnpm build && pnpm clean:appledouble && pnpm pack",
     "build:renderer": "bash scripts/build-renderer.sh"

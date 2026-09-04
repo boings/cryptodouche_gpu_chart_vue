@@ -238,6 +238,34 @@ import {
 } from "@cryptodouche/gpu-chart-vue/core";
 ```
 
+Replay Phase 2B can reconstruct the same shared analysis from revision-aware
+target and BTC/reference candles at a historical cutoff. New sessions use
+`replay-engine.2` and carry an exact materialized-state reference; existing
+`replay-engine.1` sessions retain their supplied-observation behavior.
+
+```ts
+import {
+  JsonReplayAnalysisDataAdapter,
+  createExperimentalReplayAnalysisProfile,
+  createReplayAnalysisSession,
+  materializeReplayAnalysis,
+} from "@cryptodouche/gpu-chart-vue/core";
+```
+
+Materialize one cutoff or a complete execution-timeframe timeline with:
+
+```sh
+pnpm audit:analysis replay-case.json analysis-data.json \
+  --at 2026-09-03T12:00:00Z --out replay-analysis.json
+pnpm audit:analysis replay-case.json analysis-data.json \
+  --timeline --out replay-analysis-timeline.json
+```
+
+See
+[`docs/replay-analysis-materialization.md`](docs/replay-analysis-materialization.md)
+for profile/version identities, causal cutoff and correction semantics, shared
+calculation parity, component freshness, and raw-data adapter contracts.
+
 Replay Phase 2A adds a separate deterministic execution layer for one finalized
 short linear-perpetual `TradePlan`. It models causal activation, market/limit/
 stop-market entries, static reduce-only protection, partial targets, fees,
