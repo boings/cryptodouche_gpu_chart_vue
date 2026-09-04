@@ -413,7 +413,7 @@ export function materializeReplayAnalysis(
   input: MaterializeReplayAnalysisInput,
 ): ReplayAnalysisState {
   validateMaterializationInput(input);
-  const effectiveAsOf = effectiveEvaluationAsOf(input);
+  const effectiveAsOf = effectiveReplayAnalysisAsOf(input);
   const profile = input.analysisProfile;
   const symbol = input.symbol.toUpperCase();
   const referenceSymbol = profile.referenceMarketPolicy.symbol;
@@ -536,7 +536,7 @@ export function materializeReplayAnalysis(
     for (const zone of zones) {
       const origins = originatingSwings(structure.swings, zone, input, timeframe);
       supportResistanceZones.push(createAnalysisObservation({
-        logicalId: `sr-zone:${input.source}:${symbol}:${timeframe}:${zone.kind}:${canonicalHash(origins).slice(9)}`,
+        logicalId: `sr-zone:${input.source}:${symbol}:${timeframe}:${zone.kind}:${origins[0] ?? zone.eventTime}`,
         component: "supportResistanceZone",
         timeframe,
         eventTime: zone.eventTime,
@@ -556,6 +556,45 @@ export function materializeReplayAnalysis(
       componentConfigHash,
       minimumRequiredSamples(profile, timeframe),
     );
+    freshnessByComponent[`extension:${timeframe}`] = freshnessFor(
+      `extension:${timeframe}`,
+      effectiveAsOf,
+      selected,
+      canonicalHash(profile.extensionConfig),
+      Math.max(
+        profile.extensionConfig.emaPeriod,
+        profile.extensionConfig.atrPeriod + 1,
+        Math.ceil(profile.extensionConfig.windowSeconds / strictTimeframeToSeconds(timeframe)) + 1,
+      ),
+    );
+    freshnessByComponent[`structure:${timeframe}`] = freshnessFor(
+      `structure:${timeframe}`,
+      effectiveAsOf,
+      selected,
+      structureConfigHash,
+      profile.structureConfig.pivotStrength * 2 + 1,
+    );
+    freshnessByComponent[`supportResistance:${timeframe}`] = freshnessFor(
+      `supportResistance:${timeframe}`,
+      effectiveAsOf,
+      selected,
+      zoneConfigHash,
+      profile.structureConfig.pivotStrength * 2 + 1,
+    );
+    if (timeframe === profile.stochasticRsiConfig.timeframe) {
+      const stochRequired =
+        profile.stochasticRsiConfig.rsiPeriod +
+        profile.stochasticRsiConfig.stochPeriod +
+        profile.stochasticRsiConfig.kPeriod +
+        profile.stochasticRsiConfig.dPeriod - 3;
+      freshnessByComponent[`stochRsi:${timeframe}`] = freshnessFor(
+        `stochRsi:${timeframe}`,
+        effectiveAsOf,
+        selected,
+        canonicalHash(profile.stochasticRsiConfig),
+        stochRequired,
+      );
+    }
     if (!selected.candles.length) {
       notes.push(componentNote("ANALYSIS_COMPONENT_UNAVAILABLE", componentKey, "No completed candles"));
     }
@@ -576,6 +615,18 @@ export function materializeReplayAnalysis(
   for (const reason of candidateMetrics.insufficientDataReasons) {
     notes.push(componentNote(reason.code, `extension:${candidateTimeframe}`, reason.message));
   }
+  freshnessByComponent.candidateMetrics = {
+    ...freshnessFor(
+      "candidateMetrics",
+      effectiveAsOf,
+      candidateSelected,
+      canonicalHash(profile.extensionConfig),
+      profile.extensionConfig.minSamples,
+    ),
+    status: candidateMetrics.insufficientDataReasons.length
+      ? "insufficientHistory"
+      : "available",
+  };
 
   const rsTimeframe = profile.relativeStrengthConfig.timeframe;
   const rsTarget = selectedByTimeframe[rsTimeframe] ?? selectedSeriesAt(
@@ -601,20 +652,26 @@ export function materializeReplayAnalysis(
         rsTarget.candles,
         rsReference.candles,
         profile.relativeStrengthConfig,
-      ).map((event) => createAnalysisObservation({
-        logicalId: `rs-event:${input.source}:${symbol}:${rsTimeframe}:${event.kind}:${event.bucket}`,
-        component: "relativeStrengthEvent",
-        timeframe: rsTimeframe,
-        eventTime: event.eventTime,
-        knownAt: event.knownAt,
-        evaluatedAt: eventEvaluationAsOf(
-          event.knownAt,
-          input.analysisProfile.executionTimeframe,
-        ),
-        configurationHash: canonicalHash(profile.relativeStrengthConfig),
-        sourceObservationIds: alignedSourceIdsThrough(rsTarget, rsReference, event.knownAt),
-        value: event,
-      }))
+      ).map((event) => {
+        const referenceKnownAt = rsReference.replay.find(
+          (candle) => candle.openTime === event.bucket,
+        )?.knownAt ?? event.knownAt;
+        const knownAt = Math.max(event.knownAt, referenceKnownAt);
+        return createAnalysisObservation({
+          logicalId: `rs-event:${input.source}:${symbol}:${rsTimeframe}:${event.kind}:${event.bucket}`,
+          component: "relativeStrengthEvent",
+          timeframe: rsTimeframe,
+          eventTime: event.eventTime,
+          knownAt,
+          evaluatedAt: eventEvaluationAsOf(
+            knownAt,
+            input.analysisProfile.executionTimeframe,
+          ),
+          configurationHash: canonicalHash(profile.relativeStrengthConfig),
+          sourceObservationIds: alignedSourceIdsThrough(rsTarget, rsReference, knownAt),
+          value: { ...event, knownAt },
+        });
+      })
     : [];
   freshnessByComponent.relativeStrength = freshnessForRelativeStrength(
     effectiveAsOf,
@@ -723,7 +780,6 @@ function validateMaterializationInput(input: MaterializeReplayAnalysisInput) {
     throw new Error("Replay analysis profile failed deterministic hash verification");
   }
   if (
-    input.strategyProfile.profileHash !== input.analysisProfile.lifecycleConfigRef.configHash &&
     input.strategyProfile.lifecycleConfigHash !== input.analysisProfile.lifecycleConfigRef.configHash
   ) {
     throw new Error("Analysis lifecycle configuration does not match the strategy profile");
@@ -734,17 +790,57 @@ function validateMaterializationInput(input: MaterializeReplayAnalysisInput) {
   ) {
     throw new Error("Radar episode does not match the materialized instrument");
   }
+  const referenceSymbol = input.analysisProfile.referenceMarketPolicy.symbol;
+  const referenceSource = input.analysisProfile.referenceMarketPolicy.source ?? input.source;
+  validateCausalSeriesIdentity(
+    input.candlesByTimeframe,
+    input.symbol,
+    input.source,
+    input.asOf,
+    "target",
+  );
+  validateCausalSeriesIdentity(
+    input.referenceCandlesByTimeframe,
+    referenceSymbol,
+    referenceSource,
+    input.asOf,
+    "reference",
+  );
 }
 
-function effectiveEvaluationAsOf(input: MaterializeReplayAnalysisInput): number {
+function validateCausalSeriesIdentity(
+  series: Record<string, ReplayCandleRecord[]>,
+  symbol: string,
+  source: string,
+  asOf: number,
+  role: string,
+) {
+  for (const [timeframe, candles] of Object.entries(series)) {
+    strictTimeframeToSeconds(timeframe);
+    for (const candle of candles) {
+      if (candle.knownAt > asOf) continue;
+      if (
+        candle.symbol.toUpperCase() !== symbol.toUpperCase() ||
+        candle.source !== source ||
+        candle.timeframe !== timeframe
+      ) throw new Error(`Materialized ${role} candle identity mismatch for ${timeframe}`);
+    }
+  }
+}
+
+export function effectiveReplayAnalysisAsOf(input: MaterializeReplayAnalysisInput): number {
   const timeframe = input.analysisProfile.executionTimeframe;
-  const selected = selectReplayRecordsAt(
-    input.candlesByTimeframe[timeframe] ?? [],
-    input.asOf,
-  );
-  const latest = selected.at(-1);
-  if (!latest) throw new RangeError("NO_COMPLETED_EVALUATION_CANDLE");
-  return latest.closeTime;
+  const records = input.candlesByTimeframe[timeframe] ?? [];
+  const boundaries = [...new Set(records
+    .map((candle) => candle.closeTime)
+    .filter((closeTime) => closeTime <= input.asOf))]
+    .sort((left, right) => right - left);
+  for (const boundary of boundaries) {
+    if (selectReplayRecordsAt(records, boundary).some((candle) => candle.closeTime === boundary)) {
+      return boundary;
+    }
+  }
+  throw new RangeError("NO_COMPLETED_EVALUATION_CANDLE");
 }
 
 function selectedSeriesAt(
@@ -933,8 +1029,11 @@ function candidateMetricHistory(
   timeframe: string,
   effectiveAsOf: number,
 ): ImpulseFadeCandidateMetricObservation[] {
-  const records = selectReplayRecordsAt(input.candlesByTimeframe[timeframe] ?? [], effectiveAsOf);
-  return records.map((record) => {
+  const executionRecords = selectReplayRecordsAt(
+    input.candlesByTimeframe[input.analysisProfile.executionTimeframe] ?? [],
+    effectiveAsOf,
+  );
+  return executionRecords.map((record) => {
     const selected = selectedSeriesAt(
       input.candlesByTimeframe[timeframe] ?? [],
       timeframe,
@@ -1211,8 +1310,8 @@ function originatingSwings(
       swing.price >= zone.low &&
       swing.price <= zone.high &&
       (zone.kind === "resistance" ? swing.kind === "SwingHigh" : swing.kind === "SwingLow"))
-    .map((swing) => swingLogicalId(input.source, input.symbol, timeframe, swing))
-    .sort();
+    .sort((left, right) => left.bucket - right.bucket || left.knownAt - right.knownAt)
+    .map((swing) => swingLogicalId(input.source, input.symbol, timeframe, swing));
 }
 
 function freshnessFor(

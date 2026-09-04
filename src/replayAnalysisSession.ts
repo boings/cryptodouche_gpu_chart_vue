@@ -3,6 +3,7 @@ import type { ReplayAnalysisStateObservation } from "./replay";
 import {
   MATERIALIZED_REPLAY_ENGINE_VERSION,
   REPLAY_ANALYSIS_ENGINE_VERSION,
+  effectiveReplayAnalysisAsOf,
   materializeReplayAnalysis,
   selectReplayRecordsAt,
   type AvwapAnchorSpec,
@@ -336,13 +337,7 @@ export function replayAnalysisCacheKey(input: MaterializeReplayAnalysisInput) {
 }
 
 function latestEvaluationClose(input: MaterializeReplayAnalysisInput) {
-  const selected = selectReplayRecordsAt(
-    input.candlesByTimeframe[input.analysisProfile.executionTimeframe] ?? [],
-    input.asOf,
-  );
-  const latest = selected.at(-1);
-  if (!latest) throw new RangeError("NO_COMPLETED_EVALUATION_CANDLE");
-  return latest.closeTime;
+  return effectiveReplayAnalysisAsOf(input);
 }
 
 function appendState(
