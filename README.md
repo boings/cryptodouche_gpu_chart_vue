@@ -238,6 +238,30 @@ import {
 } from "@cryptodouche/gpu-chart-vue/core";
 ```
 
+Replay Phase 2A adds a separate deterministic execution layer for one finalized
+short linear-perpetual `TradePlan`. It models causal activation, market/limit/
+stop-market entries, static reduce-only protection, partial targets, fees,
+funding, strict intrabar ambiguity, and immutable outcome accounting without
+placing fills or P&L in the public replay session.
+
+```ts
+import {
+  loadExecutionCase,
+  createExecutionSession,
+  advanceExecutionTo,
+  simulateExecutionToHorizon,
+} from "@cryptodouche/gpu-chart-vue/core";
+```
+
+See [`docs/replay-phase-2a-execution.md`](docs/replay-phase-2a-execution.md) for
+the engine contract and audit workflow. Regenerate the committed deterministic
+examples with `pnpm generate:execution-examples`. Audit a real finalized replay
+case with:
+
+```sh
+pnpm audit:execution replay-session.json execution-input.json --out execution-session.json
+```
+
 The domain model and formulas are documented in
 [`docs/impulse-fade-trade-planning.md`](docs/impulse-fade-trade-planning.md).
 Generate the deterministic Wait, Skip, compliant-plan, and overridden-plan audit
