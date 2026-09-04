@@ -565,6 +565,7 @@ import type {
   GpuChartAvwapAnchor,
   GpuChartDataAdapter,
   GpuChartDataQuery,
+  GpuChartExecutionMarker,
   GpuChartOpenPayload,
   GpuChartPointSelectionPayload,
   GpuChartTimeSyncAction,
@@ -1383,6 +1384,7 @@ const props = withDefaults(
     timeSyncCommand?: GpuChartTimeSyncCommand | null;
     candidateMetrics?: CandidateMetrics | null;
     anchoredVwapAnchors?: GpuChartAvwapAnchor[];
+    executionMarkers?: GpuChartExecutionMarker[];
     appearance?: Partial<GpuChartAppearance>;
   }>(),
   {
@@ -1404,6 +1406,7 @@ const props = withDefaults(
     timeSyncCommand: null,
     candidateMetrics: null,
     anchoredVwapAnchors: () => [],
+    executionMarkers: () => [],
   },
 );
 
@@ -2185,6 +2188,12 @@ watch(
     drawHud(mousePos);
     scheduleGpuRender(renderNow);
   },
+  { deep: true },
+);
+
+watch(
+  () => props.executionMarkers,
+  () => drawHud(mousePos),
   { deep: true },
 );
 
@@ -4376,6 +4385,7 @@ function drawHud(pos: { px: number; py: number } | null) {
   if (chartIndicatorEnabled("rsDivergence", appearance)) {
     drawRelativeStrengthDivergences(ctx, priceDecorationBottom, scale, labelRects);
   }
+  drawExecutionMarkers(ctx, priceDecorationBottom, scale, labelRects);
 
   if (appearance.showWindowHighLow) {
     const extrema = visibleWindowExtrema();
@@ -4811,6 +4821,106 @@ function drawAnchoredVwapAnchor(
     ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
   }
   ctx.restore();
+}
+
+function drawExecutionMarkers(
+  ctx: CanvasRenderingContext2D,
+  priceBottom: number,
+  scale: number,
+  labelRects: HudLabelRect[],
+) {
+  if (!state?.candles.length || !props.executionMarkers.length || priceBottom <= 0) return;
+  const markers = props.executionMarkers
+    .map((marker) => ({ marker, candle: executionMarkerCandle(marker.eventTime) }))
+    .filter((entry): entry is { marker: GpuChartExecutionMarker; candle: CandleRecord } => entry.candle != null)
+    .slice(-64);
+  if (!markers.length) return;
+  const appearance = resolvedAppearance.value;
+  ctx.save();
+  ctx.font = `${Math.max(9 * scale, appearance.fontSize * scale * 0.68)}px ui-monospace, SFMono-Regular, Menlo, Consolas, monospace`;
+  ctx.textBaseline = "middle";
+  for (const { marker, candle } of markers) {
+    const label = executionMarkerLabel(marker);
+    if (!label) continue;
+    const x = xToPx(candle.x, ctx.canvas.width);
+    const price = marker.price ?? candle.c;
+    const y = yToPx(price, ctx.canvas.height);
+    if (x < -48 * scale || x > ctx.canvas.width + 48 * scale || y < -24 * scale || y > priceBottom + 24 * scale) continue;
+    const color = executionMarkerColor(marker, appearance);
+    const padX = 5 * scale;
+    const boxHeight = Math.max(13 * scale, appearance.fontSize * scale * 0.9);
+    const boxWidth = ctx.measureText(label).width + padX * 2;
+    const below = /stop|mae|cancel|ambig/i.test(marker.type);
+    const rect = placeHudLabelRect(
+      ctx,
+      labelRects,
+      x - boxWidth / 2,
+      y + (below ? boxHeight * 1.2 : -boxHeight * 2.2),
+      boxWidth,
+      boxHeight,
+      priceBottom,
+      scale,
+      below ? [0, 1, -1, 2, -2, 3, -3] : [0, -1, 1, -2, 2, -3, 3],
+      [0, 1, -1, 2, -2, 3, -3],
+    );
+    if (!rect) continue;
+    if (/decision|horizon|ambig/i.test(marker.type)) {
+      ctx.setLineDash([3 * scale, 5 * scale]);
+      ctx.strokeStyle = hexToRgba(color, 0.45);
+      ctx.beginPath();
+      ctx.moveTo(x + 0.5, 0);
+      ctx.lineTo(x + 0.5, priceBottom);
+      ctx.stroke();
+      ctx.setLineDash([]);
+    }
+    drawHudLeaderLine(ctx, x, y, rect, color, scale, 0.9);
+    ctx.fillStyle = hexToRgba(color, 0.2);
+    ctx.strokeStyle = hexToRgba(color, 0.78);
+    ctx.fillRect(rect.left, rect.top, boxWidth, boxHeight);
+    ctx.strokeRect(rect.left + 0.5, rect.top + 0.5, boxWidth, boxHeight);
+    ctx.fillStyle = hexToRgba(color, 0.98);
+    ctx.fillText(label, rect.left + padX, rect.top + boxHeight / 2);
+  }
+  ctx.restore();
+}
+
+function executionMarkerCandle(eventTime: number) {
+  if (!state?.candles.length || !Number.isFinite(eventTime)) return null;
+  return state.candles.find((candle) =>
+    eventTime >= candle.bucket && eventTime < candle.bucket + state!.timeframeSec) ??
+    [...state.candles].reverse().find((candle) => candle.bucket <= eventTime) ??
+    null;
+}
+
+function executionMarkerLabel(marker: GpuChartExecutionMarker) {
+  if (marker.label) return marker.label;
+  const labels: Record<string, string> = {
+    ExecutionCreated: "Decision",
+    EntryOrderActivated: "Entry active",
+    EntryOrderFilled: "Entry fill",
+    IntendedEntry: "Entry",
+    ProtectiveStop: "Stop",
+    TargetLevel: "Target",
+    TargetFilled: "Target fill",
+    ProtectiveStopTriggered: "Stop trigger",
+    ProtectiveStopFilled: "Stop fill",
+    OrderCancelled: "Cancelled",
+    FundingApplied: "Funding",
+    ExecutionHorizonReached: "Horizon",
+    ForcedHorizonClose: "Horizon close",
+    AmbiguityDetected: "Ambiguous",
+    PathResolved: "Path resolved",
+    MAE: "MAE",
+    MFE: "MFE",
+  };
+  return labels[marker.type] ?? null;
+}
+
+function executionMarkerColor(marker: GpuChartExecutionMarker, appearance: GpuChartAppearance) {
+  if (/stop|mae|cancel|ambig/i.test(marker.type)) return appearance.downColor;
+  if (/target|mfe/i.test(marker.type)) return appearance.upColor;
+  if (/funding|path/i.test(marker.type)) return appearance.windowHighColor;
+  return appearance.anchoredVwapAnchorColor;
 }
 
 function resolvedAvwapAnchors(): Array<GpuChartAvwapAnchor & { color: string }> {

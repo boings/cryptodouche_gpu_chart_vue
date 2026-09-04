@@ -96,6 +96,15 @@ export interface GpuChartAvwapAnchor {
   visible?: boolean;
 }
 
+export interface GpuChartExecutionMarker {
+  id: string;
+  type: string;
+  eventTime: number;
+  price?: number | null;
+  label?: string;
+  detail?: string;
+}
+
 export interface CandidateExtensionMetrics {
   windowSeconds: number;
   historyDays: number;
