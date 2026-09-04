@@ -200,6 +200,76 @@ describe("replay analysis materializer", () => {
     expect(compact.indicatorSeries).toEqual({});
   });
 
+  it("seeds a causal lifecycle candidate from a local-return radar episode", () => {
+    const input = fixture();
+    const detectedAt = START + 6 * HOUR;
+    input.analysisProfile = createExperimentalReplayAnalysisProfile(input.strategyProfile, {
+      extensionConfig: {
+        windowSeconds: 24 * HOUR,
+        historyDays: 2,
+        minSamples: 20,
+        emaPeriod: 3,
+        atrPeriod: 3,
+      },
+    });
+    input.candlesByTimeframe["1h"] = input.candlesByTimeframe["1h"].map((record, index) => {
+      const close = 100 - index;
+      return createReplayCandleRecord({
+        symbol: SYMBOL,
+        source: SOURCE,
+        timeframe: "1h",
+        openTime: record.openTime,
+        o: close + 0.4,
+        h: close + 1,
+        l: close - 1,
+        c: close,
+        vBase: record.vBase,
+        vQuote: record.vQuote,
+        revision: 1,
+      });
+    });
+    input.radarEpisode = {
+      symbol: SYMBOL,
+      source: SOURCE,
+      detectedAt,
+      triggeringObservations: [{
+        metricCode: "elapsed_window_return",
+        effectiveAsOf: detectedAt,
+        knownAt: detectedAt,
+        value: 9.3,
+        percentile: 98,
+        zScore: 2.1,
+        sampleCount: 144,
+      }],
+      pathContext: {
+        triggeringLocalImpulseReturnPct: 9.3,
+        triggeringPercentile: 98,
+        triggeringZScore: 2.1,
+        currentAtrDisplacement: 1,
+      },
+    } as RadarEpisode;
+
+    const atDetection = materializeReplayAnalysis({ ...input, asOf: detectedAt });
+    const afterFutureCandles = materializeReplayAnalysis({
+      ...input,
+      asOf: detectedAt + 2 * HOUR,
+    });
+
+    expect(atDetection.candidateMetrics.extension.returnPct).toBeNull();
+    expect(atDetection.lifecycleResult.candidate).toMatchObject({
+      detectedAt,
+      detectionEventTime: detectedAt,
+      detectionMetrics: {
+        returnPct: 9.3,
+        percentile: 98,
+        zScore: 2.1,
+        atrExtension: 1,
+      },
+    });
+    expect(afterFutureCandles.lifecycleResult.candidate?.detectedAt).toBe(detectedAt);
+    expect(afterFutureCandles.lifecycleResult.candidate?.detectionEventTime).toBe(detectedAt);
+  });
+
   it("reuses the shared extension, structure, Stoch RSI, and RS calculations", () => {
     const input = fixture();
     const state = materializeReplayAnalysis(input);

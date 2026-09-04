@@ -1222,7 +1222,59 @@ function candidateMetricHistory(
     history = buildCandidateMetricHistory(input, timeframe, executionSource, candidateSource);
     byConfig.set(cacheKey, history);
   }
-  return history.filter((item) => (item.knownAt ?? item.asOf) <= effectiveAsOf);
+  const causalHistory = history.filter(
+    (item) => (item.knownAt ?? item.asOf) <= effectiveAsOf,
+  );
+  const seed = radarCandidateMetricSeed(input.radarEpisode, effectiveAsOf);
+  if (!seed) return causalHistory;
+
+  return [
+    seed,
+    ...causalHistory.filter((item) => item.asOf > seed.asOf),
+  ];
+}
+
+function radarCandidateMetricSeed(
+  episode: RadarEpisode,
+  effectiveAsOf: number,
+): ImpulseFadeCandidateMetricObservation | null {
+  if (!Number.isFinite(episode.detectedAt) || episode.detectedAt > effectiveAsOf) return null;
+
+  const trigger = episode.triggeringObservations?.find((observation) =>
+    observation.knownAt <= episode.detectedAt &&
+    observation.effectiveAsOf <= episode.detectedAt &&
+    observation.value != null &&
+    Number.isFinite(observation.value),
+  ) ?? null;
+  const path = episode.pathContext;
+  const localReturn = finiteNumberOrNull(
+    path?.triggeringLocalImpulseReturnPct ?? trigger?.value,
+  );
+  const percentile = finiteNumberOrNull(
+    path?.triggeringPercentile ?? trigger?.percentile,
+  );
+  const zScore = finiteNumberOrNull(path?.triggeringZScore ?? trigger?.zScore);
+  const atrExtension = finiteNumberOrNull(path?.currentAtrDisplacement);
+  if ([localReturn, percentile, zScore, atrExtension].every((value) => value == null)) {
+    return null;
+  }
+
+  return {
+    asOf: episode.detectedAt,
+    eventTime: trigger?.effectiveAsOf ?? episode.detectedAt,
+    knownAt: episode.detectedAt,
+    metrics: {
+      returnPct: localReturn,
+      percentile,
+      zScore,
+      atrExtension,
+    },
+    sampleCount: trigger?.sampleCount,
+  };
+}
+
+function finiteNumberOrNull(value: number | null | undefined): number | null {
+  return value != null && Number.isFinite(value) ? value : null;
 }
 
 const candidateMetricHistoryCache = new WeakMap<
