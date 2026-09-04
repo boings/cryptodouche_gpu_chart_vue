@@ -1,10 +1,18 @@
 import { describe, expect, it } from "vitest";
 
 import {
+  computeAnchoredVwapLine,
+  computeAnchoredVwapSignals,
+  computeAnchoredVwapSnapshot,
+  computeAtrLine,
+  computeEmaLine,
   computeExtensionSnapshot,
   computeMarketStructure,
   computeRelativeCumulativeReturnLine,
+  computeRelativeStrengthDivergences,
   computeStochRsi,
+  computeStructureActiveLevels,
+  computeSupportResistanceZonesFromSwings,
 } from "./indicators";
 import { EXPERIMENTAL_IMPULSE_FADE_RADAR_PROFILE, type RadarEpisode } from "./radar";
 import { createReplayCandleRecord, type ReplayCandleRecord } from "./replay";
@@ -193,16 +201,77 @@ describe("replay analysis materializer", () => {
     expect(state.extensionContext["15m"]).toEqual(
       computeExtensionSnapshot(candles, input.analysisProfile.extensionConfig),
     );
-    expect(state.structureByTimeframe["15m"]!.observation.value).toEqual(
-      computeMarketStructure(candles, input.analysisProfile.structureConfig),
+    expect(state.indicatorSeries["15m"]!.ema).toEqual(
+      line(computeEmaLine(candles, input.analysisProfile.extensionConfig.emaPeriod)),
     );
+    expect(state.indicatorSeries["15m"]!.atr).toEqual(
+      line(computeAtrLine(candles, input.analysisProfile.extensionConfig.atrPeriod)),
+    );
+    const structure = computeMarketStructure(candles, input.analysisProfile.structureConfig);
+    expect(state.structureByTimeframe["15m"]!.observation.value).toEqual(structure);
     expect(state.indicatorSeries["15m"]!.stochRsi).toEqual({
       k: line(computeStochRsi(candles).k),
       d: line(computeStochRsi(candles).d),
     });
+    expect(state.activeStructureLevels
+      .filter((level) => level.sourceTimeframe === "15m")
+      .map((level) => level.sourceObject.snapshot)).toEqual(
+        computeStructureActiveLevels(structure),
+      );
+    const directZones = computeSupportResistanceZonesFromSwings(structure.swings, {
+      ...input.analysisProfile.supportResistanceConfig,
+      latestX: candles.at(-1)!.x,
+      referencePrice: candles.at(-1)!.c,
+    });
+    expect(state.supportResistanceZones
+      .filter((zone) => zone.timeframe === "15m")
+      .map((zone) => {
+        const { originatingSwingIds: _ignored, ...value } = zone.value;
+        return value;
+      })).toEqual(directZones);
     expect(state.relativeStrength.series).toEqual(
       line(computeRelativeCumulativeReturnLine(candles, reference)),
     );
+    expect(state.relativeStrengthEvents.map((event) => event.value)).toEqual(
+      computeRelativeStrengthDivergences(
+        candles,
+        reference,
+        input.analysisProfile.relativeStrengthConfig,
+      ),
+    );
+    expect(state.setupState).toEqual(state.lifecycleResult);
+  });
+
+  it("reuses the shared AVWAP series, snapshot, and chronological events", () => {
+    const input = fixture();
+    const anchorCandle = input.candlesByTimeframe["15m"][3]!;
+    const anchor = createAvwapAnchorSpec({
+      id: "parity-anchor",
+      type: "manual",
+      symbol: SYMBOL,
+      source: SOURCE,
+      timeframe: "15m",
+      anchorCandleLogicalId: anchorCandle.logicalCandleId,
+      anchorCandleObservationId: anchorCandle.observationId,
+      anchorTime: anchorCandle.openTime,
+      priceBasis: "typical",
+      volumeBasis: "baseThenQuote",
+      selectedAt: anchorCandle.knownAt,
+      knownAt: anchorCandle.knownAt,
+      provenance: "shared calculation parity",
+    });
+    const state = materializeReplayAnalysis({ ...input, avwapAnchors: [anchor] });
+    const sampleCount = state.freshnessByComponent["timeframe:15m"]!.sampleCount;
+    const candles = replayCandles(input.candlesByTimeframe["15m"].slice(0, sampleCount), "15m");
+    const options = { anchorBucket: anchor.anchorTime };
+
+    expect(state.avwapStates[0]!.series).toEqual(line(computeAnchoredVwapLine(candles, options)));
+    expect(state.avwapStates[0]!.snapshot).toEqual(computeAnchoredVwapSnapshot(candles, options));
+    expect(state.avwapEvents.map((event) => event.value)).toEqual(
+      computeAnchoredVwapSignals(candles, options, input.analysisProfile.avwapConfig.maxSignals),
+    );
+    expect(state.avwapEvents.every((event, index, events) =>
+      index === 0 || event.knownAt >= events[index - 1]!.knownAt)).toBe(true);
   });
 
   it("keeps valid components when synchronized reference data is missing", () => {
@@ -285,4 +354,26 @@ function line(values: Float32Array) {
     result.push({ x: values[index]!, value: values[index + 1]! });
   }
   return result;
+}
+
+function replayCandles(records: ReplayCandleRecord[], timeframe: string) {
+  const seconds = timeframe.endsWith("m")
+    ? Number.parseInt(timeframe, 10) * MINUTE
+    : timeframe.endsWith("h")
+      ? Number.parseInt(timeframe, 10) * HOUR
+      : Number.parseInt(timeframe, 10) * DAY;
+  const first = records[0]?.openTime ?? 0;
+  return records.map((item) => ({
+    ts: item.openTime,
+    bucket: item.openTime,
+    x: (item.openTime - first) / seconds,
+    o: item.o,
+    h: item.h,
+    l: item.l,
+    c: item.c,
+    v_base: item.vBase ?? undefined,
+    v_quote: item.vQuote ?? undefined,
+    ver: item.revision ?? undefined,
+    knownAt: item.knownAt,
+  }));
 }
