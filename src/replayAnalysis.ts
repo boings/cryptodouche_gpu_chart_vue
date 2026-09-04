@@ -443,7 +443,7 @@ export function materializeReplayAnalysis(
     targetObservationIds: observationIdsByTimeframe(selectedByTimeframe),
     referenceObservationIds: observationIdsByTimeframe(referenceByTimeframe),
     anchorObservationIds: (input.avwapAnchors ?? [])
-      .filter((anchor) => anchor.knownAt <= effectiveAsOf)
+      .filter((anchor) => anchor.knownAt <= effectiveAsOf && anchor.selectedAt <= effectiveAsOf)
       .map((anchor) => anchor.anchorCandleObservationId)
       .sort(),
   });
@@ -1130,7 +1130,9 @@ function materializeAvwap(
     sourceObservationIds: [],
     configurationHash: canonicalHash(input.analysisProfile.avwapConfig),
   };
-  const anchors = input.avwapAnchors ?? [];
+  const anchors = (input.avwapAnchors ?? []).filter(
+    (anchor) => anchor.knownAt <= effectiveAsOf && anchor.selectedAt <= effectiveAsOf,
+  );
   if (!anchors.length) {
     notes.push(componentNote("ANALYSIS_COMPONENT_UNAVAILABLE", "avwap", "No explicit AVWAP anchor was supplied"));
     return { states, events, notes, freshness };

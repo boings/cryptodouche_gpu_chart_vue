@@ -3,7 +3,7 @@ import { describe, expect, it } from "vitest";
 
 import { JsonReplayHistoricalDataAdapter } from "./replayJsonAdapter";
 import { createReplayCandleRecord, type ReplayCandleRecord } from "./replay";
-import { createExperimentalReplayAnalysisProfile } from "./replayAnalysis";
+import { createAvwapAnchorSpec, createExperimentalReplayAnalysisProfile } from "./replayAnalysis";
 import {
   InMemoryReplayAnalysisDataAdapter,
   type ReplayAnalysisJsonDataFixture,
@@ -132,8 +132,39 @@ describe("materialized replay-engine.2 integration", () => {
       scheduledReview: { mode: "nextCompletedCandle", timeframe: "1h" },
       deadlineAsOf: first.effectiveAsOf + 2 * 3_600,
     });
+    const anchorCandle = first.visibleCandlesByTimeframe["1h"].at(-1)!;
+    const manualAnchor = createAvwapAnchorSpec({
+      id: "trainer-manual-anchor",
+      type: "manual",
+      symbol: audit.manifest.symbol,
+      source: audit.manifest.source,
+      timeframe: "1h",
+      anchorCandleLogicalId: anchorCandle.logicalCandleId,
+      anchorCandleObservationId: anchorCandle.observationId,
+      anchorTime: anchorCandle.openTime,
+      priceBasis: "typical",
+      volumeBasis: "baseThenQuote",
+      selectedAt: first.effectiveAsOf + 1,
+      knownAt: first.effectiveAsOf + 1,
+      provenance: "Trainer manual anchor",
+    });
+    const anchoredLoaded = await loadMaterializedReplayCase({
+      manifest: audit.manifest,
+      sessionConfig: config,
+      historicalDataAdapter: new JsonReplayHistoricalDataAdapter(audit.data),
+      analysisDataAdapter: new InMemoryReplayAnalysisDataAdapter(analysisData),
+      strategyProfile: audit.profiles.strategy,
+      radarSelectionProfile: audit.profiles.radarSelection,
+      venueRules: audit.profiles.venueRules,
+      analysisProfile: profile,
+      avwapAnchors: [manualAnchor],
+    });
+    expect(anchoredLoaded.materializedAnalysisBinding).toEqual(loaded.materializedAnalysisBinding);
+    expect(anchoredLoaded.dataBundle.causalPrefixFingerprint).toBe(
+      loaded.dataBundle.causalPrefixFingerprint,
+    );
     const waited = await applyReplayCommand(
-      loaded,
+      anchoredLoaded,
       session,
       createReplayCommand(session, {
         id: "materialized:wait",

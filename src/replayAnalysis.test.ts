@@ -348,7 +348,7 @@ describe("replay analysis materializer", () => {
     );
   });
 
-  it("freezes explicit AVWAP anchor revisions and rejects a future anchor", () => {
+  it("freezes explicit AVWAP anchor revisions and defers a future anchor", () => {
     const input = fixture();
     const anchorCandle = input.candlesByTimeframe["15m"][3]!;
     const anchor = createAvwapAnchorSpec({
@@ -372,10 +372,12 @@ describe("replay analysis materializer", () => {
       schemaVersion: AVWAP_ANCHOR_SCHEMA_VERSION,
     });
 
-    expect(() => materializeReplayAnalysis({
+    const beforeSelection = materializeReplayAnalysis({
       ...input,
       avwapAnchors: [{ ...anchor, selectedAt: input.asOf + HOUR, knownAt: input.asOf + HOUR }],
-    })).toThrow("was not known at the cutoff");
+    });
+    expect(beforeSelection.avwapStates).toEqual([]);
+    expect(beforeSelection.freshnessByComponent.avwap?.status).toBe("unavailable");
   });
 });
 

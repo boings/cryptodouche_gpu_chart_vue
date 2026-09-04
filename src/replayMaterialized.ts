@@ -131,6 +131,13 @@ export async function loadMaterializedReplayCase(
   const startState = states.find((state) => state.effectiveAsOf === input.manifest.startAsOf) ??
     states[0];
   if (!startState) throw new Error("No materialized analysis state exists at replay start");
+  const bindingStartState = (input.avwapAnchors ?? []).some((anchor) => anchor.type === "manual")
+    ? materializeReplayAnalysis({
+        ...materializationBase,
+        avwapAnchors: (input.avwapAnchors ?? []).filter((anchor) => anchor.type !== "manual"),
+        asOf: startState.effectiveAsOf,
+      })
+    : startState;
 
   const adapter = new MaterializedHistoryAdapter({
     evidence: input.historicalDataAdapter,
@@ -157,7 +164,9 @@ export async function loadMaterializedReplayCase(
         hash: input.analysisProfile.canonicalConfigHash,
       },
       referenceMarket: { symbol: referenceSymbol, source: referenceSource },
-      causalDataBundleFingerprint: startState.dataBundleFingerprint,
+      // Runtime manual anchors are append-only analysis actions. They must not
+      // replace the immutable case/session binding established at detection.
+      causalDataBundleFingerprint: bindingStartState.dataBundleFingerprint,
       lifecycleConfigHash: input.strategyProfile.lifecycleConfigHash,
       radarProfileHash: input.radarSelectionProfile.canonicalConfigHash,
       strategyProfileHash: input.strategyProfile.profileHash,
@@ -244,6 +253,10 @@ export function materializedAnalysisKnownEvents(
     }
     for (const item of state.avwapEvents) {
       if (item.evaluatedAt !== state.effectiveAsOf) continue;
+      const suffix = `:${item.value.kind}:${item.eventTime}`;
+      const avwapId = item.logicalId.startsWith("avwap-event:") && item.logicalId.endsWith(suffix)
+        ? item.logicalId.slice("avwap-event:".length, -suffix.length)
+        : null;
       add(createReplayKnownEvent({
         symbol: state.symbol,
         source: state.source,
@@ -254,7 +267,7 @@ export function materializedAnalysisKnownEvents(
           : "bullish",
         timeframe: item.timeframe,
         lifecycleState: null,
-        avwapId: item.logicalId.split(":").slice(2, -2).join(":") || null,
+        avwapId,
         eventTime: item.eventTime,
         knownAt: state.effectiveAsOf,
         detail: jsonObject({ observationId: item.observationId, rawKnownAt: item.knownAt, value: item.value }),
