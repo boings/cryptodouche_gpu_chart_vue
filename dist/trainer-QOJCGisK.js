@@ -24,9 +24,9 @@ function C(e) {
     if (t.has(r)) throw new TypeError("Canonical JSON does not support cycles");
     t.add(r);
     let o;
-    return Array.isArray(r) ? o = `[${r.map((s) => n(s, !0) ?? "null").join(",")}]` : o = `{${Object.keys(r).sort().flatMap((c) => {
-      const l = n(r[c]);
-      return l == null ? [] : [`${JSON.stringify(c)}:${l}`];
+    return Array.isArray(r) ? o = `[${r.map((s) => n(s, !0) ?? "null").join(",")}]` : o = `{${Object.keys(r).sort().flatMap((l) => {
+      const c = n(r[l]);
+      return c == null ? [] : [`${JSON.stringify(l)}:${c}`];
     }).join(",")}}`, t.delete(r), o;
   }
   const i = n(e);
@@ -81,19 +81,19 @@ function dn(e, t, n) {
     return $e(o, t) <= n;
   });
   for (const o of [...a].sort(
-    (s, c) => s.bucket - c.bucket || s.ts - c.ts
+    (s, l) => s.bucket - l.bucket || s.ts - l.ts
   )) {
     if (!ys(o) || o.bucket % i !== 0 || Math.floor(o.ts / i) * i !== o.bucket)
       throw new RangeError(`Invalid candle for bucket ${o.bucket}`);
     const s = $e(o, t);
     if (s < o.bucket + i)
       throw new RangeError(`Candle revision predates close for bucket ${o.bucket}`);
-    const c = r.get(o.bucket);
-    if (c) {
-      const l = $e(c, t);
-      if (l === s && yr(c, t) !== yr(o, t))
+    const l = r.get(o.bucket);
+    if (l) {
+      const c = $e(l, t);
+      if (c === s && yr(l, t) !== yr(o, t))
         throw new Error(`Conflicting candle revisions for bucket ${o.bucket} at ${s}`);
-      if (l > s) continue;
+      if (c > s) continue;
     }
     r.set(o.bucket, o);
   }
@@ -109,8 +109,8 @@ function rt(e, t) {
 function ra(e) {
   const t = ca(e);
   if (!t || typeof t != "object") return null;
-  const n = t, i = vr(n.ts), r = ye(n.o), a = ye(n.h), o = ye(n.l), s = ye(n.c), c = n.knownAt == null ? void 0 : vr(n.knownAt);
-  return i == null || r == null || a == null || o == null || s == null || n.knownAt != null && c == null ? null : {
+  const n = t, i = vr(n.ts), r = ye(n.o), a = ye(n.h), o = ye(n.l), s = ye(n.c), l = n.knownAt == null ? void 0 : vr(n.knownAt);
+  return i == null || r == null || a == null || o == null || s == null || n.knownAt != null && l == null ? null : {
     ts: i,
     o: r,
     h: a,
@@ -119,12 +119,12 @@ function ra(e) {
     v_base: ye(n.v_base),
     v_quote: ye(n.v_quote),
     ver: ye(n.ver),
-    knownAt: c ?? void 0
+    knownAt: l ?? void 0
   };
 }
 function aa(e, t, n) {
   const i = fn(t), r = ls(
-    e.map((s, c) => oa(s, c)).filter((s) => s != null),
+    e.map((s, l) => oa(s, l)).filter((s) => s != null),
     i
   ).slice(-Math.max(1, n));
   if (!r.length)
@@ -135,11 +135,11 @@ function aa(e, t, n) {
       positionByBucket: /* @__PURE__ */ new Map()
     };
   const a = rt(r[0].ts, i), o = r.map((s) => {
-    const c = rt(s.ts, i);
+    const l = rt(s.ts, i);
     return {
       ...s,
-      bucket: c,
-      x: (c - a) / i
+      bucket: l,
+      x: (l - a) / i
     };
   });
   return vi({
@@ -181,18 +181,18 @@ function ss(e, t, n, i = 3) {
     return { kind: "ignore", reason: "empty-history" };
   const a = rt(r.ts, e.timeframeSec);
   if (a < e.firstBucket) return { kind: "ignore", reason: "before-history" };
-  const o = e.positionByBucket.get(a), s = (a - e.firstBucket) / e.timeframeSec, c = { ...r, bucket: a, x: s };
+  const o = e.positionByBucket.get(a), s = (a - e.firstBucket) / e.timeframeSec, l = { ...r, bucket: a, x: s };
   if (o != null)
-    return vs(c, e.candles[o]) ? { kind: "ignore", reason: "stale-version" } : ms(e.candles[o], c) ? (e.candles[o] = c, { kind: "ignore", reason: "unchanged" }) : (e.candles[o] = c, {
+    return vs(l, e.candles[o]) ? { kind: "ignore", reason: "stale-version" } : ms(e.candles[o], l) ? (e.candles[o] = l, { kind: "ignore", reason: "unchanged" }) : (e.candles[o] = l, {
       kind: "replace",
       position: o,
-      bytes: mr(c)
+      bytes: mr(l)
     });
-  const l = e.candles[e.candles.length - 1];
-  return a <= l.bucket ? { kind: "ignore", reason: "stale-gap" } : (a - l.bucket) / e.timeframeSec > i ? { kind: "ignore", reason: "gap-too-large" } : (e.candles.push(c), e.candles.length > Math.max(1, n) ? (e.candles.splice(0, e.candles.length - Math.max(1, n)), cs(e), { kind: "reset", bytes: os(e.candles) }) : (vi(e), {
+  const c = e.candles[e.candles.length - 1];
+  return a <= c.bucket ? { kind: "ignore", reason: "stale-gap" } : (a - c.bucket) / e.timeframeSec > i ? { kind: "ignore", reason: "gap-too-large" } : (e.candles.push(l), e.candles.length > Math.max(1, n) ? (e.candles.splice(0, e.candles.length - Math.max(1, n)), cs(e), { kind: "reset", bytes: os(e.candles) }) : (vi(e), {
     kind: "append",
     position: e.candles.length - 1,
-    bytes: mr(c)
+    bytes: mr(l)
   }));
 }
 function Hd(e, t = []) {
@@ -202,8 +202,8 @@ function Hd(e, t = []) {
     n = Math.min(n, o.l), i = Math.max(i, o.h);
   for (const o of t)
     for (let s = 1; s < o.length; s += 2) {
-      const c = o[s];
-      Number.isFinite(c) && (n = Math.min(n, c), i = Math.max(i, c));
+      const l = o[s];
+      Number.isFinite(l) && (n = Math.min(n, l), i = Math.max(i, l));
     }
   const a = Math.max(1e-9, i - n) * 0.08;
   return {
@@ -214,19 +214,19 @@ function Hd(e, t = []) {
   };
 }
 function Bd(e, t, n) {
-  const i = fn(n), r = Math.floor(Date.now() / 1e3), a = rt(r, i), o = e.split("").reduce((l, u) => l + u.charCodeAt(0), 0), s = [];
-  let c = 40 + o % 160;
-  for (let l = Math.max(1, t) - 1; l >= 0; l--) {
-    const u = a - l * i, f = Math.sin((t - l + o) / 9) * 0.8, d = c, m = Math.max(1e-4, d + f + Math.cos((t - l) / 13) * 0.35), v = Math.max(d, m) + 0.35 + Math.abs(Math.sin(l + o)) * 0.5, p = Math.min(d, m) - 0.35 - Math.abs(Math.cos(l + o)) * 0.5, h = 50 + o % 90 + Math.abs(Math.sin((t - l + o) / 5)) * 180;
-    s.push({ ts: u, o: d, h: v, l: p, c: m, v_base: h, v_quote: h * m }), c = m;
+  const i = fn(n), r = Math.floor(Date.now() / 1e3), a = rt(r, i), o = e.split("").reduce((c, u) => c + u.charCodeAt(0), 0), s = [];
+  let l = 40 + o % 160;
+  for (let c = Math.max(1, t) - 1; c >= 0; c--) {
+    const u = a - c * i, f = Math.sin((t - c + o) / 9) * 0.8, d = l, m = Math.max(1e-4, d + f + Math.cos((t - c) / 13) * 0.35), v = Math.max(d, m) + 0.35 + Math.abs(Math.sin(c + o)) * 0.5, p = Math.min(d, m) - 0.35 - Math.abs(Math.cos(c + o)) * 0.5, h = 50 + o % 90 + Math.abs(Math.sin((t - c + o) / 5)) * 180;
+    s.push({ ts: u, o: d, h: v, l: p, c: m, v_base: h, v_quote: h * m }), l = m;
   }
   return aa(s, n, t);
 }
 function Vd(e, t) {
   const n = e.candles[e.candles.length - 1];
   if (!n) return { kind: "ignore", reason: "empty-history" };
-  const i = n.bucket + e.timeframeSec, r = Math.sin(i / 600) * 0.7, a = n.c, o = Math.max(1e-4, a + r), s = Math.max(a, o) + 0.5, c = Math.min(a, o) - 0.5, l = Math.max(1, (n.v_base ?? 100) * (0.82 + Math.abs(r) * 0.36));
-  return ss(e, { ts: i, o: a, h: s, l: c, c: o, v_base: l, v_quote: l * o }, t);
+  const i = n.bucket + e.timeframeSec, r = Math.sin(i / 600) * 0.7, a = n.c, o = Math.max(1e-4, a + r), s = Math.max(a, o) + 0.5, l = Math.min(a, o) - 0.5, c = Math.max(1, (n.v_base ?? 100) * (0.82 + Math.abs(r) * 0.36));
+  return ss(e, { ts: i, o: a, h: s, l, c: o, v_base: c, v_quote: c * o }, t);
 }
 function cs(e) {
   const t = e.candles[0];
@@ -282,16 +282,16 @@ function fs(e) {
     a = 0,
     o = 0,
     s = 0,
-    c = 0,
-    l = 0
+    l = 0,
+    c = 0
   ] = e, u = Math.floor(Number(o) / 1e6);
   return Date.UTC(
     Number(t),
     0,
     Number(n),
     Number(i) - Number(s),
-    Number(r) - Number(c),
-    Number(a) - Number(l),
+    Number(r) - Number(l),
+    Number(a) - Number(c),
     u
   );
 }
@@ -399,14 +399,14 @@ function qd(e, t = 20, n = 2) {
     };
   const i = [], r = [], a = [];
   let o = 0, s = 0;
-  return e.forEach((c, l) => {
-    if (o += c.c, s += c.c * c.c, l >= t) {
-      const u = e[l - t].c;
+  return e.forEach((l, c) => {
+    if (o += l.c, s += l.c * l.c, c >= t) {
+      const u = e[c - t].c;
       o -= u, s -= u * u;
     }
-    if (l >= t - 1) {
+    if (c >= t - 1) {
       const u = o / t, f = Math.max(0, s / t - u * u), d = Math.sqrt(f) * n;
-      i.push(c.x, u), r.push(c.x, u + d), a.push(c.x, u - d);
+      i.push(l.x, u), r.push(l.x, u + d), a.push(l.x, u - d);
     }
   }), {
     basis: new Float32Array(i),
@@ -431,10 +431,10 @@ function gs(e, t = 14, n = 14, i = 3, r = 3) {
     const m = d - f, v = m > 0 ? (a[u].value - f) / m * 100 : 50;
     s.push({ x: a[u].x, value: v });
   }
-  const c = wr(s, qe(i)), l = wr(c, qe(r));
+  const l = wr(s, qe(i)), c = wr(l, qe(r));
   return {
-    k: Ue(c),
-    d: Ue(l)
+    k: Ue(l),
+    d: Ue(c)
   };
 }
 function Qd(e, t = 12, n = 26, i = 9) {
@@ -443,14 +443,14 @@ function Qd(e, t = 12, n = 26, i = 9) {
     const f = r[u], d = a[u];
     f == null || d == null || o.push({ x: e[u].x, value: f - d });
   }
-  const s = Ac(o, i), c = new Map(o.map((u) => [u.x, u.value])), l = s.map((u) => ({
+  const s = Ac(o, i), l = new Map(o.map((u) => [u.x, u.value])), c = s.map((u) => ({
     x: u.x,
-    value: (c.get(u.x) ?? u.value) - u.value
+    value: (l.get(u.x) ?? u.value) - u.value
   }));
   return {
     macd: Ue(o),
     signal: Ue(s),
-    histogram: Ue(l)
+    histogram: Ue(c)
   };
 }
 function As(e, t = 14) {
@@ -463,14 +463,14 @@ function at(e, t = {}) {
   const n = L(t.windowSeconds, 60, 2592e3, 86400), i = L(t.historyDays, 1, 365, 180), r = L(t.minSamples, 1, 5e3, 20), a = L(t.emaPeriod, 2, 500, 20), o = L(t.atrPeriod, 2, 500, 14), s = ba(e);
   if (!s)
     return ec(n);
-  const c = e.indexOf(s), l = wa(e, s.bucket - n, c), u = l && X(l.c) ? (s.c / l.c - 1) * 100 : null, f = u == null ? [] : tc(e, {
+  const l = e.indexOf(s), c = wa(e, s.bucket - n, l), u = c && X(c.c) ? (s.c / c.c - 1) * 100 : null, f = u == null ? [] : tc(e, {
     windowSeconds: n,
     earliestBucket: s.bucket - i * 86400,
     excludeBucket: s.bucket
-  }), d = u != null && f.length >= r ? nc(f, u) : null, m = u != null && f.length >= r ? ic(f, u) : null, v = Wn(e, a)[c] ?? null, p = yn(e, o)[c] ?? null, h = v != null && p != null && Number.isFinite(v) && Number.isFinite(p) && p > 0 ? (s.c - v) / p : null;
+  }), d = u != null && f.length >= r ? nc(f, u) : null, m = u != null && f.length >= r ? ic(f, u) : null, v = Wn(e, a)[l] ?? null, p = yn(e, o)[l] ?? null, h = v != null && p != null && Number.isFinite(v) && Number.isFinite(p) && p > 0 ? (s.c - v) / p : null;
   return {
     candle: s,
-    referenceCandle: l,
+    referenceCandle: c,
     windowSeconds: n,
     returnPct: u,
     percentile: d,
@@ -483,16 +483,16 @@ function at(e, t = {}) {
 }
 function bs(e = {}) {
   var H, j, N;
-  const t = e.executionTimeframe ?? "chart", n = k(e.asOf), i = k(e.latestTs) ?? $s(e.candles ?? [], t) ?? k((H = e.structure) == null ? void 0 : H.updatedTs) ?? k((j = e.marketStructure) == null ? void 0 : j.summary.updatedTs) ?? null, r = n ?? i, a = r == null ? null : bi(e.candles ?? [], r, t), o = (a == null ? void 0 : a.candle.c) ?? k(e.latestPrice), s = ws(e.marketStructure ?? null, n), c = (s == null ? void 0 : s.summary) ?? Es(e.structure, n), l = e.htfStructures ?? [], u = n == null ? e.htfStructures ?? [] : hi(e.htfStructures ?? [], n), f = (e.srZones ?? []).filter(
+  const t = e.executionTimeframe ?? "chart", n = k(e.asOf), i = k(e.latestTs) ?? $s(e.candles ?? [], t) ?? k((H = e.structure) == null ? void 0 : H.updatedTs) ?? k((j = e.marketStructure) == null ? void 0 : j.summary.updatedTs) ?? null, r = n ?? i, a = r == null ? null : bi(e.candles ?? [], r, t), o = (a == null ? void 0 : a.candle.c) ?? k(e.latestPrice), s = ws(e.marketStructure ?? null, n), l = (s == null ? void 0 : s.summary) ?? Es(e.structure, n), c = e.htfStructures ?? [], u = n == null ? e.htfStructures ?? [] : hi(e.htfStructures ?? [], n), f = (e.srZones ?? []).filter(
     (B) => n == null || D(B) <= n
   ), d = (e.rsDivergences ?? []).filter(
     (B) => n == null || D(B) <= n
   ), m = (e.anchoredVwapSignals ?? []).filter(
     (B) => n == null || D(B) <= n
-  ), v = K(e.resistanceNearPct, 0, 10, 1.5), p = K(e.retestNearPct, 0, 10, 0.8), h = Qs(e.extension ?? null), A = js(f, o, v), b = Ws(d), E = Gs(c), _ = Ks(
+  ), v = K(e.resistanceNearPct, 0, 10, 1.5), p = K(e.retestNearPct, 0, 10, 0.8), h = Qs(e.extension ?? null), A = js(f, o, v), b = Ws(d), E = Gs(l), _ = Ks(
     m,
     e.avwapDistancePct
-  ), P = Ys(c, f, o, p), w = Xs(h, A, c, o), g = [
+  ), P = Ys(l, f, o, p), w = Xs(h, A, l, o), g = [
     h,
     A,
     b,
@@ -528,8 +528,8 @@ function bs(e = {}) {
     asOf: r,
     latestPrice: o,
     marketStructure: s,
-    structure: c,
-    htfStructures: l,
+    structure: l,
+    htfStructures: c,
     srZones: f,
     rsDivergences: d,
     anchoredVwapSignals: m,
@@ -562,7 +562,7 @@ function jd(e) {
   return Ts(e).records;
 }
 function ct(e = {}) {
-  var t, n, i, r, a, o, s, c, l, u, f;
+  var t, n, i, r, a, o, s, l, c, u, f;
   return T({
     lifecycleVersion: me,
     lifecycleConfigVersion: hs,
@@ -592,8 +592,8 @@ function ct(e = {}) {
         20,
         3
       ),
-      atrPeriod: L((c = e.marketStructureOptions) == null ? void 0 : c.atrPeriod, 2, 100, 14),
-      minMoveAtr: K((l = e.marketStructureOptions) == null ? void 0 : l.minMoveAtr, 0, 10, 0.75),
+      atrPeriod: L((l = e.marketStructureOptions) == null ? void 0 : l.atrPeriod, 2, 100, 14),
+      minMoveAtr: K((c = e.marketStructureOptions) == null ? void 0 : c.minMoveAtr, 0, 10, 0.75),
       maxSwings: L((u = e.marketStructureOptions) == null ? void 0 : u.maxSwings, 1, 500, 120),
       maxBreaks: L((f = e.marketStructureOptions) == null ? void 0 : f.maxBreaks, 1, 200, 24)
     },
@@ -611,21 +611,21 @@ function ct(e = {}) {
   });
 }
 function la(e) {
-  var c;
+  var l;
   const t = da(e), n = Ne(t);
   if (n == null) return null;
   const i = k(e.from) ?? -1 / 0, r = fa(e, n), a = /* @__PURE__ */ new Map(), o = e.candlesByTimeframe[e.executionTimeframe] ?? [], s = new Set(
-    o.map((l) => De(l, e.executionTimeframe)).filter((l) => l >= i && l <= n)
+    o.map((c) => De(c, e.executionTimeframe)).filter((c) => c >= i && c <= n)
   );
-  for (const l of e.structureEvents ?? [])
-    (!l.sourceTimeframe || l.sourceTimeframe === e.executionTimeframe) && D(l) >= i && D(l) <= n && s.add(D(l));
-  for (const l of [...s].sort((u, f) => u - f))
+  for (const c of e.structureEvents ?? [])
+    (!c.sourceTimeframe || c.sourceTimeframe === e.executionTimeframe) && D(c) >= i && D(c) <= n && s.add(D(c));
+  for (const c of [...s].sort((u, f) => u - f))
     yi(
-      mn(o, e.executionTimeframe, l),
+      mn(o, e.executionTimeframe, c),
       e.executionTimeframe,
       e.structureEvents ?? [],
-      (c = e.config) == null ? void 0 : c.marketStructureOptions,
-      l,
+      (l = e.config) == null ? void 0 : l.marketStructureOptions,
+      c,
       a
     );
   return ua(
@@ -639,7 +639,7 @@ function Ts(e) {
   const t = e.executionTimeframe, n = e.candlesByTimeframe[t] ?? [], i = e.config ?? {}, r = ct(i), a = da(e), o = fa(
     e,
     Ne(a) ?? 0
-  ), s = /* @__PURE__ */ new Map(), c = /* @__PURE__ */ new Set(), l = /* @__PURE__ */ new Set(), u = k(e.from) ?? -1 / 0;
+  ), s = /* @__PURE__ */ new Map(), l = /* @__PURE__ */ new Set(), c = /* @__PURE__ */ new Set(), u = k(e.from) ?? -1 / 0;
   let f = null;
   return { records: a.map((m) => {
     var E, _, P, w, g;
@@ -655,9 +655,9 @@ function Ts(e) {
       )
     );
     f = v;
-    const A = v.evidence.filter((S) => c.has(S.id) ? !1 : (c.add(S.id), S.knownAt >= u)), b = v.transitions.filter((S) => {
+    const A = v.evidence.filter((S) => l.has(S.id) ? !1 : (l.add(S.id), S.knownAt >= u)), b = v.transitions.filter((S) => {
       const I = Rs(S);
-      return l.has(I) ? !1 : (l.add(I), S.knownAt >= u);
+      return c.has(I) ? !1 : (c.add(I), S.knownAt >= u);
     });
     return {
       asOf: m,
@@ -685,8 +685,8 @@ function Ts(e) {
   }), latestSnapshot: f };
 }
 function ua(e, t, n, i) {
-  const r = e.executionTimeframe, a = e.candlesByTimeframe[r] ?? [], o = e.config ?? {}, s = ct(o), c = mn(a, r, t), l = at(c, o.extensionOptions), u = ma(e.candidateMetrics, t), f = (u == null ? void 0 : u.metrics) ?? Ai(l), d = yi(
-    c,
+  const r = e.executionTimeframe, a = e.candlesByTimeframe[r] ?? [], o = e.config ?? {}, s = ct(o), l = mn(a, r, t), c = at(l, o.extensionOptions), u = ma(e.candidateMetrics, t), f = (u == null ? void 0 : u.metrics) ?? Ai(c), d = yi(
+    l,
     r,
     e.structureEvents ?? [],
     o.marketStructureOptions,
@@ -694,7 +694,7 @@ function ua(e, t, n, i) {
     n
   ), m = i.filter(
     (p) => (p.summary.updatedTs ?? 0) <= t
-  ), v = Ne(c) ?? null;
+  ), v = Ne(l) ?? null;
   return bs({
     candles: a,
     symbol: e.symbol,
@@ -732,12 +732,12 @@ function fa(e, t) {
     for (const o of e.structureEvents ?? [])
       o.sourceTimeframe === i && D(o) >= n && D(o) <= t && a.add(D(o));
     return [...a].sort((o, s) => o - s).map((o) => {
-      var c;
+      var l;
       const s = yi(
         mn(r, i, o),
         i,
         e.structureEvents ?? [],
-        (c = e.config) == null ? void 0 : c.marketStructureOptions,
+        (l = e.config) == null ? void 0 : l.marketStructureOptions,
         o
       );
       return {
@@ -781,9 +781,9 @@ function yi(e, t, n, i, r, a) {
   var f;
   const o = Oe(e, i), s = n.filter(
     (d) => (!d.sourceTimeframe || d.sourceTimeframe === t) && D(d) <= r
-  ), c = a ?? /* @__PURE__ */ new Map();
+  ), l = a ?? /* @__PURE__ */ new Map();
   for (const d of [...o.breaks, ...s])
-    c.set(
+    l.set(
       xe(
         d.kind,
         t,
@@ -793,16 +793,16 @@ function yi(e, t, n, i, r, a) {
       ),
       d
     );
-  const l = [...c.values()].filter((d) => d.knownAt <= r).sort(
+  const c = [...l.values()].filter((d) => d.knownAt <= r).sort(
     (d, m) => d.knownAt - m.knownAt || d.eventTime - m.eventTime
   );
-  if (!l.length) return o;
-  const u = ((f = Ne(l)) == null ? void 0 : f.direction) ?? o.trend;
+  if (!c.length) return o;
+  const u = ((f = Ne(c)) == null ? void 0 : f.direction) ?? o.trend;
   return {
     swings: o.swings,
-    breaks: l,
+    breaks: c,
     trend: u,
-    summary: Ei(o.swings, l, u)
+    summary: Ei(o.swings, c, u)
   };
 }
 function Rs(e) {
@@ -853,13 +853,13 @@ function Ss(e) {
 function Cs(e, t, n, i, r) {
   if (r != null && r.length)
     return [...r].map((o) => {
-      const s = k(o.knownAt) ?? o.asOf, c = bi(e, s, i);
-      if (!c || s > n) return null;
-      const l = k(o.eventTime) ?? ve(c.candle), u = gi(o.metrics);
+      const s = k(o.knownAt) ?? o.asOf, l = bi(e, s, i);
+      if (!l || s > n) return null;
+      const c = k(o.eventTime) ?? ve(l.candle), u = gi(o.metrics);
       return {
-        index: c.index,
-        candle: c.candle,
-        eventTime: l,
+        index: l.index,
+        candle: l.candle,
+        eventTime: c,
         knownAt: s,
         metrics: u,
         pass: Rt(u),
@@ -868,17 +868,17 @@ function Cs(e, t, n, i, r) {
     }).filter((o) => o != null).sort((o, s) => o.knownAt - s.knownAt || o.eventTime - s.eventTime);
   const a = [];
   for (let o = 0; o < e.length; o += 1) {
-    const s = e[o], c = Ce(e, o, i);
-    if (c > n) continue;
-    const l = at(e.slice(0, o + 1), t), u = Ai(l);
+    const s = e[o], l = Ce(e, o, i);
+    if (l > n) continue;
+    const c = at(e.slice(0, o + 1), t), u = Ai(c);
     a.push({
       index: o,
       candle: s,
       eventTime: ve(s),
-      knownAt: c,
+      knownAt: l,
       metrics: u,
       pass: Rt(u),
-      rollingReturnCount: l.rollingReturnCount
+      rollingReturnCount: c.rollingReturnCount
     });
   }
   return a;
@@ -892,13 +892,13 @@ function Ps(e, t) {
   if (!n.length) return null;
   let r = n[0];
   for (const o of n.slice(1)) {
-    const c = ((a = va(r, t, o.knownAt, []).candidate) == null ? void 0 : a.terminalAt) ?? null;
-    c != null && e.some((l) => l.knownAt > c && l.knownAt < o.knownAt && !l.pass) && (r = o);
+    const l = ((a = va(r, t, o.knownAt, []).candidate) == null ? void 0 : a.terminalAt) ?? null;
+    l != null && e.some((c) => c.knownAt > l && c.knownAt < o.knownAt && !c.pass) && (r = o);
   }
   return r;
 }
 function va(e, t, n, i) {
-  const r = (t.symbol ?? "UNKNOWN").toUpperCase(), a = t.source ?? "chart", o = t.venue ?? "", s = t.executionTimeframe, c = hi(
+  const r = (t.symbol ?? "UNKNOWN").toUpperCase(), a = t.source ?? "chart", o = t.venue ?? "", s = t.executionTimeframe, l = hi(
     t.htfStructures ?? [],
     e.knownAt
   ).map((g) => ({
@@ -907,7 +907,7 @@ function va(e, t, n, i) {
     trend: g.summary.trend,
     transitionDirection: g.summary.transitionDirection,
     updatedTs: g.summary.updatedTs
-  })), l = Vs({
+  })), c = Vs({
     setupFamily: ke,
     symbol: r,
     source: a,
@@ -964,7 +964,7 @@ function va(e, t, n, i) {
     n,
     s
   ), w = {
-    id: l,
+    id: c,
     setupFamily: ke,
     lifecycleVersion: me,
     lifecycleConfigHash: t.lifecycleConfigHash ?? ct({
@@ -983,7 +983,7 @@ function va(e, t, n, i) {
     detectedAt: e.knownAt,
     detectionEventTime: e.eventTime,
     detectionMetrics: e.metrics,
-    initialMtfContext: c,
+    initialMtfContext: l,
     episodeHigh: (P == null ? void 0 : P.price) ?? null,
     episodeHighTime: (P == null ? void 0 : P.eventTime) ?? null,
     currentState: v,
@@ -1018,82 +1018,82 @@ function va(e, t, n, i) {
 }
 function xs(e, t, n) {
   const i = [], r = t.executionTimeframe;
-  for (const l of t.rsDivergences ?? []) {
-    if (l.direction !== "bearish") continue;
-    const u = D(l);
-    if (!pt(l, e, n)) continue;
-    const f = l.signal === "break" ? "rs_break_bearish" : l.signal === "lead" ? "rs_lead_bearish" : "rs_div_bearish";
+  for (const c of t.rsDivergences ?? []) {
+    if (c.direction !== "bearish") continue;
+    const u = D(c);
+    if (!pt(c, e, n)) continue;
+    const f = c.signal === "break" ? "rs_break_bearish" : c.signal === "lead" ? "rs_lead_bearish" : "rs_div_bearish";
     i.push({
-      id: xe(f, r, l.eventTime, u, l.x),
+      id: xe(f, r, c.eventTime, u, c.x),
       code: f,
-      explanation: `${l.label}: bearish relative-strength deterioration`,
-      eventTime: l.eventTime,
+      explanation: `${c.label}: bearish relative-strength deterioration`,
+      eventTime: c.eventTime,
       knownAt: u,
       sourceTimeframe: r,
-      price: l.price,
-      value: l.rs,
+      price: c.price,
+      value: c.rs,
       lifecycleKind: "deterioration",
       sortPriority: 10
     });
   }
-  for (const l of t.anchoredVwapSignals ?? []) {
-    const u = D(l);
-    l.kind !== "failedReclaim" || !pt(l, e, n) || i.push({
-      id: xe("avwap_failed_reclaim", r, l.eventTime, u, l.x),
+  for (const c of t.anchoredVwapSignals ?? []) {
+    const u = D(c);
+    c.kind !== "failedReclaim" || !pt(c, e, n) || i.push({
+      id: xe("avwap_failed_reclaim", r, c.eventTime, u, c.x),
       code: "avwap_failed_reclaim",
       explanation: "AVWAP failed reclaim confirmed after candidate detection",
-      eventTime: l.eventTime,
+      eventTime: c.eventTime,
       knownAt: u,
       sourceTimeframe: r,
-      price: l.price,
-      level: l.vwap,
+      price: c.price,
+      level: c.vwap,
       lifecycleKind: "deterioration",
       sortPriority: 20
     });
   }
   const a = Os(t), o = [];
-  for (const l of a) {
-    const u = D(l);
-    if (l.direction !== "bearish" || !pt(l, e, n)) continue;
-    const f = l.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break", d = xe(f, r, l.eventTime, u, l.x), m = {
-      level: l.level,
+  for (const c of a) {
+    const u = D(c);
+    if (c.direction !== "bearish" || !pt(c, e, n)) continue;
+    const f = c.kind === "StructureShift" ? "bearish_structure_shift" : "bearish_structure_break", d = xe(f, r, c.eventTime, u, c.x), m = {
+      level: c.level,
       sourceTimeframe: r,
-      eventTime: l.eventTime,
+      eventTime: c.eventTime,
       knownAt: u,
       evidenceId: d
     }, v = {
       id: d,
       code: f,
-      explanation: `${l.label} down through ${pe(l.level)}`,
-      eventTime: l.eventTime,
+      explanation: `${c.label} down through ${pe(c.level)}`,
+      eventTime: c.eventTime,
       knownAt: u,
       sourceTimeframe: r,
-      level: l.level,
+      level: c.level,
       lifecycleKind: "bearishBreak",
       sortPriority: 30,
       breakLevel: m
     };
     o.push(v), i.push(v);
   }
-  for (const l of o) {
-    const u = Is(e, l, t, n);
+  for (const c of o) {
+    const u = Is(e, c, t, n);
     u && i.push(u);
   }
-  for (const l of a) {
-    const u = D(l);
-    if (l.kind !== "StructureBreak" || l.direction !== "bullish" || !pt(l, e, n))
+  for (const c of a) {
+    const u = D(c);
+    if (c.kind !== "StructureBreak" || c.direction !== "bullish" || !pt(c, e, n))
       continue;
-    const f = (t.candles ?? [])[l.index], d = Aa(
+    const f = (t.candles ?? [])[c.index], d = Aa(
       t.candles ?? [],
       e.eventTime,
       u - 1,
       r
     ), m = K(t.invalidationBps, 0, 1e3, 10);
     !f || (d == null ? void 0 : d.price) == null || f.c <= d.price * (1 + m / 1e4) || i.push({
-      id: xe("bullish_continuation_invalidation", r, l.eventTime, u, l.x),
+      id: xe("bullish_continuation_invalidation", r, c.eventTime, u, c.x),
       code: "bullish_continuation_invalidation",
       explanation: `Bullish continuation closed beyond episode high ${pe(d.price)}`,
-      eventTime: l.eventTime,
+      eventTime: c.eventTime,
       knownAt: u,
       sourceTimeframe: r,
       price: f.c,
@@ -1107,30 +1107,30 @@ function xs(e, t, n) {
     60,
     30 * 86400,
     4320 * 60
-  ), c = e.knownAt + s;
-  return c <= n && i.push({
-    id: xe("candidate_expired", r, e.eventTime, c),
+  ), l = e.knownAt + s;
+  return l <= n && i.push({
+    id: xe("candidate_expired", r, e.eventTime, l),
     code: "candidate_expired",
     explanation: `Candidate did not reach entry state within ${zs(s)}`,
-    eventTime: c,
-    knownAt: c,
+    eventTime: l,
+    knownAt: l,
     sourceTimeframe: r,
     lifecycleKind: "expiry",
     sortPriority: 90
   }), i.sort(
-    (l, u) => l.knownAt - u.knownAt || l.eventTime - u.eventTime || l.sortPriority - u.sortPriority || l.code.localeCompare(u.code)
+    (c, u) => c.knownAt - u.knownAt || c.eventTime - u.eventTime || c.sortPriority - u.sortPriority || c.code.localeCompare(u.code)
   );
 }
 function Is(e, t, n, i) {
   var u;
   const r = n.candles ?? [], a = t.breakLevel;
   if (!a || !Number.isFinite(a.level)) return null;
-  const o = K(n.retestToleranceBps, 0, 1e3, 35), s = K(n.retestToleranceAtr, 0, 10, 0.25), c = L((u = n.extensionOptions) == null ? void 0 : u.atrPeriod, 2, 100, 14), l = yn(r, c);
+  const o = K(n.retestToleranceBps, 0, 1e3, 35), s = K(n.retestToleranceAtr, 0, 10, 0.25), l = L((u = n.extensionOptions) == null ? void 0 : u.atrPeriod, 2, 100, 14), c = yn(r, l);
   for (let f = 0; f < r.length; f += 1) {
     const d = r[f], m = Ce(r, f, n.executionTimeframe), v = ve(d);
     if (m <= t.knownAt || v < t.knownAt || v < e.knownAt || m > i)
       continue;
-    const p = l[f] ?? 0, h = Math.max(
+    const p = c[f] ?? 0, h = Math.max(
       a.level * (o / 1e4),
       Number.isFinite(p) ? p * s : 0
     );
@@ -1175,7 +1175,7 @@ function ks(e, t, n) {
   });
   const a = [...e.anchoredVwapSignals ?? []].filter(
     (s) => s.kind === "loss" && pt(s, t, n)
-  ).sort((s, c) => D(c) - D(s))[0];
+  ).sort((s, l) => D(l) - D(s))[0];
   a && D(a) <= n && i.push({
     code: "avwap_loss_context",
     label: "AVWAP loss",
@@ -1260,10 +1260,10 @@ function pi(e, t = {}) {
   for (let o = n; o < e.length; o += 1) {
     const s = e[o];
     if (!s) continue;
-    const c = (s.h + s.l + s.c) / 3;
-    if (!X(c)) continue;
-    const l = ac(s, c);
-    l <= 0 || (r += l, a += c * l, i.push(s.x, a / r));
+    const l = (s.h + s.l + s.c) / 3;
+    if (!X(l)) continue;
+    const c = ac(s, l);
+    c <= 0 || (r += c, a += l * c, i.push(s.x, a / r));
   }
   return new Float32Array(i);
 }
@@ -1289,10 +1289,10 @@ function _s(e, t = {}) {
 function Ms(e, t = {}, n = 20) {
   const i = L(n, 1, 200, 20), r = pi(e, t);
   if (r.length < 4) return [];
-  const a = new Map(e.map((c, l) => [c.x, { candle: c, index: l }])), o = [];
+  const a = new Map(e.map((l, c) => [l.x, { candle: l, index: c }])), o = [];
   let s = null;
-  for (let c = 0; c < r.length; c += 2) {
-    const l = r[c], u = r[c + 1], f = a.get(l);
+  for (let l = 0; l < r.length; l += 2) {
+    const c = r[l], u = r[l + 1], f = a.get(c);
     if (!f || !X(u) || !X(f.candle.c)) continue;
     const d = Ce(e, f.index), m = f.candle.c > u ? "above" : f.candle.c < u ? "below" : null;
     m && (s === "above" && m === "below" ? o.push(In("loss", f.index, f.candle, u, d)) : s === "below" && m === "above" ? o.push(In("reclaim", f.index, f.candle, u, d)) : s === "below" && m === "below" && f.candle.h >= u && f.candle.c < u && o.push(
@@ -1302,12 +1302,12 @@ function Ms(e, t = {}, n = 20) {
   return o.slice(-i);
 }
 function Fs(e, t = {}) {
-  const n = L(t.lookback, 20, 2e3, 500), i = L(t.pivotStrength, 1, 20, 3), r = L(t.atrPeriod, 2, 100, 14), a = K(t.minMoveAtr, 0, 10, 0.75), o = L(t.maxSwings, 1, 500, 120), s = Math.max(0, e.length - n), c = e.slice(s);
-  if (c.length < i * 2 + 1) return [];
-  const l = yn(e, r), u = [];
-  for (let d = i; d < c.length - i; d += 1) {
-    const m = c[d], v = s + d, p = l[v] ?? null, h = Ce(e, v + i);
-    yc(c, d, i) && u.push(pr("SwingHigh", v, m, m.h, p, h)), hc(c, d, i) && u.push(pr("SwingLow", v, m, m.l, p, h));
+  const n = L(t.lookback, 20, 2e3, 500), i = L(t.pivotStrength, 1, 20, 3), r = L(t.atrPeriod, 2, 100, 14), a = K(t.minMoveAtr, 0, 10, 0.75), o = L(t.maxSwings, 1, 500, 120), s = Math.max(0, e.length - n), l = e.slice(s);
+  if (l.length < i * 2 + 1) return [];
+  const c = yn(e, r), u = [];
+  for (let d = i; d < l.length - i; d += 1) {
+    const m = l[d], v = s + d, p = c[v] ?? null, h = Ce(e, v + i);
+    yc(l, d, i) && u.push(pr("SwingHigh", v, m, m.h, p, h)), hc(l, d, i) && u.push(pr("SwingLow", v, m, m.l, p, h));
   }
   const f = [];
   for (const d of u) {
@@ -1329,17 +1329,17 @@ function Oe(e, t = {}) {
     ...t,
     maxSwings: Math.max(n, i * 4)
   }), a = [], o = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
-  let c = 0, l = null, u = null, f = "neutral";
+  let l = 0, c = null, u = null, f = "neutral";
   for (let v = 0; v < e.length; v += 1) {
     const p = Ce(e, v);
-    for (; c < r.length && r[c].index < v && r[c].knownAt <= p; ) {
-      const A = r[c];
-      A.kind === "SwingHigh" ? l = A : u = A, c += 1;
+    for (; l < r.length && r[l].index < v && r[l].knownAt <= p; ) {
+      const A = r[l];
+      A.kind === "SwingHigh" ? c = A : u = A, l += 1;
     }
     const h = e[v];
-    if (l && !o.has(l.x) && h.c > l.price) {
+    if (c && !o.has(c.x) && h.c > c.price) {
       const A = f === "bearish" ? "StructureShift" : "StructureBreak";
-      a.push(gr(A, "bullish", v, h, l, p)), o.add(l.x), f = "bullish";
+      a.push(gr(A, "bullish", v, h, c, p)), o.add(c.x), f = "bullish";
     }
     if (u && !s.has(u.x) && h.c < u.price) {
       const A = f === "bullish" ? "StructureShift" : "StructureBreak";
@@ -1397,8 +1397,8 @@ function Ls(e) {
   ].filter((a) => !!a) : [];
 }
 function Gd(e, t = {}) {
-  var c, l;
-  const n = L(t.lookback, 20, 1e3, 240), i = L(t.pivotStrength, 1, 20, 3), r = L(t.maxZones, 1, 12, 6), a = K(t.thicknessBps, 1, 100, 10), o = ((c = e[e.length - 1]) == null ? void 0 : c.x) ?? 0, s = Oe(e, {
+  var l, c;
+  const n = L(t.lookback, 20, 1e3, 240), i = L(t.pivotStrength, 1, 20, 3), r = L(t.maxZones, 1, 12, 6), a = K(t.thicknessBps, 1, 100, 10), o = ((l = e[e.length - 1]) == null ? void 0 : l.x) ?? 0, s = Oe(e, {
     lookback: n,
     pivotStrength: i,
     atrPeriod: t.atrPeriod,
@@ -1410,13 +1410,13 @@ function Gd(e, t = {}) {
     maxZones: r,
     thicknessBps: a,
     latestX: o,
-    referencePrice: t.referencePrice ?? ((l = e[e.length - 1]) == null ? void 0 : l.c) ?? null,
+    referencePrice: t.referencePrice ?? ((c = e[e.length - 1]) == null ? void 0 : c.c) ?? null,
     zonesPerSide: t.zonesPerSide
   });
 }
 function ha(e, t = {}) {
-  var l;
-  const n = L(t.maxZones, 1, 12, 6), i = K(t.thicknessBps, 1, 100, 10), r = t.latestX ?? ((l = e[e.length - 1]) == null ? void 0 : l.x) ?? 0, a = k(t.referencePrice), o = t.zonesPerSide == null ? null : L(t.zonesPerSide, 1, 12, 3), s = [];
+  var c;
+  const n = L(t.maxZones, 1, 12, 6), i = K(t.thicknessBps, 1, 100, 10), r = t.latestX ?? ((c = e[e.length - 1]) == null ? void 0 : c.x) ?? 0, a = k(t.referencePrice), o = t.zonesPerSide == null ? null : L(t.zonesPerSide, 1, 12, 3), s = [];
   for (const u of e)
     mc(
       s,
@@ -1425,8 +1425,8 @@ function ha(e, t = {}) {
       r - u.x + 1,
       i
     );
-  const c = s.filter((u) => Number.isFinite(u.center) && u.high > u.low).sort((u, f) => f.score - u.score || f.touches - u.touches || f.lastX - u.lastX).slice(0, Math.max(n * 2, n));
-  return vc(c, n, a, o);
+  const l = s.filter((u) => Number.isFinite(u.center) && u.high > u.low).sort((u, f) => f.score - u.score || f.touches - u.touches || f.lastX - u.lastX).slice(0, Math.max(n * 2, n));
+  return vc(l, n, a, o);
 }
 function pa(e, t) {
   const n = new Map(
@@ -1439,8 +1439,8 @@ function pa(e, t) {
     const s = n.get(o.bucket);
     if (!s || !X(s.c)) continue;
     (i == null || r == null) && (i = o.c, r = s.c);
-    const c = o.c / i / (s.c / r);
-    a.push(o.x, (c - 1) * 100);
+    const l = o.c / i / (s.c / r);
+    a.push(o.x, (l - 1) * 100);
   }
   return new Float32Array(a);
 }
@@ -1451,7 +1451,7 @@ function Ds(e, t, n = {}) {
     1,
     2e3,
     n.lookback ?? 240
-  ), o = n.includeDivergences ?? !0, s = n.includeLeads ?? !0, c = n.includeBreaks ?? !0, l = pa(e, t), u = gc(l);
+  ), o = n.includeDivergences ?? !0, s = n.includeLeads ?? !0, l = n.includeBreaks ?? !0, c = pa(e, t), u = gc(c);
   if (!e.length || u.size < 2) return [];
   const d = (((P = e[e.length - 1]) == null ? void 0 : P.x) ?? 0) - a, m = {
     ...n,
@@ -1459,7 +1459,7 @@ function Ds(e, t, n = {}) {
     maxBreaks: Math.max(n.maxBreaks ?? 24, i * 2)
   }, v = Oe(e, {
     ...m
-  }), p = cc(e, l), h = Oe(p, {
+  }), p = cc(e, c), h = Oe(p, {
     ...m
   }), A = new Map(e.map((w, g) => [w.x, { candle: w, index: g }])), b = [];
   let E = null, _ = null;
@@ -1533,7 +1533,7 @@ function Ds(e, t, n = {}) {
       _ = w;
     }
   }
-  if (c)
+  if (l)
     for (const w of h.breaks) {
       if (w.x < d) continue;
       const g = A.get(w.x), S = u.get(w.x);
@@ -1603,7 +1603,7 @@ function Bs(e, t, n, i, r) {
   if (e === "expired") return r ?? "Candidate expired before progressing";
   const a = n[n.length - 1];
   if (a && a.to === e) return a.explanation;
-  const o = t.filter((c) => c.contributesTo === e), s = o[o.length - 1];
+  const o = t.filter((l) => l.contributesTo === e), s = o[o.length - 1];
   return (s == null ? void 0 : s.explanation) ?? vn(e);
 }
 function ga(e, t) {
@@ -1750,8 +1750,8 @@ function Ks(e, t) {
   };
 }
 function Ys(e, t, n, i) {
-  var c;
-  const r = k((c = e == null ? void 0 : e.lastBreak) == null ? void 0 : c.level), a = r != null && n != null && Zs(n, r) <= i, o = wi(t, n, i);
+  var l;
+  const r = k((l = e == null ? void 0 : e.lastBreak) == null ? void 0 : l.level), a = r != null && n != null && Zs(n, r) <= i, o = wi(t, n, i);
   return {
     key: "retest",
     label: "Retest",
@@ -1921,8 +1921,8 @@ function oc(e) {
   let t = null, n = null;
   return e.map((i) => {
     if (i.kind === "SwingHigh") {
-      const s = t == null ? "SwingHigh" : i.price > t.price ? "HigherHigh" : "LowerHigh", l = { ...i, structure: s, label: s === "SwingHigh" ? "SH" : s === "HigherHigh" ? "HH" : "LH" };
-      return t = l, l;
+      const s = t == null ? "SwingHigh" : i.price > t.price ? "HigherHigh" : "LowerHigh", c = { ...i, structure: s, label: s === "SwingHigh" ? "SH" : s === "HigherHigh" ? "HH" : "LH" };
+      return t = c, c;
     }
     const r = n == null ? "SwingLow" : i.price > n.price ? "HigherLow" : "LowerLow", o = { ...i, structure: r, label: r === "SwingLow" ? "SL" : r === "HigherLow" ? "HL" : "LL" };
     return n = o, o;
@@ -1944,7 +1944,7 @@ function gr(e, t, n, i, r, a) {
     knownAt: a
   };
 }
-function jt(e, t, n, i, r, a, o, s, c, l) {
+function jt(e, t, n, i, r, a, o, s, l, c) {
   return {
     kind: e,
     signal: t,
@@ -1960,13 +1960,13 @@ function jt(e, t, n, i, r, a, o, s, c, l) {
     previousRs: s,
     priceLabel: r.label,
     sourceBreak: null,
-    priceStructureState: c,
-    rsStructureState: l,
+    priceStructureState: l,
+    rsStructureState: c,
     eventTime: r.eventTime,
     knownAt: Math.max(r.knownAt, a.knownAt)
   };
 }
-function sc(e, t, n, i, r, a, o, s, c) {
+function sc(e, t, n, i, r, a, o, s, l) {
   return {
     kind: e,
     signal: "break",
@@ -1983,7 +1983,7 @@ function sc(e, t, n, i, r, a, o, s, c) {
     priceLabel: "Break",
     sourceBreak: o,
     priceStructureState: s,
-    rsStructureState: c,
+    rsStructureState: l,
     eventTime: o.eventTime,
     knownAt: o.knownAt
   };
@@ -1992,12 +1992,12 @@ function cc(e, t) {
   const n = new Map(e.map((a) => [a.x, a])), i = [];
   let r = null;
   for (let a = 0; a < t.length; a += 2) {
-    const o = t[a], s = t[a + 1], c = n.get(o);
-    if (!c || !Number.isFinite(s)) continue;
-    const l = r ?? s;
+    const o = t[a], s = t[a + 1], l = n.get(o);
+    if (!l || !Number.isFinite(s)) continue;
+    const c = r ?? s;
     i.push({
-      ...c,
-      o: l,
+      ...l,
+      o: c,
       h: s,
       l: s,
       c: s,
@@ -2021,11 +2021,11 @@ function Ar(e) {
   }
 }
 function Ei(e, t, n) {
-  const i = t[t.length - 1] ?? null, r = jn(e, "SwingHigh"), a = jn(e, "SwingLow"), o = e[e.length - 1] ?? null, s = uc(t), c = e.length === 0 ? "neutral" : i == null || s ? "range" : i.kind === "StructureShift" ? "transitional" : i.direction, l = c === "transitional" ? (i == null ? void 0 : i.direction) ?? null : null;
+  const i = t[t.length - 1] ?? null, r = jn(e, "SwingHigh"), a = jn(e, "SwingLow"), o = e[e.length - 1] ?? null, s = uc(t), l = e.length === 0 ? "neutral" : i == null || s ? "range" : i.kind === "StructureShift" ? "transitional" : i.direction, c = l === "transitional" ? (i == null ? void 0 : i.direction) ?? null : null;
   return {
-    state: c,
+    state: l,
     trend: n,
-    transitionDirection: l,
+    transitionDirection: c,
     lastBreak: i,
     lastSwingHigh: r,
     lastSwingLow: a,
@@ -2088,11 +2088,11 @@ function yn(e, t) {
   if (e.length < n) return i;
   const r = e.map((o, s) => {
     if (s === 0) return o.h - o.l;
-    const c = e[s - 1].c;
+    const l = e[s - 1].c;
     return Math.max(
       o.h - o.l,
-      Math.abs(o.h - c),
-      Math.abs(o.l - c)
+      Math.abs(o.h - l),
+      Math.abs(o.l - l)
     );
   });
   let a = 0;
@@ -2105,18 +2105,18 @@ function yn(e, t) {
 function mc(e, t, n, i, r) {
   const a = n.price;
   if (!Number.isFinite(a) || a <= 0) return;
-  const o = Math.max(a * (r / 1e4), Number.EPSILON), s = a - o, c = a + o, l = 1 / Math.max(1, i), u = e.find(
-    (m) => m.kind === t && pc(m.low, m.high, s, c)
+  const o = Math.max(a * (r / 1e4), Number.EPSILON), s = a - o, l = a + o, c = 1 / Math.max(1, i), u = e.find(
+    (m) => m.kind === t && pc(m.low, m.high, s, l)
   );
   if (!u) {
     e.push({
       kind: t,
       low: s,
-      high: c,
+      high: l,
       center: a,
       touches: 1,
-      score: 1 + l,
-      strength: 1 + l,
+      score: 1 + c,
+      strength: 1 + c,
       lastX: n.x,
       eventTime: n.eventTime,
       knownAt: n.knownAt,
@@ -2126,20 +2126,20 @@ function mc(e, t, n, i, r) {
     return;
   }
   const f = u.touches + 1;
-  u.center = (u.center * u.touches + a) / f, u.touches = f, u.score += 1 + l, u.strength = u.score, u.lastX = Math.max(u.lastX, n.x), u.eventTime = Math.max(u.eventTime, n.eventTime), u.knownAt = Math.max(u.knownAt, n.knownAt), u.structures.push(n.structure);
+  u.center = (u.center * u.touches + a) / f, u.touches = f, u.score += 1 + c, u.strength = u.score, u.lastX = Math.max(u.lastX, n.x), u.eventTime = Math.max(u.eventTime, n.eventTime), u.knownAt = Math.max(u.knownAt, n.knownAt), u.structures.push(n.structure);
   const d = Math.max(u.center * (r / 1e4), Number.EPSILON);
-  u.low = Math.min(u.low, u.center - d, s), u.high = Math.max(u.high, u.center + d, c);
+  u.low = Math.min(u.low, u.center - d, s), u.high = Math.max(u.high, u.center + d, l);
 }
 function vc(e, t, n, i) {
   if (!n || !i) return e.slice(0, t);
-  const r = /* @__PURE__ */ new Set(), a = e.filter((s) => s.center <= n).sort((s, c) => n - s.center - (n - c.center) || c.score - s.score).slice(0, i), o = e.filter((s) => s.center > n).sort((s, c) => s.center - n - (c.center - n) || c.score - s.score).slice(0, i);
+  const r = /* @__PURE__ */ new Set(), a = e.filter((s) => s.center <= n).sort((s, l) => n - s.center - (n - l.center) || l.score - s.score).slice(0, i), o = e.filter((s) => s.center > n).sort((s, l) => s.center - n - (l.center - n) || l.score - s.score).slice(0, i);
   for (const s of [...a, ...o])
     r.add(s);
   for (const s of e) {
     if (r.size >= t) break;
     r.add(s);
   }
-  return Array.from(r).sort((s, c) => c.score - s.score || c.touches - s.touches || c.lastX - s.lastX).slice(0, t);
+  return Array.from(r).sort((s, l) => l.score - s.score || l.touches - s.touches || l.lastX - s.lastX).slice(0, t);
 }
 function yc(e, t, n) {
   const i = e[t].h;
@@ -2201,8 +2201,8 @@ function Ea(e, t) {
     { x: e[n].x, value: Er(i, r) }
   ];
   for (let o = n + 1; o < e.length; o++) {
-    const s = e[o].c - e[o - 1].c, c = Math.max(0, s), l = Math.max(0, -s);
-    i = (i * (n - 1) + c) / n, r = (r * (n - 1) + l) / n, a.push({ x: e[o].x, value: Er(i, r) });
+    const s = e[o].c - e[o - 1].c, l = Math.max(0, s), c = Math.max(0, -s);
+    i = (i * (n - 1) + l) / n, r = (r * (n - 1) + c) / n, a.push({ x: e[o].x, value: Er(i, r) });
   }
   return a;
 }
@@ -2410,7 +2410,7 @@ function Ti(e) {
   });
 }
 function Cc(e) {
-  var a, o, s, c;
+  var a, o, s, l;
   if (St(e.decisionTime, "decisionTime"), St(e.effectiveAsOf, "effectiveAsOf"), e.effectiveAsOf > e.decisionTime)
     throw new RangeError("effectiveAsOf cannot be later than decisionTime");
   if (e.lifecycle.asOf !== e.effectiveAsOf)
@@ -2429,11 +2429,11 @@ function Cc(e) {
     ...e.visibleOrSelectedReferenceLevels,
     ...e.avwapState ? [e.avwapState.reference] : []
   ]);
-  for (const l of e.lifecycle.dataQuality)
+  for (const c of e.lifecycle.dataQuality)
     t.push({
       code: "LIFECYCLE_DATA_QUALITY_NOTE",
       severity: "warning",
-      message: l
+      message: c
     });
   const n = Pc(
     e.candidateMetrics,
@@ -2446,11 +2446,11 @@ function Cc(e) {
     severity: "error",
     message: "Candidate metrics were not valid for the symbol, venue, or decision cutoff"
   });
-  for (const l of (n == null ? void 0 : n.insufficientDataReasons) ?? [])
+  for (const c of (n == null ? void 0 : n.insufficientDataReasons) ?? [])
     t.push({
-      code: `CANDIDATE_METRICS_${l.code}`,
+      code: `CANDIDATE_METRICS_${c.code}`,
       severity: "error",
-      message: l.message
+      message: c.message
     });
   const i = {
     snapshotSchemaVersion: Ta,
@@ -2479,7 +2479,7 @@ function Cc(e) {
     ),
     avwapState: ((s = e.avwapState) == null ? void 0 : s.knownAt) != null && e.avwapState.knownAt <= e.effectiveAsOf && e.avwapState.reference.knownAt <= e.effectiveAsOf ? e.avwapState : null,
     avwapEvents: On(e.avwapEvents, e.effectiveAsOf),
-    relativeStrengthState: ((c = e.relativeStrengthState) == null ? void 0 : c.knownAt) != null && e.relativeStrengthState.knownAt <= e.effectiveAsOf ? e.relativeStrengthState : null,
+    relativeStrengthState: ((l = e.relativeStrengthState) == null ? void 0 : l.knownAt) != null && e.relativeStrengthState.knownAt <= e.effectiveAsOf ? e.relativeStrengthState : null,
     relativeStrengthEvents: On(
       e.relativeStrengthEvents,
       e.effectiveAsOf
@@ -2721,7 +2721,7 @@ const Zd = Dc({
   createdAt: 17e8
 });
 function Jd(e) {
-  var c, l;
+  var l, c;
   ml(e);
   const t = e.strategyProfile ?? Sc, n = /* @__PURE__ */ new Map(), i = [], r = [], a = [], o = [], s = /* @__PURE__ */ new Set();
   for (const [u, f] of Object.entries(e.candlesBySymbolAndTimeframe).sort(
@@ -2800,7 +2800,7 @@ function Jd(e) {
           "maximumAgeElapsed",
           "blockedUntilReset"
         )
-      ), b.activeEpisode = null), N && !j ? (b.falseSince ?? (b.falseSince = E), !b.armed && E - b.falseSince >= e.selectionProfile.resetPolicy.minimumFalseDurationSeconds && (P && ((c = b.blockedEpisode) == null ? void 0 : c.detectedAt) != null && b.blockedEpisode.detectedAt >= e.from && a.push(
+      ), b.activeEpisode = null), N && !j ? (b.falseSince ?? (b.falseSince = E), !b.armed && E - b.falseSince >= e.selectionProfile.resetPolicy.minimumFalseDurationSeconds && (P && ((l = b.blockedEpisode) == null ? void 0 : l.detectedAt) != null && b.blockedEpisode.detectedAt >= e.from && a.push(
         Nn(b.blockedEpisode, E, "reset", "radarGateReset", "armed")
       ), b.activeEpisode = null, b.blockedEpisode = null, b.armed = !0)) : b.falseSince = null, w && B && S && N && j && b.previousGate === !1 && b.armed) {
         const O = zc({
@@ -2812,7 +2812,7 @@ function Jd(e) {
           selectionEvaluation: B,
           hardGateEvidence: H,
           venueEligibility: S,
-          lifecycleHistory: ((l = e.lifecycleHistory) == null ? void 0 : l[u]) ?? [],
+          lifecycleHistory: ((c = e.lifecycleHistory) == null ? void 0 : c[u]) ?? [],
           structureHistory: e.structureHistory ?? []
         });
         if (P) {
@@ -2854,7 +2854,7 @@ function Vc(e, t, n, i) {
 function $c(e, t, n, i) {
   const r = ge(t.candlesByTimeframe[i] ?? [], i, n), a = r.at(-1) ?? null, s = (a ? r.filter(
     (h) => h.bucket >= a.bucket - e.lookbackSeconds && h.bucket <= a.bucket && a.bucket - h.bucket <= e.maximumTroughAgeSeconds
-  ) : []).reduce((h, A) => Y(A.c) && (!h || A.c < h.c || A.c === h.c && A.bucket < h.bucket) ? A : h, null), c = a && s && Y(s.c) ? (a.c / s.c - 1) * 100 : null, l = tl(r, a, e), u = Ma(l, c, e.minimumSampleCount), f = [];
+  ) : []).reduce((h, A) => Y(A.c) && (!h || A.c < h.c || A.c === h.c && A.bucket < h.bucket) ? A : h, null), l = a && s && Y(s.c) ? (a.c / s.c - 1) * 100 : null, c = tl(r, a, e), u = Ma(c, l, e.minimumSampleCount), f = [];
   a || f.push(ue("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), s || f.push(ue("NO_ELIGIBLE_TROUGH", "error", "No eligible completed-close trough exists"));
   const d = T(e), m = lt({
     series: t,
@@ -2865,22 +2865,22 @@ function $c(e, t, n, i) {
     window: e.lookbackSeconds,
     referenceTime: (s == null ? void 0 : s.bucket) ?? null,
     referenceValue: (s == null ? void 0 : s.c) ?? null,
-    value: c,
+    value: l,
     unit: "percent",
     percentile: u.percentile,
     zScore: u.zScore,
-    sampleCount: l.length,
+    sampleCount: c.length,
     historyCandles: Oi(r, a, e.historyLookbackSeconds + e.lookbackSeconds),
     configHash: d,
     notes: [...f, ...u.notes]
-  }), v = c != null && c + 1e-12 >= e.minimumRunupPct && wt(m.percentile, e.minimumPercentile) && wt(m.zScore, e.minimumZScore) && m.sampleCount >= e.minimumSampleCount, p = s ? Kc(t, n, s, m) : null;
+  }), v = l != null && l + 1e-12 >= e.minimumRunupPct && wt(m.percentile, e.minimumPercentile) && wt(m.zScore, e.minimumZScore) && m.sampleCount >= e.minimumSampleCount, p = s ? Kc(t, n, s, m) : null;
   return {
     result: gn(
       e,
       v,
       [m],
       v ? m.observationId : null,
-      c == null ? "Run-up unavailable" : `Completed-close run-up ${on(c)} versus ${on(e.minimumRunupPct)} minimum`
+      l == null ? "Run-up unavailable" : `Completed-close run-up ${on(l)} versus ${on(e.minimumRunupPct)} minimum`
     ),
     observations: [m],
     anchor: p
@@ -2937,26 +2937,26 @@ function qc(e, t, n, i) {
     ),
     configHash: T(e),
     notes: a ? a.dataQualityNotes : [ue("NO_WINDOW_RETURN_AVAILABLE", "error", "No configured elapsed window has a reference")]
-  }), c = Fa(s, e), l = [...r, s];
+  }), l = Fa(s, e), c = [...r, s];
   return {
     result: gn(
       e,
-      c,
       l,
-      c ? (a == null ? void 0 : a.observationId) ?? null : null,
+      c,
+      l ? (a == null ? void 0 : a.observationId) ?? null : null,
       (a == null ? void 0 : a.value) == null ? "Maximum elapsed return unavailable" : `Winning ${Ba(a.window ?? 0)} return ${on(a.value)}`
     ),
-    observations: l,
+    observations: c,
     anchor: null
   };
 }
 function Ia(e, t, n) {
-  const i = e.analysisTimeframe, r = ge(t.candlesByTimeframe[i] ?? [], i, n), a = r.at(-1) ?? null, o = il(r, e.emaPeriod).at(-1) ?? null, s = rl(r, e.atrPeriod).at(-1) ?? null, c = a && o != null && s != null && s > 0 ? (a.c - o) / s : null, l = Math.max(e.minimumSampleCount, e.emaPeriod, e.atrPeriod), u = [];
-  a || u.push(ue("NO_COMPLETED_CANDLE", "error", `No completed ${i} candle exists at cutoff`)), (r.length < l || c == null) && u.push(
+  const i = e.analysisTimeframe, r = ge(t.candlesByTimeframe[i] ?? [], i, n), a = r.at(-1) ?? null, o = il(r, e.emaPeriod).at(-1) ?? null, s = rl(r, e.atrPeriod).at(-1) ?? null, l = a && o != null && s != null && s > 0 ? (a.c - o) / s : null, c = Math.max(e.minimumSampleCount, e.emaPeriod, e.atrPeriod), u = [];
+  a || u.push(ue("NO_COMPLETED_CANDLE", "error", `No completed ${i} candle exists at cutoff`)), (r.length < c || l == null) && u.push(
     ue(
       "INSUFFICIENT_METRIC_HISTORY",
       "error",
-      `EMA/ATR displacement requires ${l} completed ${i} candles`
+      `EMA/ATR displacement requires ${c} completed ${i} candles`
     )
   );
   const f = lt({
@@ -2968,30 +2968,30 @@ function Ia(e, t, n) {
     window: null,
     referenceTime: (a == null ? void 0 : a.bucket) ?? null,
     referenceValue: o,
-    value: c,
+    value: l,
     unit: "atr",
     percentile: null,
     zScore: null,
     sampleCount: r.length,
-    historyCandles: r.slice(-l),
+    historyCandles: r.slice(-c),
     configHash: T(e),
     notes: Ni(u)
-  }), d = c != null && r.length >= l && c + 1e-12 >= e.minimumAtrDisplacement;
+  }), d = l != null && r.length >= c && l + 1e-12 >= e.minimumAtrDisplacement;
   return {
     result: gn(
       e,
       d,
       [f],
       d ? f.observationId : null,
-      c == null ? "EMA/ATR displacement unavailable" : `EMA displacement ${c.toFixed(2)} ATR`
+      l == null ? "EMA/ATR displacement unavailable" : `EMA displacement ${l.toFixed(2)} ATR`
     ),
     observations: [f],
     anchor: null
   };
 }
 function ka(e, t, n, i) {
-  const r = ge(t.candlesByTimeframe[i] ?? [], i, n), a = r.at(-1) ?? null, o = a ? _a(r, a.bucket - e.windowSeconds) : null, s = a && o ? a.bucket - e.windowSeconds - o.bucket : null, c = s != null && e.maximumReferenceStalenessSeconds != null && s > e.maximumReferenceStalenessSeconds, l = a && o && !c && Y(o.c) ? (a.c / o.c - 1) * 100 : null, u = el(r, a, e), f = Ma(u, l, e.minimumSampleCount), d = [...f.notes];
-  return a || d.push(ue("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), o ? c && d.push(ue("ELAPSED_REFERENCE_STALE", "error", "Elapsed-window reference exceeds allowed staleness")) : d.push(ue("ELAPSED_REFERENCE_UNAVAILABLE", "error", "No completed elapsed-window reference exists")), lt({
+  const r = ge(t.candlesByTimeframe[i] ?? [], i, n), a = r.at(-1) ?? null, o = a ? _a(r, a.bucket - e.windowSeconds) : null, s = a && o ? a.bucket - e.windowSeconds - o.bucket : null, l = s != null && e.maximumReferenceStalenessSeconds != null && s > e.maximumReferenceStalenessSeconds, c = a && o && !l && Y(o.c) ? (a.c / o.c - 1) * 100 : null, u = el(r, a, e), f = Ma(u, c, e.minimumSampleCount), d = [...f.notes];
+  return a || d.push(ue("NO_COMPLETED_CANDLE", "error", "No completed scan candle exists at cutoff")), o ? l && d.push(ue("ELAPSED_REFERENCE_STALE", "error", "Elapsed-window reference exceeds allowed staleness")) : d.push(ue("ELAPSED_REFERENCE_UNAVAILABLE", "error", "No completed elapsed-window reference exists")), lt({
     series: t,
     asOf: n,
     timeframe: i,
@@ -3000,7 +3000,7 @@ function ka(e, t, n, i) {
     window: e.windowSeconds,
     referenceTime: (o == null ? void 0 : o.bucket) ?? null,
     referenceValue: (o == null ? void 0 : o.c) ?? null,
-    value: l,
+    value: c,
     unit: "percent",
     percentile: f.percentile,
     zScore: f.zScore,
@@ -3026,7 +3026,7 @@ function zc(e) {
     e.series.candlesByTimeframe[e.profile.scanTimeframe] ?? [],
     e.profile.scanTimeframe,
     e.asOf
-  ), a = Rr(e.series, e.asOf, e.profile.scanTimeframe, 86400), o = Rr(e.series, e.asOf, e.profile.scanTimeframe, 172800), s = Na(e.series, e.asOf, e.profile), l = e.detectorEvaluations.flatMap((I) => I.observations).find((I) => I.metricCode === "ema_atr_displacement") ?? null ?? Ia(
+  ), a = Rr(e.series, e.asOf, e.profile.scanTimeframe, 86400), o = Rr(e.series, e.asOf, e.profile.scanTimeframe, 172800), s = Na(e.series, e.asOf, e.profile), c = e.detectorEvaluations.flatMap((I) => I.observations).find((I) => I.metricCode === "ema_atr_displacement") ?? null ?? Ia(
     {
       id: "context-ema-atr-displacement",
       type: "emaAtrDisplacement",
@@ -3047,7 +3047,7 @@ function zc(e) {
     a,
     o,
     s,
-    l
+    c
   ]), d = t[0], m = d ? n.find(
     (I) => I.observationId === d.result.winningObservationId
   ) ?? n[0] ?? null : null, v = jc(
@@ -3058,7 +3058,7 @@ function zc(e) {
     a,
     o,
     s,
-    l,
+    c,
     u
   ), p = al(
     e.lifecycleHistory,
@@ -3124,23 +3124,23 @@ function zc(e) {
 }
 function Qc(e, t, n, i) {
   const r = Object.keys(t.candlesByTimeframe).filter(
-    (c) => ge(t.candlesByTimeframe[c] ?? [], c, e.detectedAt).length > 0
+    (l) => ge(t.candlesByTimeframe[l] ?? [], l, e.detectedAt).length > 0
   ).sort(Mi), a = Object.fromEntries(
-    r.map((c) => {
+    r.map((l) => {
       var u, f;
-      const l = ge(t.candlesByTimeframe[c] ?? [], c, e.detectedAt);
+      const c = ge(t.candlesByTimeframe[l] ?? [], l, e.detectedAt);
       return [
-        c,
+        l,
         {
-          availableStart: ((u = l[0]) == null ? void 0 : u.bucket) ?? null,
-          availableEnd: ((f = l.at(-1)) == null ? void 0 : f.bucket) ?? null,
-          completedThrough: l.at(-1) ? De(l.at(-1), c) : null,
-          completedCandleCount: l.length
+          availableStart: ((u = c[0]) == null ? void 0 : u.bucket) ?? null,
+          availableEnd: ((f = c.at(-1)) == null ? void 0 : f.bucket) ?? null,
+          completedThrough: c.at(-1) ? De(c.at(-1), l) : null,
+          completedCandleCount: c.length
         }
       ];
     })
   ), o = r.filter(
-    (c) => a[c].completedCandleCount > 0
+    (l) => a[l].completedCandleCount > 0
   ), s = {
     schemaVersion: Pa,
     radarEpisodeId: e.id,
@@ -3192,7 +3192,7 @@ function Rr(e, t, n, i) {
     minimumSampleCount: 0,
     historyLookbackSeconds: i,
     maximumReferenceStalenessSeconds: null
-  }, a = ge(e.candlesByTimeframe[n] ?? [], n, t), o = a.at(-1) ?? null, s = o ? _a(a, o.bucket - i) : null, c = o && s && Y(s.c) ? (o.c / s.c - 1) * 100 : null, l = c == null ? [ue("ELAPSED_REFERENCE_UNAVAILABLE", "warning", `No completed ${i}-second reference exists`)] : [];
+  }, a = ge(e.candlesByTimeframe[n] ?? [], n, t), o = a.at(-1) ?? null, s = o ? _a(a, o.bucket - i) : null, l = o && s && Y(s.c) ? (o.c / s.c - 1) * 100 : null, c = l == null ? [ue("ELAPSED_REFERENCE_UNAVAILABLE", "warning", `No completed ${i}-second reference exists`)] : [];
   return lt({
     series: e,
     asOf: t,
@@ -3202,21 +3202,21 @@ function Rr(e, t, n, i) {
     window: i,
     referenceTime: (s == null ? void 0 : s.bucket) ?? null,
     referenceValue: (s == null ? void 0 : s.c) ?? null,
-    value: c,
+    value: l,
     unit: "percent",
     percentile: null,
     zScore: null,
     sampleCount: 0,
     historyCandles: a,
     configHash: T(r),
-    notes: l
+    notes: c
   });
 }
 function Na(e, t, n) {
   var f;
   const i = n.scanTimeframe, r = ge(e.candlesByTimeframe[i] ?? [], i, t), a = r.at(-1) ?? null, o = a ? r.filter((d) => d.bucket > a.bucket - n.liquidityPolicy.windowSeconds) : [], s = o.map(
     (d) => Et(d.v_quote) ? d.v_quote : Et(d.v_base) ? d.v_base * d.c : null
-  ), c = s.length > 0 && s.every((d) => d != null), l = c ? s.reduce((d, m) => d + (m ?? 0), 0) : null, u = {
+  ), l = s.length > 0 && s.every((d) => d != null), c = l ? s.reduce((d, m) => d + (m ?? 0), 0) : null, u = {
     metric: "quote_notional",
     timeframe: i,
     windowSeconds: n.liquidityPolicy.windowSeconds
@@ -3230,14 +3230,14 @@ function Na(e, t, n) {
     window: n.liquidityPolicy.windowSeconds,
     referenceTime: ((f = o[0]) == null ? void 0 : f.bucket) ?? null,
     referenceValue: null,
-    value: l,
+    value: c,
     unit: "quoteNotional",
     percentile: null,
     zScore: null,
     sampleCount: o.length,
     historyCandles: o,
     configHash: T(u),
-    notes: c ? [] : [ue("QUOTE_NOTIONAL_UNAVAILABLE", "warning", "Quote-notional history is incomplete")]
+    notes: l ? [] : [ue("QUOTE_NOTIONAL_UNAVAILABLE", "warning", "Quote-notional history is incomplete")]
   });
 }
 function lt(e) {
@@ -3290,16 +3290,16 @@ function lt(e) {
     configHash: e.configHash,
     inputHash: a,
     dataQualityNotes: e.notes
-  }, c = `radar-observation:${J(s)}`, l = e.asOf;
+  }, l = `radar-observation:${J(s)}`, c = e.asOf;
   return y({
     ...s,
-    observationId: c,
-    requestId: `radar-observation-request:${J({ observationId: c, requestedAsOf: l })}`,
-    requestedAsOf: l
+    observationId: l,
+    requestId: `radar-observation-request:${J({ observationId: l, requestedAsOf: c })}`,
+    requestedAsOf: c
   });
 }
-function jc(e, t, n, i, r, a, o, s, c) {
-  const l = t ? e.find((h) => h.bucket === t.timestamp) ?? null : null, f = (l ? e.filter((h) => h.bucket <= l.bucket) : []).reduce((h, A) => Y(A.c) && (!h || A.c > h.c || A.c === h.c && A.bucket < h.bucket) ? A : h, null), d = e.at(-1) ?? null, m = t && f && Y(f.c) ? (t.price / f.c - 1) * 100 : null, v = t && f && d && f.c > t.price ? (d.c - t.price) / (f.c - t.price) : null, p = t && m != null && m < -5 ? ["rebound_after_drawdown"] : ["unknown"];
+function jc(e, t, n, i, r, a, o, s, l) {
+  const c = t ? e.find((h) => h.bucket === t.timestamp) ?? null : null, f = (c ? e.filter((h) => h.bucket <= c.bucket) : []).reduce((h, A) => Y(A.c) && (!h || A.c > h.c || A.c === h.c && A.bucket < h.bucket) ? A : h, null), d = e.at(-1) ?? null, m = t && f && Y(f.c) ? (t.price / f.c - 1) * 100 : null, v = t && f && d && f.c > t.price ? (d.c - t.price) / (f.c - t.price) : null, p = t && m != null && m < -5 ? ["rebound_after_drawdown"] : ["unknown"];
   return {
     net24hReturnPct: r.value,
     net48hReturnPct: a.value,
@@ -3318,7 +3318,7 @@ function jc(e, t, n, i, r, a, o, s, c) {
     triggeringZScore: (i == null ? void 0 : i.zScore) ?? null,
     quoteNotional: o.value,
     mtfStructureStates: Object.fromEntries(
-      Object.entries(c).map(([h, A]) => [
+      Object.entries(l).map(([h, A]) => [
         h,
         typeof A.snapshot == "object" && A.snapshot != null && !Array.isArray(A.snapshot) && typeof A.snapshot.state == "string" ? A.snapshot.state : "unknown"
       ])
@@ -3329,12 +3329,12 @@ function jc(e, t, n, i, r, a, o, s, c) {
 function Wc(e, t, n, i, r, a) {
   const o = [];
   return {
-    results: n.hardGates.map((c) => {
-      if (c === "sourcePolicy") {
+    results: n.hardGates.map((l) => {
+      if (l === "sourcePolicy") {
         const d = n.sourcePolicy.allowedSources == null || n.sourcePolicy.allowedSources.includes(e.source);
-        return mt(c, d, d ? "Source allowed" : "Source excluded", []);
+        return mt(l, d, d ? "Source allowed" : "Source excluded", []);
       }
-      if (c === "dataQuality") {
+      if (l === "dataQuality") {
         const d = Kn(i.flatMap((v) => v.observations));
         o.push(...d);
         const m = !i.some(
@@ -3343,39 +3343,39 @@ function Wc(e, t, n, i, r, a) {
           )
         );
         return mt(
-          c,
+          l,
           m,
           m ? "Required metrics available" : "Required metric data unavailable",
           d
         );
       }
-      if (c === "executionVenueEligibility") {
+      if (l === "executionVenueEligibility") {
         o.push(r);
         const d = ul(r.status, n.executionVenuePolicy.mode);
         return mt(
-          c,
+          l,
           d,
           `Execution venue ${r.status}`,
           [r]
         );
       }
-      if (c === "selectedUniverse") {
+      if (l === "selectedUniverse") {
         const d = sl(a, e, t);
         return d && o.push(d), mt(
-          c,
+          l,
           (d == null ? void 0 : d.included) === !0,
           d ? d.included ? "Symbol included" : "Symbol excluded" : "Historical universe membership unknown",
           d ? [d] : []
         );
       }
-      const l = Na(e, t, n);
-      o.push(l);
-      const u = n.liquidityPolicy.minimumQuoteNotional, f = u == null || l.value == null ? u == null || n.liquidityPolicy.missingData === "warn" : l.value >= u;
+      const c = Na(e, t, n);
+      o.push(c);
+      const u = n.liquidityPolicy.minimumQuoteNotional, f = u == null || c.value == null ? u == null || n.liquidityPolicy.missingData === "warn" : c.value >= u;
       return mt(
-        c,
+        l,
         f,
-        u == null ? "No minimum liquidity configured" : l.value == null ? "Quote-notional history unavailable" : `Quote notional ${l.value} versus ${u} minimum`,
-        [l]
+        u == null ? "No minimum liquidity configured" : c.value == null ? "Quote-notional history unavailable" : `Quote notional ${c.value} versus ${u} minimum`,
+        [c]
       );
     }),
     evidence: vl(o)
@@ -3461,28 +3461,28 @@ function Nn(e, t, n, i, r) {
     observationId: `radar-status:${J(a)}`
   });
 }
-function Yc(e, t, n, i, r, a, o, s, c) {
-  const l = {
+function Yc(e, t, n, i, r, a, o, s, l) {
+  const c = {
     symbol: e.symbol,
     source: e.source,
     asOf: t,
     detectorResults: n,
     hardGateResults: i,
     hardGateEvidence: r,
-    evaluable: c,
+    evaluable: l,
     detectorGatePassed: a,
     hardGatesPassed: o,
     compositePassed: s
   };
   return y({
-    ...l,
-    id: `radar-gate:${J(l)}`
+    ...c,
+    id: `radar-gate:${J(c)}`
   });
 }
 function gn(e, t, n, i, r) {
   var o;
   const a = t || n.every(
-    (s) => s.dataQualityNotes.every((c) => c.severity !== "error")
+    (s) => s.dataQualityNotes.every((l) => l.severity !== "error")
   );
   return {
     detectorId: e.id,
@@ -3576,20 +3576,20 @@ function tl(e, t, n) {
   const i = t.bucket - n.historyLookbackSeconds, r = [], a = [];
   let o = 0;
   for (let s = 0; s < e.length; s += 1) {
-    const c = e[s], l = Math.max(
-      c.bucket - n.lookbackSeconds,
-      c.bucket - n.maximumTroughAgeSeconds
+    const l = e[s], c = Math.max(
+      l.bucket - n.lookbackSeconds,
+      l.bucket - n.maximumTroughAgeSeconds
     );
-    for (; o < a.length && e[a[o]].bucket < l; )
+    for (; o < a.length && e[a[o]].bucket < c; )
       o += 1;
-    if (Y(c.c)) {
-      for (; a.length > o && e[a[a.length - 1]].c > c.c; )
+    if (Y(l.c)) {
+      for (; a.length > o && e[a[a.length - 1]].c > l.c; )
         a.pop();
       a.push(s);
     }
-    if (c.bucket < i || c.bucket >= t.bucket) continue;
+    if (l.bucket < i || l.bucket >= t.bucket) continue;
     const u = a[o], f = u == null ? null : e[u];
-    f && r.push((c.c / f.c - 1) * 100);
+    f && r.push((l.c / f.c - 1) * 100);
   }
   return r;
 }
@@ -3611,8 +3611,8 @@ function Ma(e, t, n) {
     )
   ), t == null || e.length === 0 || e.length < n)
     return { percentile: null, zScore: null, notes: i };
-  const r = e.filter((l) => l <= t).length / e.length * 100, a = e.reduce((l, u) => l + u, 0) / e.length, o = e.reduce((l, u) => l + (u - a) ** 2, 0) / e.length, s = Math.sqrt(o), c = s > 0 ? (t - a) / s : null;
-  return { percentile: r, zScore: c, notes: i };
+  const r = e.filter((c) => c <= t).length / e.length * 100, a = e.reduce((c, u) => c + u, 0) / e.length, o = e.reduce((c, u) => c + (u - a) ** 2, 0) / e.length, s = Math.sqrt(o), l = s > 0 ? (t - a) / s : null;
+  return { percentile: r, zScore: l, notes: i };
 }
 function Oi(e, t, n) {
   return t ? e.filter((i) => i.bucket >= t.bucket - n) : [];
@@ -3634,8 +3634,8 @@ function rl(e, t) {
   const n = new Array(e.length).fill(null);
   if (e.length < t) return n;
   const i = e.map((a, o) => {
-    var c;
-    const s = ((c = e[o - 1]) == null ? void 0 : c.c) ?? a.c;
+    var l;
+    const s = ((l = e[o - 1]) == null ? void 0 : l.c) ?? a.c;
     return Math.max(a.h - a.l, Math.abs(a.h - s), Math.abs(a.l - s));
   });
   let r = i.slice(0, t).reduce((a, o) => a + o, 0) / t;
@@ -3664,14 +3664,14 @@ function ol(e, t, n, i) {
     const a = [t.source, t.dataOrigin].filter((s) => s != null).some((s) => s.toLowerCase() === r.source.toLowerCase()), o = !r.venue.trim() || r.venue.toLowerCase() === t.source.toLowerCase();
     if (r.symbol.toUpperCase() !== t.symbol.toUpperCase() || !a || !o || r.setupFamily !== e.setupFamily || r.lifecycleVersion !== e.lifecycleVersion || r.lifecycleConfigHash !== e.lifecycleConfigHash || r.executionTimeframe !== i.timeframeRoles.executionTimeframe)
       throw new Error("Lifecycle candidate does not match the radar series and lifecycle identity");
-    for (const [s, c] of [
+    for (const [s, l] of [
       ["candidate detectedAt", r.detectedAt],
       ["candidate detectionEventTime", r.detectionEventTime],
       ["candidate episodeHighTime", r.episodeHighTime],
       ["candidate stateSince", r.stateSince],
       ["candidate terminalAt", r.terminalAt]
     ])
-      oe(c, n, s);
+      oe(l, n, s);
     for (const s of r.initialMtfContext)
       oe(s.updatedTs, n, "candidate MTF context updatedTs");
   }
@@ -3829,16 +3829,16 @@ function vl(e) {
 }
 function _i(e, t, n) {
   if (!e.length) return null;
-  const i = [...e].sort((s, c) => {
-    const l = t(s), u = t(c);
-    for (let f = 0; f < Math.max(l.length, u.length); f += 1) {
-      const d = (l[f] ?? -1 / 0) - (u[f] ?? -1 / 0);
+  const i = [...e].sort((s, l) => {
+    const c = t(s), u = t(l);
+    for (let f = 0; f < Math.max(c.length, u.length); f += 1) {
+      const d = (c[f] ?? -1 / 0) - (u[f] ?? -1 / 0);
       if (d !== 0) return d;
     }
-    return s.observationId.localeCompare(c.observationId);
+    return s.observationId.localeCompare(l.observationId);
   }), r = i.at(-1), a = t(r), o = i.filter((s) => {
-    const c = t(s);
-    return c.length === a.length && c.every((l, u) => l === a[u]);
+    const l = t(s);
+    return l.length === a.length && l.every((c, u) => c === a[u]);
   });
   if (new Set(o.map((s) => s.observationId)).size > 1)
     throw new Error(`Conflicting ${n} observations at the same precedence`);
@@ -4161,10 +4161,10 @@ async function Sl(e) {
     ...n.visibleTimeframes,
     n.evaluationTimeframe,
     ...t.preRollRequirements.map((N) => N.timeframe)
-  ]), o = t.startAsOf + n.maximumCaseDuration, s = {}, c = {}, l = {}, u = [];
+  ]), o = t.startAsOf + n.maximumCaseDuration, s = {}, l = {}, c = {}, u = [];
   for (const N of a) {
     const B = Ml(t, e.strategyProfile, N), O = Math.max(0, t.startAsOf - B), ie = n.displayPreRollByTimeframe[N] ?? 0, re = Math.max(0, t.startAsOf - ie);
-    s[N] = O, c[N] = re;
+    s[N] = O, l[N] = re;
     const z = await i.getCoverage({
       symbol: t.symbol,
       source: t.source,
@@ -4195,7 +4195,7 @@ async function Sl(e) {
       from: O,
       to: o
     })) ?? [] : [];
-    l[N] = xl(
+    c[N] = xl(
       [...Vt, ...$t].filter((Ut) => Ut.knownAt <= o),
       t,
       N,
@@ -4228,8 +4228,8 @@ async function Sl(e) {
     symbol: t.symbol.toUpperCase(),
     source: t.source,
     analysisStartByTimeframe: s,
-    displayStartByTimeframe: c,
-    candlesByTimeframe: l,
+    displayStartByTimeframe: l,
+    candlesByTimeframe: c,
     analysisStateHistory: d,
     knownEvents: m,
     venueEvidence: v,
@@ -4243,7 +4243,7 @@ async function Sl(e) {
   }), _ = y({
     ...h,
     candlesByTimeframe: Object.fromEntries(
-      Object.entries(l).map(([N, B]) => [
+      Object.entries(c).map(([N, B]) => [
         N,
         B.filter(
           (O) => O.closeTime <= t.startAsOf && O.knownAt <= t.startAsOf
@@ -4345,37 +4345,37 @@ function Pl(e, t) {
 }
 function xl(e, t, n, i, r) {
   const a = /* @__PURE__ */ new Map();
-  for (const l of e) {
+  for (const c of e) {
     const u = Wa({
-      symbol: l.symbol,
-      source: l.source,
-      timeframe: l.timeframe,
-      openTime: l.openTime,
-      o: l.o,
-      h: l.h,
-      l: l.l,
-      c: l.c,
-      vBase: l.vBase,
-      vQuote: l.vQuote,
-      knownAt: l.knownAt,
-      revision: l.revision,
-      correctionPublishedAt: l.correctionPublishedAt
+      symbol: c.symbol,
+      source: c.source,
+      timeframe: c.timeframe,
+      openTime: c.openTime,
+      o: c.o,
+      h: c.h,
+      l: c.l,
+      c: c.c,
+      vBase: c.vBase,
+      vQuote: c.vQuote,
+      knownAt: c.knownAt,
+      revision: c.revision,
+      correctionPublishedAt: c.correctionPublishedAt
     });
-    if (l.symbol.toUpperCase() !== t.symbol.toUpperCase() || l.source !== t.source || l.timeframe !== n || l.openTime < i || l.openTime > r || l.logicalCandleId !== bn(l) || l.observationId !== _t(l) || C(l) !== C(u))
+    if (c.symbol.toUpperCase() !== t.symbol.toUpperCase() || c.source !== t.source || c.timeframe !== n || c.openTime < i || c.openTime > r || c.logicalCandleId !== bn(c) || c.observationId !== _t(c) || C(c) !== C(u))
       throw new Error(`Invalid replay candle provenance for ${n}`);
-    const f = C(l), d = a.get(l.observationId);
+    const f = C(c), d = a.get(c.observationId);
     if (d && C(d) !== f)
-      throw new Error(`Conflicting candle observation ${l.observationId}`);
-    a.set(l.observationId, l);
+      throw new Error(`Conflicting candle observation ${c.observationId}`);
+    a.set(c.observationId, c);
   }
   const o = [...a.values()].sort(
-    (l, u) => l.openTime - u.openTime || l.knownAt - u.knownAt || l.observationId.localeCompare(u.observationId)
-  ), s = o.some((l) => l.correctionPublishedAt != null) ? [...new Set(o.filter((l) => l.correctionPublishedAt != null).map((l) => l.knownAt))] : [], c = o.length ? Math.max(...o.map((l) => l.knownAt)) : null;
-  for (const l of [.../* @__PURE__ */ new Set([
+    (c, u) => c.openTime - u.openTime || c.knownAt - u.knownAt || c.observationId.localeCompare(u.observationId)
+  ), s = o.some((c) => c.correctionPublishedAt != null) ? [...new Set(o.filter((c) => c.correctionPublishedAt != null).map((c) => c.knownAt))] : [], l = o.length ? Math.max(...o.map((c) => c.knownAt)) : null;
+  for (const c of [.../* @__PURE__ */ new Set([
     ...s,
-    ...c == null ? [] : [c]
+    ...l == null ? [] : [l]
   ])])
-    dn(o.map(_l), n, l);
+    dn(o.map(_l), n, c);
   return y(o);
 }
 function Il(e, t) {
@@ -4546,7 +4546,7 @@ function Za(e) {
     e.targetFractionTolerance ?? 1e-8,
     t
   );
-  const s = e.intendedEntryPrice * (1 - e.executionAssumptions.adverseEntrySlippageBps / 1e4), c = de(s) ? s : null, l = de(e.stopPrice) ? e.stopPrice * (1 + e.executionAssumptions.adverseStopSlippageBps / 1e4) : null, u = c != null && l != null ? l - c + c * e.executionAssumptions.entryFeeRate + l * e.executionAssumptions.stopExitFeeRate : null;
+  const s = e.intendedEntryPrice * (1 - e.executionAssumptions.adverseEntrySlippageBps / 1e4), l = de(s) ? s : null, c = de(e.stopPrice) ? e.stopPrice * (1 + e.executionAssumptions.adverseStopSlippageBps / 1e4) : null, u = l != null && c != null ? c - l + l * e.executionAssumptions.entryFeeRate + c * e.executionAssumptions.stopExitFeeRate : null;
   (u == null || !Number.isFinite(u) || u <= 0) && M(t, "INVALID_NUMERIC_INPUT", "Per-unit stop risk must be positive");
   const f = o != null && u != null && u > 0 ? o / u : null;
   let d = f == null ? null : Cr(f, e.venueRules.quantityStep);
@@ -4556,7 +4556,7 @@ function Za(e) {
         d - e.venueRules.quantityStep,
         e.venueRules.quantityStep
       );
-  const m = d != null && d > 0 ? d : null, v = m == null ? null : m * e.intendedEntryPrice, p = m == null || c == null ? null : m * c * e.executionAssumptions.entryFeeRate, h = m == null || l == null ? null : m * l * e.executionAssumptions.stopExitFeeRate, A = m == null || u == null ? null : m * u;
+  const m = d != null && d > 0 ? d : null, v = m == null ? null : m * e.intendedEntryPrice, p = m == null || l == null ? null : m * l * e.executionAssumptions.entryFeeRate, h = m == null || c == null ? null : m * c * e.executionAssumptions.stopExitFeeRate, A = m == null || u == null ? null : m * u;
   (m == null || m < e.venueRules.minQuantity) && M(
     t,
     "MINIMUM_QUANTITY_NOT_MET",
@@ -4592,10 +4592,10 @@ function Za(e) {
     "AVAILABLE_BALANCE_EXCEEDED",
     "Initial margin exceeds available balance"
   );
-  const S = m != null && c != null && l != null ? m * (l - c) : null, I = $l(
+  const S = m != null && l != null && c != null ? m * (c - l) : null, I = $l(
     e.targets,
     m,
-    c,
+    l,
     S,
     A,
     e.executionAssumptions
@@ -4619,10 +4619,10 @@ function Za(e) {
     riskBudget: o,
     rawQuantity: f,
     roundedQuantity: m,
-    effectiveEntry: c,
-    effectiveStop: l,
-    stopDistanceAbsolute: c == null || l == null ? null : l - c,
-    stopDistancePercent: c == null || l == null ? null : (l - c) / c * 100,
+    effectiveEntry: l,
+    effectiveStop: c,
+    stopDistanceAbsolute: l == null || c == null ? null : c - l,
+    stopDistancePercent: l == null || c == null ? null : (c - l) / l * 100,
     stopDistanceAtr: e.stopDistanceAtr ?? null,
     grossNotional: v,
     estimatedEntryFee: p,
@@ -4741,11 +4741,11 @@ function Bl(e) {
     "TOO_MANY_TARGETS",
     `Plan has more than ${t.targetPolicy.maximumTargets} targets`
   );
-  const c = i.targetPlans.reduce(
+  const l = i.targetPlans.reduce(
     (v, p) => v + p.positionFraction,
     0
   );
-  Math.abs(c - 1) > t.targetPolicy.fractionTolerance && M(
+  Math.abs(l - 1) > t.targetPolicy.fractionTolerance && M(
     r,
     "TARGET_FRACTIONS_INVALID",
     `Target fractions exceed profile tolerance ${t.targetPolicy.fractionTolerance}`
@@ -4770,14 +4770,14 @@ function Bl(e) {
     "RISK_ABOVE_PROFILE_LIMIT",
     "Projected stop loss exceeds the profile risk limit"
   );
-  const l = a.some((v) => v.code === "NO_ACTIVE_CANDIDATE"), u = ((m = i.discretionaryOverrideReason) == null ? void 0 : m.trim()) || null;
-  i.status === "finalized" && a.length > 0 && !l && !u && M(
+  const c = a.some((v) => v.code === "NO_ACTIVE_CANDIDATE"), u = ((m = i.discretionaryOverrideReason) == null ? void 0 : m.trim()) || null;
+  i.status === "finalized" && a.length > 0 && !c && !u && M(
     r,
     "OVERRIDE_REASON_REQUIRED",
     "A finalized discretionary override requires a user-supplied reason"
   );
   let f;
-  return r.length > 0 ? f = "InvalidPlan" : l ? f = "OutOfStrategy" : a.length === 0 ? f = "Compliant" : u ? f = "Overridden" : f = "OutOfStrategy", y({
+  return r.length > 0 ? f = "InvalidPlan" : c ? f = "OutOfStrategy" : a.length === 0 ? f = "Compliant" : u ? f = "Overridden" : f = "OutOfStrategy", y({
     classification: f,
     hardErrors: r,
     strategyViolations: a,
@@ -4829,14 +4829,14 @@ function Vl(e, t, n, i) {
 }
 function $l(e, t, n, i, r, a) {
   return t == null || n == null ? [] : e.map((o) => {
-    const s = o.targetPrice * (1 + a.adverseTargetSlippageBps / 1e4), c = t * (n - s), l = t * n * a.entryFeeRate, u = t * s * a.targetExitFeeRate, f = c - l - u, d = i != null && i > 0 ? c / i : null, m = r != null && r > 0 ? f / r : null;
+    const s = o.targetPrice * (1 + a.adverseTargetSlippageBps / 1e4), l = t * (n - s), c = t * n * a.entryFeeRate, u = t * s * a.targetExitFeeRate, f = l - c - u, d = i != null && i > 0 ? l / i : null, m = r != null && r > 0 ? f / r : null;
     return {
       targetId: o.id,
       targetPrice: o.targetPrice,
       effectiveTargetPrice: s,
       positionFraction: o.positionFraction,
-      grossReward: c,
-      expectedEntryFee: l,
+      grossReward: l,
+      expectedEntryFee: c,
       expectedExitFee: u,
       netProjectedReward: f,
       grossR: d,
@@ -4874,9 +4874,9 @@ function Ul(e, t, n) {
   ), e.lifecycleState === "entryCandidate" && e.lifecycleStateSince != null && t.entryPolicy.maxAgeSinceEntryCandidateSeconds != null && e.effectiveAsOf - e.lifecycleStateSince > t.entryPolicy.maxAgeSinceEntryCandidateSeconds && M(n, "RETEST_TOO_OLD", "EntryCandidate is older than the profile limit");
 }
 function ql(e, t, n) {
-  var c;
-  const i = t.entryPolicy.requiredDataQuality, r = i.candidateMetricsRequired && e.candidateMetrics == null, a = ((c = e.candidateMetrics) == null ? void 0 : c.historyCoverage.coverageRatio) ?? null, o = i.minimumHistoryCoverageRatio != null && (a == null || a < i.minimumHistoryCoverageRatio), s = e.dataQualityNotes.some(
-    (l) => i.rejectedNoteSeverities.includes(l.severity)
+  var l;
+  const i = t.entryPolicy.requiredDataQuality, r = i.candidateMetricsRequired && e.candidateMetrics == null, a = ((l = e.candidateMetrics) == null ? void 0 : l.historyCoverage.coverageRatio) ?? null, o = i.minimumHistoryCoverageRatio != null && (a == null || a < i.minimumHistoryCoverageRatio), s = e.dataQualityNotes.some(
+    (c) => i.rejectedNoteSeverities.includes(c.severity)
   );
   (r || o || s) && M(
     n,
@@ -4940,17 +4940,17 @@ function Ql(e, t) {
   );
   const r = e.stopPlan.referenceLevel;
   if (r && e.stopPlan.derivationType !== "manual") {
-    const a = e.stopPlan.derivationType === "supportResistanceZoneBoundary" ? r.rangeHigh ?? r.price : r.price, { basisPoints: o, atrFraction: s, atrValue: c } = e.stopPlan.buffer;
-    let l = a;
+    const a = e.stopPlan.derivationType === "supportResistanceZoneBoundary" ? r.rangeHigh ?? r.price : r.price, { basisPoints: o, atrFraction: s, atrValue: l } = e.stopPlan.buffer;
+    let c = a;
     o != null && s != null ? M(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "Stop buffer must use basis points or ATR, not both"
-    ) : o != null ? l = a * (1 + o / 1e4) : s != null && (de(c ?? 0) ? l = a + s * (c ?? 0) : M(
+    ) : o != null ? c = a * (1 + o / 1e4) : s != null && (de(l ?? 0) ? c = a + s * (l ?? 0) : M(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "ATR stop buffers require the frozen ATR value"
-    )), Math.abs(e.stopPlan.stopPrice - l) > n + 1e-12 && M(
+    )), Math.abs(e.stopPlan.stopPrice - c) > n + 1e-12 && M(
       t,
       "REFERENCE_PRICE_MISMATCH",
       "Stop price does not match its frozen reference and recorded buffer"
@@ -5378,7 +5378,7 @@ async function cm(e) {
     const E = await e.historicalDataAdapter.loadCandles({ ...a, timeframe: b });
     cu(E, a.venue, a.symbol, b), o[b] = E;
   }
-  const s = await Ze(e.historicalDataAdapter.loadTrades, e.historicalDataAdapter, a), c = await Ze(e.historicalDataAdapter.loadQuotes, e.historicalDataAdapter, a), l = await Ze(e.historicalDataAdapter.loadMarkPrices, e.historicalDataAdapter, a), u = await Ze(e.historicalDataAdapter.loadIndexPrices, e.historicalDataAdapter, a), f = e.historicalDataAdapter.fundingDataAvailable ?? e.historicalDataAdapter.loadFundingObservations != null, d = await Ze(
+  const s = await Ze(e.historicalDataAdapter.loadTrades, e.historicalDataAdapter, a), l = await Ze(e.historicalDataAdapter.loadQuotes, e.historicalDataAdapter, a), c = await Ze(e.historicalDataAdapter.loadMarkPrices, e.historicalDataAdapter, a), u = await Ze(e.historicalDataAdapter.loadIndexPrices, e.historicalDataAdapter, a), f = e.historicalDataAdapter.fundingDataAvailable ?? e.historicalDataAdapter.loadFundingObservations != null, d = await Ze(
     e.historicalDataAdapter.loadFundingObservations,
     e.historicalDataAdapter,
     a
@@ -5387,14 +5387,14 @@ async function cm(e) {
     e.historicalDataAdapter,
     a
   );
-  if (lu(s, c, l, u, d, a.venue, a.symbol), e.historicalDataAdapter.tradeDataCompleteness === "complete" && s.some((b) => b.knownAt !== b.eventTime)) throw new Error("Complete ordered-trade data requires knownAt equal to eventTime");
+  if (lu(s, l, c, u, d, a.venue, a.symbol), e.historicalDataAdapter.tradeDataCompleteness === "complete" && s.some((b) => b.knownAt !== b.eventTime)) throw new Error("Complete ordered-trade data requires knownAt equal to eventTime");
   const v = {
     candlesByTimeframe: o,
     trades: s,
     tradeDataCompleteness: e.historicalDataAdapter.tradeDataCompleteness ?? "unavailable",
-    quotes: c,
+    quotes: l,
     quoteDataCompleteness: e.historicalDataAdapter.quoteDataCompleteness ?? "unavailable",
-    markPrices: l,
+    markPrices: c,
     indexPrices: u,
     funding: d
   }, p = {
@@ -5403,8 +5403,8 @@ async function cm(e) {
       E.filter((_) => _.knownAt <= t)
     ])),
     trades: s.filter((b) => b.knownAt <= t),
-    quotes: c.filter((b) => b.knownAt <= t),
-    markPrices: l.filter((b) => b.knownAt <= t),
+    quotes: l.filter((b) => b.knownAt <= t),
+    markPrices: c.filter((b) => b.knownAt <= t),
     indexPrices: u.filter((b) => b.knownAt <= t)
   }, h = [
     "CANDLE_ONLY_EXECUTION_IS_APPROXIMATE",
@@ -5423,9 +5423,9 @@ async function cm(e) {
     candlesByTimeframe: y(o),
     trades: y(s),
     tradeDataCompleteness: e.historicalDataAdapter.tradeDataCompleteness ?? "unavailable",
-    quotes: y(c),
+    quotes: y(l),
     quoteDataCompleteness: e.historicalDataAdapter.quoteDataCompleteness ?? "unavailable",
-    markPrices: y(l),
+    markPrices: y(c),
     indexPrices: y(u),
     funding: y(d),
     fundingDataAvailable: f,
@@ -5462,9 +5462,9 @@ function su(e) {
     throw new Error("Venue execution rules hash mismatch");
   if (s.canonicalConfigHash !== so(s))
     throw new Error("Venue fee schedule hash mismatch");
-  const l = n.effectiveAsOf;
-  Pr(s, l, "fee schedule"), Pr(o, l, "venue execution rules");
-  const u = l + a.orderActivationPolicy.delaySeconds + a.maximumExecutionHorizon + (a.forceCloseAtHorizon ? Math.max(...a.pathResolutionPolicy.candleTimeframesFinestFirst.map(F)) : 0);
+  const c = n.effectiveAsOf;
+  Pr(s, c, "fee schedule"), Pr(o, c, "venue execution rules");
+  const u = c + a.orderActivationPolicy.delaySeconds + a.maximumExecutionHorizon + (a.forceCloseAtHorizon ? Math.max(...a.pathResolutionPolicy.candleTimeframesFinestFirst.map(F)) : 0);
   if (s.effectiveUntil != null && s.effectiveUntil <= u || o.effectiveUntil != null && o.effectiveUntil <= u) throw new Error("Selected fee schedule and venue rules must cover the execution horizon");
   if (o.venue.toLowerCase() !== i.venueRules.venue.toLowerCase() || o.symbol !== i.venueRules.symbol.toUpperCase() || o.quantityStep !== i.venueRules.quantityStep || o.priceTick !== i.venueRules.priceTick || o.maximumLeverage !== i.venueRules.maxLeverage || o.feeScheduleRef.hash !== s.canonicalConfigHash) throw new Error("Execution rules do not match the frozen planning-rule subset");
   if (i.entryPlan.orderPlanType === "manualReference")
@@ -5503,16 +5503,16 @@ function cu(e, t, n, i) {
   }
 }
 function lu(e, t, n, i, r, a, o) {
-  const s = [...e, ...t, ...n, ...i], c = /* @__PURE__ */ new Set();
-  for (const l of s) {
-    if (l.venue.toLowerCase() !== a.toLowerCase() || l.symbol.toUpperCase() !== o.toUpperCase() || l.knownAt < l.eventTime || c.has(l.id)) throw new Error(`Invalid or duplicate execution observation ${l.id}`);
-    const u = "price" in l ? co(l).id : lo(l).id;
-    if (l.id !== u) throw new Error(`Execution observation identity mismatch ${l.id}`);
-    c.add(l.id);
+  const s = [...e, ...t, ...n, ...i], l = /* @__PURE__ */ new Set();
+  for (const c of s) {
+    if (c.venue.toLowerCase() !== a.toLowerCase() || c.symbol.toUpperCase() !== o.toUpperCase() || c.knownAt < c.eventTime || l.has(c.id)) throw new Error(`Invalid or duplicate execution observation ${c.id}`);
+    const u = "price" in c ? co(c).id : lo(c).id;
+    if (c.id !== u) throw new Error(`Execution observation identity mismatch ${c.id}`);
+    l.add(c.id);
   }
-  for (const l of r) {
-    if (l.venue.toLowerCase() !== a.toLowerCase() || l.symbol.toUpperCase() !== o.toUpperCase() || l.id !== uo(l).id || c.has(l.id)) throw new Error(`Invalid or duplicate funding observation ${l.id}`);
-    c.add(l.id);
+  for (const c of r) {
+    if (c.venue.toLowerCase() !== a.toLowerCase() || c.symbol.toUpperCase() !== o.toUpperCase() || c.id !== uo(c).id || l.has(c.id)) throw new Error(`Invalid or duplicate funding observation ${c.id}`);
+    l.add(c.id);
   }
 }
 function uu(e, t) {
@@ -5537,8 +5537,8 @@ function fu(e) {
     "venueRuleEvidence"
   ], "Execution JSON data"), t.schemaVersion !== xr)
     throw new Error("Unsupported execution JSON data schema");
-  const n = Dn(t.venue, "venue"), i = Dn(t.symbol, "symbol").toUpperCase(), r = du(t.candles, n, i), a = mu(t.trades, n, i), o = Ln(t.quotes, n, i, "quotes"), s = Ln(t.markPrices, n, i, "markPrices"), c = Ln(t.indexPrices, n, i, "indexPrices"), l = Ir(t.tradeDataCompleteness, "tradeDataCompleteness"), u = Ir(t.quoteDataCompleteness, "quoteDataCompleteness");
-  if (l === "unavailable" && a.length)
+  const n = Dn(t.venue, "venue"), i = Dn(t.symbol, "symbol").toUpperCase(), r = du(t.candles, n, i), a = mu(t.trades, n, i), o = Ln(t.quotes, n, i, "quotes"), s = Ln(t.markPrices, n, i, "markPrices"), l = Ln(t.indexPrices, n, i, "indexPrices"), c = Ir(t.tradeDataCompleteness, "tradeDataCompleteness"), u = Ir(t.quoteDataCompleteness, "quoteDataCompleteness");
+  if (c === "unavailable" && a.length)
     throw new Error("Unavailable trade data cannot contain observations");
   if (u === "unavailable" && o.length)
     throw new Error("Unavailable quote data cannot contain observations");
@@ -5562,7 +5562,7 @@ function fu(e) {
     ...a,
     ...o,
     ...s,
-    ...c,
+    ...l,
     ...d.availability === "available" ? d.observations : [],
     ...m
   ]), y({
@@ -5571,11 +5571,11 @@ function fu(e) {
     symbol: i,
     candles: pu(r),
     trades: Zt(a),
-    tradeDataCompleteness: l,
+    tradeDataCompleteness: c,
     quotes: Zt(o),
     quoteDataCompleteness: u,
     markPrices: Zt(s),
-    indexPrices: Zt(c),
+    indexPrices: Zt(l),
     funding: d.availability === "available" ? {
       availability: "available",
       observations: [...d.observations].sort(
@@ -5641,9 +5641,9 @@ function du(e, t, n) {
     if (o.schemaVersion !== qi) throw new Error(`Invalid candle schema at ${a}`);
     const s = ji(o);
     Tn(o, s, `candle ${a}`), Ft(s, t, n, `candle ${a}`);
-    const c = `${s.timeframe}:${s.openTime}`;
-    if (i.has(c)) throw new Error(`Duplicate candle interval ${c}`);
-    return i.add(c), s;
+    const l = `${s.timeframe}:${s.openTime}`;
+    if (i.has(l)) throw new Error(`Duplicate candle interval ${l}`);
+    return i.add(l), s;
   });
 }
 function mu(e, t, n) {
@@ -5810,11 +5810,11 @@ function Wi(e) {
 function Au(e, t, n) {
   if (tr(e), Gu(e, t), Zu(n, "targetAsOf"), n < e.currentAsOf) throw new RangeError("Execution cannot move backward");
   if (we.has(e.state)) return y(e);
-  const i = wu(t, n);
-  if (i.executionEvents.length < e.executionEvents.length)
+  const i = wu(t, n), r = e.executionEvents.filter((s) => s.type !== "PathResolved"), a = i.executionEvents.filter((s) => s.type !== "PathResolved");
+  if (a.length < r.length)
     throw new Error("Execution target precedes already processed causal events");
-  const r = i.executionEvents.slice(0, e.executionEvents.length);
-  if (C(r) !== C(e.executionEvents))
+  const o = a.slice(0, r.length);
+  if (C(o) !== C(r))
     throw new Error("Execution history changed under the same session identity");
   return i;
 }
@@ -5841,21 +5841,23 @@ function wu(e, t) {
       break;
     }
     Cu(i, e, c);
-    const l = i.fills.length;
+    const u = i.fills.length;
     Pu(i, e, c);
-    const u = i.fills.length > l;
-    for (; s < o.length && o[s].fundingTime >= c.eventTime && o[s].fundingTime < c.intervalEnd && (Bn(i, e, o[s++], u ? c : null), !we.has(i.state)); )
+    const f = i.fills.length > u;
+    for (; s < o.length && o[s].fundingTime >= c.eventTime && o[s].fundingTime < c.intervalEnd && (Bn(i, e, o[s++], f ? c : null), !we.has(i.state)); )
       ;
-    we.has(i.state) || U(i, {
-      type: "PathResolved",
-      eventTime: c.intervalEnd,
-      processingAsOf: c.processingAsOf,
-      sourceObservationIds: [c.id],
-      explanation: `Execution interval resolved with ${c.resolution} ${c.exact ? "ordered" : "OHLC"} data`
-    });
+    i.currentAsOf = Math.max(i.currentAsOf, c.processingAsOf);
   }
   for (; !we.has(i.state) && s < o.length && o[s].fundingTime <= Math.min(t, i.executionHorizonTime); ) Bn(i, e, o[s++], null);
-  return we.has(i.state) || _u(i, e, a, t), er(i);
+  we.has(i.state) || _u(i, e, a, t);
+  const l = a.at(-1);
+  return !we.has(i.state) && l && U(i, {
+    type: "PathResolved",
+    eventTime: l.intervalEnd,
+    processingAsOf: l.processingAsOf,
+    sourceObservationIds: [l.id],
+    explanation: `Execution processed through ${l.resolution} ${l.exact ? "ordered" : "OHLC"} data`
+  }), er(i);
 }
 function Eu(e, t) {
   const n = t.tradePlan, i = n.entryPlan.orderPlanType === "marketNextAvailable" ? "entryMarket" : n.entryPlan.orderPlanType === "limit" ? "entryLimit" : "entryStopMarket", r = cn(e.id, {
@@ -5898,14 +5900,14 @@ function Tu(e, t) {
     resolution: "trade",
     exact: !0
   }));
-  const o = e.strategyProfile.timeframeRoles.executionTimeframe, s = e.dataBundle.candlesByTimeframe[o] ?? [], c = [];
+  const o = e.strategyProfile.timeframeRoles.executionTimeframe, s = e.dataBundle.candlesByTimeframe[o] ?? [], l = [];
   for (const u of s) {
     if (u.knownAt > t || u.closeTime <= n || u.openTime > r) continue;
     const f = Ru(e, u, t) ?? [u];
     for (const d of f)
-      d.closeTime <= n || d.openTime > r || c.push(Su(d));
+      d.closeTime <= n || d.openTime > r || l.push(Su(d));
   }
-  return [...new Map(c.map((u) => [u.id, u])).values()].sort(
+  return [...new Map(l.map((u) => [u.id, u])).values()].sort(
     (u, f) => u.eventTime - f.eventTime || u.processingAsOf - f.processingAsOf || u.id.localeCompare(f.id)
   );
 }
@@ -5914,19 +5916,19 @@ function Ru(e, t, n) {
   for (const a of r) {
     const o = F(a), s = i / o;
     if (!Number.isInteger(s)) continue;
-    const c = (e.dataBundle.candlesByTimeframe[a] ?? []).filter(
+    const l = (e.dataBundle.candlesByTimeframe[a] ?? []).filter(
       (f) => f.openTime >= t.openTime && f.closeTime <= t.closeTime && f.knownAt <= Math.min(n, t.knownAt)
     );
-    if (c.length !== s) continue;
-    let l = t.openTime, u = !0;
-    for (const f of c) {
-      if (f.openTime !== l) {
+    if (l.length !== s) continue;
+    let c = t.openTime, u = !0;
+    for (const f of l) {
+      if (f.openTime !== c) {
         u = !1;
         break;
       }
-      l = f.closeTime;
+      c = f.closeTime;
     }
-    if (u && l === t.closeTime) return c;
+    if (u && c === t.closeTime) return l;
   }
   return null;
 }
@@ -5984,26 +5986,26 @@ function xu(e, t, n) {
     sn(e, t, n, [i.id, ...s], "ENTRY_AND_EXIT_INTRABAR_ORDER_UNKNOWN");
     return;
   }
-  const c = Rn(e, t, i, n, r, a, o, "entry"), l = c.price * c.quantity;
-  if (c.quantity < t.venueRules.minimumQuantity || l < t.venueRules.minimumNotional || t.venueRules.maximumQuantity != null && c.quantity > t.venueRules.maximumQuantity || t.venueRules.maximumNotional != null && l > t.venueRules.maximumNotional) {
+  const l = Rn(e, t, i, n, r, a, o, "entry"), c = l.price * l.quantity;
+  if (l.quantity < t.venueRules.minimumQuantity || c < t.venueRules.minimumNotional || t.venueRules.maximumQuantity != null && l.quantity > t.venueRules.maximumQuantity || t.venueRules.maximumNotional != null && c > t.venueRules.maximumNotional) {
     Ct(e, t, n.eventTime, n.processingAsOf, "Actual entry fill violates venue execution limits");
     return;
   }
-  i.status = "filled", i.remainingQuantity = 0, e.fills.push(c), Lu(e, t, c), U(e, {
+  i.status = "filled", i.remainingQuantity = 0, e.fills.push(l), Lu(e, t, l), U(e, {
     type: "EntryOrderFilled",
     eventTime: n.eventTime,
     processingAsOf: n.processingAsOf,
     stateAfter: "Open",
     orderIds: [i.id],
-    fillIds: [c.id],
-    quantity: c.quantity,
+    fillIds: [l.id],
+    quantity: l.quantity,
     referencePrice: r,
-    actualPrice: c.price,
-    feeAmount: c.feeAmount,
+    actualPrice: l.price,
+    feeAmount: l.feeAmount,
     sourceObservationIds: [n.id],
     explanation: i.kind === "entryMarket" ? "Short entry filled at the next eligible observation with adverse slippage" : "Short entry filled under the configured deterministic entry policy",
     dataQualityNotes: n.exact ? [] : ["CANDLE_ENTRY_FILL_APPROXIMATION"]
-  }), Iu(e, t, c);
+  }), Iu(e, t, l);
 }
 function Iu(e, t, n) {
   const i = cn(e.id, {
@@ -6072,26 +6074,26 @@ function ku(e, t, n) {
     return;
   }
   const o = (a == null ? void 0 : a.touched) ?? !1, s = r.filter(
-    (l) => zu(n, l.limitPrice, t.executionProfile.targetFillPolicy, t.venueRules.priceTick)
+    (c) => zu(n, c.limitPrice, t.executionProfile.targetFillPolicy, t.venueRules.priceTick)
   );
   if (!n.exact && o && s.length) {
     sn(
       e,
       t,
       n,
-      [i.id, ...s.map((l) => l.id)],
+      [i.id, ...s.map((c) => c.id)],
       "STOP_AND_TARGET_INTRABAR_ORDER_UNKNOWN"
     );
     return;
   }
-  const c = e.positionLedger.bankruptcyBoundApprox;
-  if (c != null && n.high >= c) {
+  const l = e.positionLedger.bankruptcyBoundApprox;
+  if (l != null && n.high >= l) {
     U(e, {
       type: "BankruptcyBoundCrossed",
       eventTime: n.eventTime,
       processingAsOf: n.processingAsOf,
       quantity: e.positionLedger.remainingQuantity,
-      referencePrice: c,
+      referencePrice: l,
       sourceObservationIds: [n.id],
       explanation: "Simple isolated-margin bankruptcy bound crossed without a verified liquidation model",
       dataQualityNotes: ["BANKRUPTCY_BOUND_CROSSED_WITHOUT_LIQUIDATION_MODEL"]
@@ -6102,9 +6104,9 @@ function ku(e, t, n) {
     Nu(e, t, n, i, (a == null ? void 0 : a.referencePrice) ?? i.triggerPrice);
     return;
   }
-  for (const l of s.sort((u, f) => f.limitPrice - u.limitPrice || u.id.localeCompare(f.id))) {
+  for (const c of s.sort((u, f) => f.limitPrice - u.limitPrice || u.id.localeCompare(f.id))) {
     if (e.positionLedger.remainingQuantity <= 0) break;
-    Ou(e, t, n, l);
+    Ou(e, t, n, c);
   }
 }
 function Ou(e, t, n, i) {
@@ -6183,10 +6185,10 @@ function Nu(e, t, n, i, r) {
     sourceObservationIds: [n.id],
     explanation: "Protective buy stop filled with adverse stop slippage"
   });
-  for (const c of Ji(e)) Yi(e, c, n, "Protective stop closed the position");
-  const s = e.fills.some((c) => {
-    var l;
-    return ((l = ze(e, c.orderId)) == null ? void 0 : l.kind) === "target";
+  for (const l of Ji(e)) Yi(e, l, n, "Protective stop closed the position");
+  const s = e.fills.some((l) => {
+    var c;
+    return ((c = ze(e, l.orderId)) == null ? void 0 : c.kind) === "target";
   });
   Gi(e, t, n, s ? "StopAfterPartialTargets" : "Stop", o);
 }
@@ -6220,16 +6222,16 @@ function Bn(e, t, n, i) {
     e.dataQualityNotes.includes("FUNDING_REFERENCE_PRICE_UNAVAILABLE") || e.dataQualityNotes.push("FUNDING_REFERENCE_PRICE_UNAVAILABLE"), t.executionProfile.fundingPolicy.absence === "requireComplete" && Ct(e, t, n.fundingTime, n.knownAt, "Funding reference price is unavailable");
     return;
   }
-  const a = t.venueRules.fundingConvention.sameTimestampOrdering, o = e.fills.filter((m) => m.eventTime === n.fundingTime), s = o.find((m) => m.side === "sell"), c = o.filter((m) => m.side === "buy"), l = a === "fundingBeforePosition" ? Fe(
-    e.positionLedger.remainingQuantity + c.reduce((m, v) => m + v.quantity, 0) - ((s == null ? void 0 : s.quantity) ?? 0),
+  const a = t.venueRules.fundingConvention.sameTimestampOrdering, o = e.fills.filter((m) => m.eventTime === n.fundingTime), s = o.find((m) => m.side === "sell"), l = o.filter((m) => m.side === "buy"), c = a === "fundingBeforePosition" ? Fe(
+    e.positionLedger.remainingQuantity + l.reduce((m, v) => m + v.quantity, 0) - ((s == null ? void 0 : s.quantity) ?? 0),
     12
   ) : e.positionLedger.remainingQuantity;
-  if (l <= 0) return;
-  const u = $(l * r * n.rate), f = {
+  if (c <= 0) return;
+  const u = $(c * r * n.rate), f = {
     observationId: n.id,
     fundingTime: n.fundingTime,
     processingAsOf: Math.max(n.knownAt, (i == null ? void 0 : i.processingAsOf) ?? n.knownAt),
-    positionQuantity: l,
+    positionQuantity: c,
     referencePrice: r,
     rate: n.rate,
     amount: u,
@@ -6358,7 +6360,7 @@ function Mu(e, t, n, i) {
   }), e.result = ot(e, t, "EntryExpired", null, null), Jn(e), !0;
 }
 function sn(e, t, n, i, r) {
-  const a = Fu(e, t, n, i), o = a.map((l) => l.estimatedNetPnl).filter((l) => l != null), s = {
+  const a = Fu(e, t, n, i), o = a.map((c) => c.estimatedNetPnl).filter((c) => c != null), s = {
     code: r,
     intervalStart: n.eventTime,
     intervalEnd: n.intervalEnd,
@@ -6368,8 +6370,8 @@ function sn(e, t, n, i, r) {
     lowerNetPnlBound: o.length ? Math.min(...o) : null,
     upperNetPnlBound: o.length ? Math.max(...o) : null,
     explanation: "Available observations do not establish a unique chronological execution path"
-  }, c = e.pathResolutionRecords.at(-1);
-  c && !c.ambiguities.includes(r) && c.ambiguities.push(r), e.result = ot(e, t, "Ambiguous", null, s), U(e, {
+  }, l = e.pathResolutionRecords.at(-1);
+  l && !l.ambiguities.includes(r) && l.ambiguities.push(r), e.result = ot(e, t, "Ambiguous", null, s), U(e, {
     type: "AmbiguityDetected",
     eventTime: n.eventTime,
     processingAsOf: n.processingAsOf,
@@ -6381,13 +6383,13 @@ function sn(e, t, n, i, r) {
   });
 }
 function Fu(e, t, n, i) {
-  const r = Zi(e), a = (r == null ? void 0 : r.quantity) ?? t.tradePlan.sizingResult.roundedQuantity, o = r ? e.positionLedger.remainingQuantity : a, s = (r == null ? void 0 : r.price) ?? t.tradePlan.entryPlan.intendedPrice, c = yo(
+  const r = Zi(e), a = (r == null ? void 0 : r.quantity) ?? t.tradePlan.sizingResult.roundedQuantity, o = r ? e.positionLedger.remainingQuantity : a, s = (r == null ? void 0 : r.price) ?? t.tradePlan.entryPlan.intendedPrice, l = yo(
     Math.max(n.open, t.tradePlan.stopPlan.stopPrice),
     t.executionProfile.slippageModel.stopExitBps,
     "buy",
     t.venueRules.priceTick
-  ).price, l = e.positionLedger.realizedGrossPnl, u = e.positionLedger.totalFees || $(a * s * t.feeSchedule.takerRate), f = $(
-    l + o * (s - c) - u - o * c * t.feeSchedule.takerRate + e.positionLedger.netFunding
+  ).price, c = e.positionLedger.realizedGrossPnl, u = e.positionLedger.totalFees || $(a * s * t.feeSchedule.takerRate), f = $(
+    c + o * (s - l) - u - o * l * t.feeSchedule.takerRate + e.positionLedger.netFunding
   ), d = [{
     id: `execution-branch:${T([e.id, n.id, "stop-first"]).slice(8)}`,
     label: "stop-first",
@@ -6402,7 +6404,7 @@ function Fu(e, t, n, i) {
     id: p.id
   }));
   if (v.length) {
-    let p = o, h = l, A = u;
+    let p = o, h = c, A = u;
     const b = [];
     for (const P of v) {
       const w = Math.min(p, P.quantity);
@@ -6411,7 +6413,7 @@ function Fu(e, t, n, i) {
     i.some((P) => {
       var w;
       return P.includes("stop") || ((w = ze(e, P)) == null ? void 0 : w.kind) === "protectiveStop";
-    }) && p > 0 && (h += p * (s - c), A += p * c * t.feeSchedule.takerRate, b.push(...i.filter((P) => {
+    }) && p > 0 && (h += p * (s - l), A += p * l * t.feeSchedule.takerRate, b.push(...i.filter((P) => {
       var w;
       return P.includes("stop") || ((w = ze(e, P)) == null ? void 0 : w.kind) === "protectiveStop";
     })));
@@ -6434,27 +6436,27 @@ function Ct(e, t, n, i, r) {
     explanation: r
   });
 }
-function Rn(e, t, n, i, r, a, o, s, c = n.quantity) {
-  const l = o > 0 ? yo(r, o, n.side, t.venueRules.priceTick) : { price: r, adjustment: 0 }, u = o > 0 ? {
+function Rn(e, t, n, i, r, a, o, s, l = n.quantity) {
+  const c = o > 0 ? yo(r, o, n.side, t.venueRules.priceTick) : { price: r, adjustment: 0 }, u = o > 0 ? {
     model: t.executionProfile.slippageModel.model,
     version: t.executionProfile.slippageModel.version,
     bps: o,
     referencePrice: r,
-    signedPriceAdjustment: l.adjustment,
-    finalFillPrice: l.price
+    signedPriceAdjustment: c.adjustment,
+    finalFillPrice: c.price
   } : null, f = a === "maker" || a === "assumedMaker" ? t.feeSchedule.makerRate : t.feeSchedule.takerRate, d = {
     schemaVersion: Kl,
     orderId: n.id,
     eventTime: i.eventTime,
     processingAsOf: i.processingAsOf,
     side: n.side,
-    quantity: c,
+    quantity: l,
     referencePrice: r,
-    price: l.price,
+    price: c.price,
     slippage: u,
     liquidityRole: a,
     feeRate: f,
-    feeAmount: $(l.price * c * f),
+    feeAmount: $(c.price * l * f),
     feeCurrency: t.tradePlan.accountState.quoteCurrency,
     feeScheduleRef: nn(t.feeSchedule),
     sourceObservationIds: [i.id],
@@ -6530,9 +6532,9 @@ function ot(e, t, n, i, r) {
       grossPnl: a ? $(E.quantity * (a.price - E.price)) : 0,
       fee: E.feeAmount
     };
-  }), s = o.find((E) => E.kind === "stop") ?? null, c = Vu(e, a), l = !t.dataBundle.fundingDataAvailable || e.dataQualityNotes.includes("FUNDING_REFERENCE_PRICE_UNAVAILABLE"), u = $(
+  }), s = o.find((E) => E.kind === "stop") ?? null, l = Vu(e, a), c = !t.dataBundle.fundingDataAvailable || e.dataQualityNotes.includes("FUNDING_REFERENCE_PRICE_UNAVAILABLE"), u = $(
     e.positionLedger.realizedNetPnl + e.positionLedger.unrealizedGrossPnl
-  ), f = r ? "ambiguous" : l ? "fundingIncomplete" : "complete", d = f === "complete" ? u : null, m = t.tradePlan.sizingResult.projectedLossAtStop, v = t.tradePlan.sizingResult.riskBudget, p = o.filter((E) => E.kind === "target").map((E) => E.eventTime).sort()[0] ?? null, h = o.length ? Math.max(...o.map((E) => E.eventTime)) : null, A = {
+  ), f = r ? "ambiguous" : c ? "fundingIncomplete" : "complete", d = f === "complete" ? u : null, m = t.tradePlan.sizingResult.projectedLossAtStop, v = t.tradePlan.sizingResult.riskBudget, p = o.filter((E) => E.kind === "target").map((E) => E.eventTime).sort()[0] ?? null, h = o.length ? Math.max(...o.map((E) => E.eventTime)) : null, A = {
     schemaVersion: Yl,
     executionSessionId: e.id,
     replaySessionId: e.replaySessionId,
@@ -6582,7 +6584,7 @@ function ot(e, t, n, i, r) {
     plannedRiskR: d != null && m ? d / m : null,
     grossR: m ? e.positionLedger.realizedGrossPnl / m : null,
     netR: d != null && m ? d / m : null,
-    ...c,
+    ...l,
     holdingDuration: a ? (h ?? e.executionHorizonTime) - a.eventTime : null,
     timeToFirstTarget: a && p != null ? p - a.eventTime : null,
     timeToStop: a && s ? s.eventTime - a.eventTime : null,
@@ -6943,8 +6945,8 @@ function Xu(e, t) {
   if (we.has(e.state) && e.result == null)
     throw new Error(`Terminal execution event has no result at ${t.id}`);
   if (e.result) {
-    const { id: s, ...c } = e.result;
-    if (s !== `execution-result:${T(c).slice(8)}`)
+    const { id: s, ...l } = e.result;
+    if (s !== `execution-result:${T(l).slice(8)}`)
       throw new Error(`Execution result identity mismatch at ${t.id}`);
   }
 }
@@ -7079,18 +7081,18 @@ function ym(e, t = {}) {
 function ni(e) {
   var z, Vt, $t, Ut;
   rf(e);
-  const t = So(e), n = e.analysisProfile, i = e.includeComponentProvenance !== !1, r = e.symbol.toUpperCase(), a = n.referenceMarketPolicy.symbol, o = n.referenceMarketPolicy.source ?? e.source, s = {}, c = {};
+  const t = So(e), n = e.analysisProfile, i = e.includeComponentProvenance !== !1, r = e.symbol.toUpperCase(), a = n.referenceMarketPolicy.symbol, o = n.referenceMarketPolicy.source ?? e.source, s = {}, l = {};
   for (const x of n.evaluatedTimeframes)
     s[x] = Ie(
       e.candlesByTimeframe[x] ?? [],
       x,
       t
-    ), c[x] = Ie(
+    ), l[x] = Ie(
       e.referenceCandlesByTimeframe[x] ?? [],
       x,
       t
     );
-  const l = T({
+  const c = T({
     schemaVersion: ef,
     symbol: r,
     source: e.source,
@@ -7098,7 +7100,7 @@ function ni(e) {
     referenceSource: o,
     effectiveAsOf: t,
     targetObservationIds: Hr(s),
-    referenceObservationIds: Hr(c),
+    referenceObservationIds: Hr(l),
     anchorObservationIds: (e.avwapAnchors ?? []).filter((x) => x.knownAt <= t && x.selectedAt <= t).map((x) => x.anchorCandleObservationId).sort()
   }), u = T({
     analysisEngineVersion: n.analysisEngineVersion,
@@ -7258,7 +7260,7 @@ function ni(e) {
     e.candlesByTimeframe[g] ?? [],
     g,
     t
-  ), I = c[g] ?? Ie(
+  ), I = l[g] ?? Ie(
     e.referenceCandlesByTimeframe[g] ?? [],
     g,
     t
@@ -7362,7 +7364,7 @@ function ni(e) {
       hash: e.strategyProfile.profileHash
     },
     referenceMarket: { symbol: a, source: o },
-    dataBundleFingerprint: l,
+    dataBundleFingerprint: c,
     candidateMetrics: w,
     extensionContext: f,
     indicatorSeries: d,
@@ -7431,11 +7433,11 @@ function Ie(e, t, n) {
   af(e, t);
   const r = Ge(e, n), a = e.length ? Math.min(...e.map((v) => v.openTime)) : ((m = r[0]) == null ? void 0 : m.openTime) ?? 0, o = F(t), s = Object.freeze(
     r.map((v) => Object.freeze(xo(v, a, o)))
-  ), c = Object.freeze({ replay: r, candles: s });
-  let l = Vn.get(e);
-  l || (l = /* @__PURE__ */ new Map(), Vn.set(e, l));
-  let u = l.get(t);
-  return u || (u = /* @__PURE__ */ new Map(), l.set(t, u)), Po(u, n, c), c;
+  ), l = Object.freeze({ replay: r, candles: s });
+  let c = Vn.get(e);
+  c || (c = /* @__PURE__ */ new Map(), Vn.set(e, c));
+  let u = c.get(t);
+  return u || (u = /* @__PURE__ */ new Map(), c.set(t, u)), Po(u, n, l), l;
 }
 const Vn = /* @__PURE__ */ new WeakMap(), _r = /* @__PURE__ */ new WeakSet();
 function af(e, t) {
@@ -7456,14 +7458,14 @@ function Ge(e, t) {
     if (s.closeTime > t || s.knownAt > t) continue;
     if (_t(s) !== s.observationId)
       throw new Error(`Candle observation ${s.observationId} failed identity verification`);
-    const c = i.get(s.logicalCandleId);
-    if (!c || c.knownAt < s.knownAt)
+    const l = i.get(s.logicalCandleId);
+    if (!l || l.knownAt < s.knownAt)
       i.set(s.logicalCandleId, s);
-    else if (c.knownAt === s.knownAt && C(c) !== C(s))
+    else if (l.knownAt === s.knownAt && C(l) !== C(s))
       throw new Error(`Conflicting candle revisions for ${s.logicalCandleId}`);
   }
   const r = Object.freeze([...i.values()].sort(
-    (s, c) => s.openTime - c.openTime || s.knownAt - c.knownAt
+    (s, l) => s.openTime - l.openTime || s.knownAt - l.knownAt
   ));
   let a = $n.get(e);
   return a || (a = /* @__PURE__ */ new Map(), $n.set(e, a)), Po(a, t, r), r;
@@ -7519,7 +7521,7 @@ function of(e, t, n, i, r, a) {
     e.candlesByTimeframe[t] ?? [],
     n,
     o.extensionConfig
-  ), c = Math.max(0, i - o.extensionConfig.historyDays * 86400), l = ((p = n.replay[0]) == null ? void 0 : p.openTime) ?? null, u = ((h = n.replay.at(-1)) == null ? void 0 : h.closeTime) ?? null, f = i - c, d = l == null || u == null ? null : Math.max(0, u - Math.max(l, c)), m = [];
+  ), l = Math.max(0, i - o.extensionConfig.historyDays * 86400), c = ((p = n.replay[0]) == null ? void 0 : p.openTime) ?? null, u = ((h = n.replay.at(-1)) == null ? void 0 : h.closeTime) ?? null, f = i - l, d = c == null || u == null ? null : Math.max(0, u - Math.max(c, l)), m = [];
   (!s.candle || !s.referenceCandle) && m.push({
     code: "INSUFFICIENT_ANALYSIS_HISTORY",
     scope: `extension:${t}`,
@@ -7569,9 +7571,9 @@ function of(e, t, n, i, r, a) {
     effectiveAsOf: i,
     sampleCount: n.candles.length,
     historyCoverage: {
-      requestedStartTs: c,
+      requestedStartTs: l,
       requestedEndTs: i,
-      availableStartTs: l,
+      availableStartTs: c,
       availableEndTs: u,
       coveredSeconds: d,
       requestedSeconds: f,
@@ -7607,9 +7609,9 @@ function ri(e, t, n) {
   return ko(r, i, o), o;
 }
 function sf(e, t, n, i) {
-  var c;
+  var l;
   if (!Io(e)) return Oe(t.candles, n);
-  const r = `${((c = t.replay.at(-1)) == null ? void 0 : c.observationId) ?? "empty"}:${i}`;
+  const r = `${((l = t.replay.at(-1)) == null ? void 0 : l.observationId) ?? "empty"}:${i}`;
   let a = Fr.get(e);
   a || (a = /* @__PURE__ */ new Map(), Fr.set(e, a));
   const o = a.get(r);
@@ -7636,27 +7638,27 @@ function cf(e, t, n) {
   o || (o = /* @__PURE__ */ new WeakMap(), Dr.set(i, o));
   let s = o.get(r);
   s || (s = /* @__PURE__ */ new Map(), o.set(r, s));
-  let c = s.get(a);
-  c || (c = uf(e, t, i, r), s.set(a, c));
-  const l = c.filter(
+  let l = s.get(a);
+  l || (l = uf(e, t, i, r), s.set(a, l));
+  const c = l.filter(
     (f) => (f.knownAt ?? f.asOf) <= n
   ), u = lf(e.radarEpisode, n);
   return u ? [
     u,
-    ...l.filter((f) => f.asOf > u.asOf)
-  ] : l;
+    ...c.filter((f) => f.asOf > u.asOf)
+  ] : c;
 }
 function lf(e, t) {
-  var c;
+  var l;
   if (!Number.isFinite(e.detectedAt) || e.detectedAt > t) return null;
-  const n = ((c = e.triggeringObservations) == null ? void 0 : c.find(
-    (l) => l.knownAt <= e.detectedAt && l.effectiveAsOf <= e.detectedAt && l.value != null && Number.isFinite(l.value)
+  const n = ((l = e.triggeringObservations) == null ? void 0 : l.find(
+    (c) => c.knownAt <= e.detectedAt && c.effectiveAsOf <= e.detectedAt && c.value != null && Number.isFinite(c.value)
   )) ?? null, i = e.pathContext, r = Jt(
     (i == null ? void 0 : i.triggeringLocalImpulseReturnPct) ?? (n == null ? void 0 : n.value)
   ), a = Jt(
     (i == null ? void 0 : i.triggeringPercentile) ?? (n == null ? void 0 : n.percentile)
   ), o = Jt((i == null ? void 0 : i.triggeringZScore) ?? (n == null ? void 0 : n.zScore)), s = Jt(i == null ? void 0 : i.currentAtrDisplacement);
-  return [r, a, o, s].every((l) => l == null) ? null : {
+  return [r, a, o, s].every((c) => c == null) ? null : {
     asOf: e.detectedAt,
     eventTime: (n == null ? void 0 : n.effectiveAsOf) ?? e.detectedAt,
     knownAt: e.detectedAt,
@@ -7678,15 +7680,15 @@ function uf(e, t, n, i) {
     0,
     ...n.map((f) => f.knownAt ?? f.closeTime)
   ), a = Ge(n, r), o = Ie(i, t, r);
-  let s = -1, c = -2, l = null, u = 0;
+  let s = -1, l = -2, c = null, u = 0;
   return a.map((f) => {
     for (; s + 1 < o.replay.length && o.replay[s + 1].closeTime <= f.closeTime && (o.replay[s + 1].knownAt ?? o.replay[s + 1].closeTime) <= f.closeTime; ) s += 1;
-    if (s !== c || !l) {
+    if (s !== l || !c) {
       const d = at(
         o.candles.slice(0, s + 1),
         e.analysisProfile.extensionConfig
       );
-      c = s, l = {
+      l = s, c = {
         returnPct: d.returnPct,
         percentile: d.percentile,
         zScore: d.zScore,
@@ -7697,14 +7699,14 @@ function uf(e, t, n, i) {
       asOf: f.closeTime,
       eventTime: f.closeTime,
       knownAt: f.closeTime,
-      metrics: l,
+      metrics: c,
       sampleCount: u
     };
   });
 }
 function ff(e, t, n, i, r, a) {
-  const o = new Set(n.replay.map((h) => h.openTime)), s = new Map(i.replay.map((h) => [h.openTime, h])), c = [...o].some((h) => !s.has(h)), l = !n.replay.length || !i.replay.length ? "unavailable" : c ? "missingSynchronizedReferenceData" : "available";
-  if (l !== "available")
+  const o = new Set(n.replay.map((h) => h.openTime)), s = new Map(i.replay.map((h) => [h.openTime, h])), l = [...o].some((h) => !s.has(h)), c = !n.replay.length || !i.replay.length ? "unavailable" : l ? "missingSynchronizedReferenceData" : "available";
+  if (c !== "available")
     return {
       targetSymbol: e.symbol.toUpperCase(),
       targetSource: e.source,
@@ -7714,7 +7716,7 @@ function ff(e, t, n, i, r, a) {
       normalizationAnchor: null,
       series: [],
       structure: null,
-      status: l
+      status: c
     };
   const u = pa(n.candles, i.candles), f = et(u), d = new Map(n.candles.map((h) => [h.x, h])), m = f.map((h) => ({ ...d.get(h.x), o: h.value, h: h.value, l: h.value, c: h.value })), v = n.replay[0], p = s.get(v.openTime);
   return {
@@ -7730,11 +7732,11 @@ function ff(e, t, n, i, r, a) {
     },
     series: e.includeComponentProvenance === !1 ? f.slice(-1) : f,
     structure: Oe(m, e.analysisProfile.structureConfig),
-    status: l
+    status: c
   };
 }
 function df(e, t, n, i) {
-  var l;
+  var c;
   const r = [], a = [], o = [];
   let s = {
     component: "avwap",
@@ -7748,12 +7750,12 @@ function df(e, t, n, i) {
     sourceObservationIds: [],
     configurationHash: T(e.analysisProfile.avwapConfig)
   };
-  const c = (e.avwapAnchors ?? []).filter(
+  const l = (e.avwapAnchors ?? []).filter(
     (u) => u.knownAt <= n && u.selectedAt <= n
   );
-  if (!c.length)
+  if (!l.length)
     return o.push(rn("ANALYSIS_COMPONENT_UNAVAILABLE", "avwap", "No explicit AVWAP anchor was supplied")), { states: r, events: a, notes: o, freshness: s };
-  for (const u of c) {
+  for (const u of l) {
     mf(u, e, t, n);
     const f = t[u.timeframe], d = { anchorBucket: u.anchorTime }, m = _s(f.candles, d), v = f.replay.filter((h) => h.openTime >= u.anchorTime).map((h) => h.observationId), p = tt({
       logicalId: `avwap:${u.id}`,
@@ -7763,7 +7765,7 @@ function df(e, t, n, i) {
       knownAt: Math.max(
         u.knownAt,
         u.selectedAt,
-        ((l = f.replay.at(-1)) == null ? void 0 : l.knownAt) ?? u.knownAt
+        ((c = f.replay.at(-1)) == null ? void 0 : c.knownAt) ?? u.knownAt
       ),
       evaluatedAt: n,
       configurationHash: T({ anchor: u, config: e.analysisProfile.avwapConfig }),
@@ -7905,8 +7907,8 @@ function gf(e, t, n, i, r, a = !0) {
     requiredCoverage: t.replay.length,
     availableCoverage: n.replay.length,
     sourceObservationIds: a ? [
-      ...t.replay.map((c) => c.observationId),
-      ...n.replay.map((c) => c.observationId)
+      ...t.replay.map((l) => l.observationId),
+      ...n.replay.map((l) => l.observationId)
     ].sort() : [],
     configurationHash: r
   };
@@ -8095,39 +8097,39 @@ function Vr(e, t) {
 }
 function Pf(e, t, n, i, r) {
   const a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Set(), s = /* @__PURE__ */ new Set();
-  for (const l of [...e, ...t]) {
-    if (xf(l, n, i, r), o.has(l.observationId))
-      throw new Error(`Duplicate ${r} candle observation ${l.observationId}`);
-    o.add(l.observationId);
-    const u = `${l.logicalCandleId}\0${l.knownAt}`;
+  for (const c of [...e, ...t]) {
+    if (xf(c, n, i, r), o.has(c.observationId))
+      throw new Error(`Duplicate ${r} candle observation ${c.observationId}`);
+    o.add(c.observationId);
+    const u = `${c.logicalCandleId}\0${c.knownAt}`;
     if (s.has(u))
-      throw new Error(`Conflicting ${r} candle revision precedence for ${l.logicalCandleId}`);
+      throw new Error(`Conflicting ${r} candle revision precedence for ${c.logicalCandleId}`);
     s.add(u);
   }
-  for (const l of e) {
-    if (l.correctionPublishedAt != null)
+  for (const c of e) {
+    if (c.correctionPublishedAt != null)
       throw new Error(`Base ${r} candle cannot have correction provenance`);
-    if (a.has(l.logicalCandleId))
-      throw new Error(`Base ${r} history contains revisions for ${l.logicalCandleId}`);
-    a.set(l.logicalCandleId, l);
+    if (a.has(c.logicalCandleId))
+      throw new Error(`Base ${r} history contains revisions for ${c.logicalCandleId}`);
+    a.set(c.logicalCandleId, c);
   }
-  const c = /* @__PURE__ */ new Map();
-  for (const l of t) {
-    if (!a.get(l.logicalCandleId))
-      throw new Error(`${r} candle revision has no base record: ${l.logicalCandleId}`);
-    if (l.revision == null || l.correctionPublishedAt == null)
+  const l = /* @__PURE__ */ new Map();
+  for (const c of t) {
+    if (!a.get(c.logicalCandleId))
+      throw new Error(`${r} candle revision has no base record: ${c.logicalCandleId}`);
+    if (c.revision == null || c.correctionPublishedAt == null)
       throw new Error(`${r} candle revision requires revision and correction provenance`);
-    const f = c.get(l.logicalCandleId) ?? [];
-    f.push(l), c.set(l.logicalCandleId, f);
+    const f = l.get(c.logicalCandleId) ?? [];
+    f.push(c), l.set(c.logicalCandleId, f);
   }
-  for (const [l, u] of c) {
-    const f = a.get(l);
+  for (const [c, u] of l) {
+    const f = a.get(c);
     let d = f.knownAt, m = f.knownAt, v = f.revision ?? -1;
     for (const p of [...u].sort(
       (h, A) => h.knownAt - A.knownAt || h.correctionPublishedAt - A.correctionPublishedAt || h.revision - A.revision
     )) {
       if (p.knownAt <= d || p.correctionPublishedAt <= m || p.revision <= v)
-        throw new Error(`${r} candle revisions must have monotonic correction provenance: ${l}`);
+        throw new Error(`${r} candle revisions must have monotonic correction provenance: ${c}`);
       d = p.knownAt, m = p.correctionPublishedAt, v = p.revision;
     }
   }
@@ -8253,11 +8255,11 @@ function Ff(e, t, n = {}) {
     invalidatedStateIds: o,
     sourceObservationIds: zf(e.input, i)
   }));
-  const c = ((d = a.at(-1)) == null ? void 0 : d.effectiveAsOf) ?? -1 / 0, l = Ge(
+  const l = ((d = a.at(-1)) == null ? void 0 : d.effectiveAsOf) ?? -1 / 0, c = Ge(
     i.candlesByTimeframe[i.analysisProfile.executionTimeframe] ?? [],
     t
-  ).map((v) => v.closeTime).filter((v) => v > c && v <= t), u = [...a];
-  for (const v of l)
+  ).map((v) => v.closeTime).filter((v) => v > l && v <= t), u = [...a];
+  for (const v of c)
     zr(u, s, si({ ...i, asOf: v }));
   const f = si({ ...i, asOf: t });
   return ((m = u.at(-1)) == null ? void 0 : m.id) !== f.id && zr(u, s, f), Do({
@@ -8440,7 +8442,7 @@ function Uf(e, t) {
       for (const s of [...i[a] ?? [], ...r[a] ?? []])
         o.set(s.observationId, s);
       return [a, [...o.values()].sort(
-        (s, c) => s.openTime - c.openTime || s.knownAt - c.knownAt
+        (s, l) => s.openTime - l.openTime || s.knownAt - l.knownAt
       )];
     }
   ));
@@ -8456,14 +8458,14 @@ function Uf(e, t) {
 }
 function qf(e, t, n) {
   const i = /* @__PURE__ */ new Set([
-    ...Object.values(e.candlesByTimeframe).flat().map((c) => c.observationId),
-    ...Object.values(e.referenceCandlesByTimeframe).flat().map((c) => c.observationId)
+    ...Object.values(e.candlesByTimeframe).flat().map((l) => l.observationId),
+    ...Object.values(e.referenceCandlesByTimeframe).flat().map((l) => l.observationId)
   ]), r = [
     ...Object.values(t.candlesByTimeframe).flat(),
     ...Object.values(t.referenceCandlesByTimeframe).flat()
-  ].filter((c) => !i.has(c.observationId)), a = C(e.avwapAnchors ?? []) !== C(t.avwapAnchors ?? []), o = Math.min(
-    ...r.map((c) => c.knownAt),
-    ...a ? (t.avwapAnchors ?? []).map((c) => c.knownAt) : []
+  ].filter((l) => !i.has(l.observationId)), a = C(e.avwapAnchors ?? []) !== C(t.avwapAnchors ?? []), o = Math.min(
+    ...r.map((l) => l.knownAt),
+    ...a ? (t.avwapAnchors ?? []).map((l) => l.knownAt) : []
   );
   if (!Number.isFinite(o)) return null;
   const s = F(n);
@@ -8496,7 +8498,7 @@ function Qf(e) {
   ), o = li(t.radarEpisodes, "radarEpisodes"), s = yt(
     t.analysisStateHistory,
     "analysisStateHistory"
-  ), c = yt(t.knownEvents, "knownEvents"), l = yt(
+  ), l = yt(t.knownEvents, "knownEvents"), c = yt(
     t.venueEvidence,
     "venueEvidence"
   ), u = yt(
@@ -8508,7 +8510,7 @@ function Qf(e) {
   );
   if (a.length > 0 && !f)
     throw new Error("Candle revisions require revisionHistoryAvailable=true");
-  return jf(r, a, n, i), Wf(o, n, i), Gf(s, n, i), Kf(c, n, i), Yf(l, n, i), Xf(u, n, i), y({
+  return jf(r, a, n, i), Wf(o, n, i), Gf(s, n, i), Kf(l, n, i), Yf(c, n, i), Xf(u, n, i), y({
     schemaVersion: Qr,
     symbol: n,
     source: i,
@@ -8520,10 +8522,10 @@ function Qf(e) {
     analysisStateHistory: [...s].sort(
       (d, m) => d.knownAt - m.knownAt || d.id.localeCompare(m.id)
     ),
-    knownEvents: [...c].sort(
+    knownEvents: [...l].sort(
       (d, m) => d.knownAt - m.knownAt || d.id.localeCompare(m.id)
     ),
-    venueEvidence: [...l].sort(Kr),
+    venueEvidence: [...c].sort(Kr),
     universeEvidence: [...u].sort(Kr),
     revisionHistoryAvailable: f
   });
@@ -8605,8 +8607,8 @@ function jf(e, t, n, i) {
   const r = /* @__PURE__ */ new Map(), a = /* @__PURE__ */ new Map(), o = /* @__PURE__ */ new Map();
   for (const s of [...e, ...t]) {
     Ke(s, "Replay candle");
-    const c = F(s.timeframe);
-    if (s.symbol.toUpperCase() !== n || s.source !== i || !he(s.openTime) || s.openTime % c !== 0 || s.closeTime !== s.openTime + c || !he(s.knownAt) || s.knownAt < s.closeTime || s.logicalCandleId !== bn(s) || s.observationId !== _t(s) || !Zf(s) || !qn(s.vBase) || !qn(s.vQuote) || !Jf(s.revision) || !qn(s.correctionPublishedAt) || s.correctionPublishedAt != null && (s.correctionPublishedAt < s.closeTime || s.correctionPublishedAt > s.knownAt))
+    const l = F(s.timeframe);
+    if (s.symbol.toUpperCase() !== n || s.source !== i || !he(s.openTime) || s.openTime % l !== 0 || s.closeTime !== s.openTime + l || !he(s.knownAt) || s.knownAt < s.closeTime || s.logicalCandleId !== bn(s) || s.observationId !== _t(s) || !Zf(s) || !qn(s.vBase) || !qn(s.vQuote) || !Jf(s.revision) || !qn(s.correctionPublishedAt) || s.correctionPublishedAt != null && (s.correctionPublishedAt < s.closeTime || s.correctionPublishedAt > s.knownAt))
       throw new Error(`Invalid replay candle ${s.observationId ?? "<unknown>"}`);
     Le(a, s.observationId, s, "candle observation"), Le(
       o,
@@ -8616,15 +8618,15 @@ function jf(e, t, n, i) {
     );
   }
   for (const s of e) {
-    const c = r.get(s.logicalCandleId);
-    if (c && c.observationId !== s.observationId)
+    const l = r.get(s.logicalCandleId);
+    if (l && l.observationId !== s.observationId)
       throw new Error(`Base candle history contains revisions for ${s.logicalCandleId}`);
     r.set(s.logicalCandleId, s);
   }
   for (const s of t) {
-    const c = r.get(s.logicalCandleId);
-    if (!c) throw new Error(`Candle revision has no base record: ${s.logicalCandleId}`);
-    if (s.knownAt <= c.knownAt)
+    const l = r.get(s.logicalCandleId);
+    if (!l) throw new Error(`Candle revision has no base record: ${s.logicalCandleId}`);
+    if (s.knownAt <= l.knownAt)
       throw new Error(`Candle revision must be published after its base record: ${s.logicalCandleId}`);
   }
 }
@@ -8750,23 +8752,23 @@ async function Sm(e) {
   if (e.sessionConfig.replayEngineVersion !== _e)
     throw new RangeError("Materialized replay loading requires replay-engine.2");
   if (e.analysisProfile.executionTimeframe !== e.sessionConfig.evaluationTimeframe || e.analysisProfile.canonicalConfigHash === "" || e.analysisProfile.lifecycleConfigRef.configHash !== e.strategyProfile.lifecycleConfigHash) throw new Error("Materialized replay analysis/profile configuration mismatch");
-  const t = e.manifest.startAsOf + e.sessionConfig.maximumCaseDuration, n = e.analysisProfile.referenceMarketPolicy.symbol, i = e.analysisProfile.referenceMarketPolicy.source ?? e.manifest.source, r = {}, a = {}, o = {}, s = {}, c = {};
+  const t = e.manifest.startAsOf + e.sessionConfig.maximumCaseDuration, n = e.analysisProfile.referenceMarketPolicy.symbol, i = e.analysisProfile.referenceMarketPolicy.source ?? e.manifest.source, r = {}, a = {}, o = {}, s = {}, l = {};
   for (const g of e.analysisProfile.evaluatedTimeframes) {
     const S = { symbol: e.manifest.symbol, source: e.manifest.source, timeframe: g }, I = { symbol: n, source: i, timeframe: g }, [H, j] = await Promise.all([
       e.analysisDataAdapter.getCoverage(S),
       e.analysisDataAdapter.getCoverage(I)
     ]);
-    c[g] = H;
+    l[g] = H;
     const N = Math.max(
       0,
       e.manifest.startAsOf - od(e, g)
     ), B = Xr(S, H, N, t), O = Xr(I, j, N, t);
     r[g] = B ? await e.analysisDataAdapter.loadCandles(B) : [], a[g] = B ? await e.analysisDataAdapter.loadCandleRevisions(B) : [], o[g] = O ? await e.analysisDataAdapter.loadReferenceCandles(O) : [], s[g] = O ? await e.analysisDataAdapter.loadReferenceCandleRevisions(O) : [];
   }
-  const l = Jr(r, a), u = Jr(o, s), f = {
+  const c = Jr(r, a), u = Jr(o, s), f = {
     symbol: e.manifest.symbol,
     source: e.manifest.source,
-    candlesByTimeframe: l,
+    candlesByTimeframe: c,
     referenceCandlesByTimeframe: u,
     avwapAnchors: e.avwapAnchors,
     radarEpisode: await ad(e.historicalDataAdapter, e.manifest.radarEpisodeId),
@@ -8776,7 +8778,7 @@ async function Sm(e) {
     lifecycleConfig: e.lifecycleConfig
   }, d = /* @__PURE__ */ new Set([e.manifest.startAsOf]);
   for (const g of Ge(
-    l[e.analysisProfile.executionTimeframe] ?? [],
+    c[e.analysisProfile.executionTimeframe] ?? [],
     t
   ))
     g.closeTime >= e.manifest.startAsOf && g.closeTime <= t && d.add(g.closeTime);
@@ -8808,7 +8810,7 @@ async function Sm(e) {
     evidence: e.historicalDataAdapter,
     targetBaseByTimeframe: r,
     targetRevisionsByTimeframe: a,
-    targetCoverage: c,
+    targetCoverage: l,
     observations: p,
     knownEvents: h,
     radarEpisode: f.radarEpisode
@@ -8855,13 +8857,13 @@ async function Cm(e) {
   ), o = i.analysisStateHistory.filter((m) => m.knownAt >= t && m.knownAt <= n).map((m) => ({ knownAt: m.knownAt, state: m.lifecycle.currentState })), s = {};
   for (const m of o)
     s[m.state] == null && (s[m.state] = m.knownAt);
-  const l = ((d = (r[e.sessionConfig.evaluationTimeframe] ?? []).filter((m) => m.closeTime <= t && m.knownAt <= t).at(-1)) == null ? void 0 : d.c) ?? null, u = a[e.sessionConfig.evaluationTimeframe] ?? [], f = i.knownEvents.filter((m) => (m.kind === "radarTerminal" || m.kind === "lifecycleTerminal") && m.knownAt >= t && m.knownAt <= n);
+  const c = ((d = (r[e.sessionConfig.evaluationTimeframe] ?? []).filter((m) => m.closeTime <= t && m.knownAt <= t).at(-1)) == null ? void 0 : d.c) ?? null, u = a[e.sessionConfig.evaluationTimeframe] ?? [], f = i.knownEvents.filter((m) => (m.kind === "radarTerminal" || m.kind === "lifecycleTerminal") && m.knownAt >= t && m.knownAt <= n);
   return y({
     futureCandlesByTimeframe: a,
     lifecycleTimeline: o,
     radarTerminalResult: f.length ? At({ events: f }) : null,
-    maximumFavorablePriceExcursionFromDetected: l && u.length ? (l - Math.min(...u.map((m) => m.l))) / l * 100 : null,
-    maximumAdversePriceExcursionFromDetected: l && u.length ? (Math.max(...u.map((m) => m.h)) - l) / l * 100 : null,
+    maximumFavorablePriceExcursionFromDetected: c && u.length ? (c - Math.min(...u.map((m) => m.l))) / c * 100 : null,
+    maximumAdversePriceExcursionFromDetected: c && u.length ? (Math.max(...u.map((m) => m.h)) - c) / c * 100 : null,
     lifecycleStateTimestamps: s,
     dataQualityNotes: i.dataQualityNotes
   });
@@ -9186,7 +9188,7 @@ async function ui(e) {
       severity: "warning",
       message: `Analysis observation ${a.id} was carried forward from ${a.lifecycle.asOf}`
     }] : []
-  ], c = Cc({
+  ], l = Cc({
     symbol: t.manifest.symbol,
     source: t.manifest.source,
     decisionTime: i,
@@ -9203,13 +9205,13 @@ async function ui(e) {
     relativeStrengthEvents: a.relativeStrengthEvents,
     visibleOrSelectedReferenceLevels: a.visibleOrSelectedReferenceLevels,
     dataQualityNotes: s
-  }), l = {}, u = {}, f = {};
+  }), c = {}, u = {}, f = {};
   for (const A of t.sessionConfig.visibleTimeframes) {
     const b = qo(
       r.candlesByTimeframe[A] ?? [],
       i
     ).filter((E) => E.openTime >= r.displayStartByTimeframe[A]);
-    l[A] = b, f[A] = b.at(-1) ?? null, u[A] = {
+    c[A] = b, f[A] = b.at(-1) ?? null, u[A] = {
       timeframe: A,
       displayStart: r.displayStartByTimeframe[A],
       visibleStart: ((p = b[0]) == null ? void 0 : p.openTime) ?? null,
@@ -9220,7 +9222,7 @@ async function ui(e) {
   const d = await it({
     effectiveAsOf: i,
     analysisObservationId: a.id,
-    visibleCandlesByTimeframe: l
+    visibleCandlesByTimeframe: c
   }), m = n.decisionRecords.map((A) => {
     var b;
     return {
@@ -9238,14 +9240,14 @@ async function ui(e) {
     effectiveAsOf: i,
     evaluationTimeframe: t.sessionConfig.evaluationTimeframe,
     radarContext: sd(t),
-    decisionSnapshot: c,
-    visibleCandlesByTimeframe: l,
+    decisionSnapshot: l,
+    visibleCandlesByTimeframe: c,
     visibleCoverageByTimeframe: u,
     latestVisibleCandleByTimeframe: f,
     visibleDataFingerprint: d,
-    lifecycleState: c.lifecycleState,
-    lifecycleStateSince: c.lifecycleStateSince,
-    pendingConditions: c.pendingConditions,
+    lifecycleState: l.lifecycleState,
+    lifecycleStateSince: l.lifecycleStateSince,
+    pendingConditions: l.pendingConditions,
     priorDecisionSummary: m,
     activeWakeResult: e.wakeResult ?? null,
     dataQualityNotes: s,
@@ -9293,7 +9295,7 @@ function qo(e, t) {
 }
 async function Om(e, t, n, i) {
   or(e), Cn(t), Zo(t, e);
-  const r = t.events.find((c) => c.command.id === n.id);
+  const r = t.events.find((l) => l.command.id === n.id);
   if (r) {
     if (C(r.command) !== C(n))
       throw new Error(`Command id ${n.id} was reused with a different payload`);
@@ -9303,22 +9305,22 @@ async function Om(e, t, n, i) {
   let a, o = null;
   if (n.type === "StartSession") {
     if (t.state !== "Created") throw new Error("Only a Created replay session can start");
-    const c = await ui({
+    const l = await ui({
       loaded: e,
       session: t,
       requestedAsOf: e.manifest.startAsOf,
       effectiveAsOf: e.manifest.startAsOf
     });
-    a = Je(n, "Active", c.effectiveAsOf, { frame: c });
+    a = Je(n, "Active", l.effectiveAsOf, { frame: l });
   } else {
     if (t.state !== "Active" && n.type !== "RevealOutcome")
       throw new Error(`Command ${n.type} is not allowed while session is ${t.state}`);
-    const c = fi(t);
+    const l = fi(t);
     if (n.type === "Wait") {
-      Qo(e, t, c, n.payload.wakePlan);
-      const l = Go(
+      Qo(e, t, l, n.payload.wakePlan);
+      const c = Go(
         e,
-        c.effectiveAsOf,
+        l.effectiveAsOf,
         n.payload.wakePlan.scheduledReview
       );
       await Yn(
@@ -9326,13 +9328,13 @@ async function Om(e, t, n, i) {
         Math.min(
           n.payload.wakePlan.deadlineAsOf,
           e.manifest.startAsOf + e.sessionConfig.maximumCaseDuration,
-          l ?? 1 / 0
+          c ?? 1 / 0
         )
       );
       const u = Mn({
         sessionId: t.id,
-        snapshot: c.decisionSnapshot,
-        decisionTime: c.effectiveAsOf,
+        snapshot: l.decisionSnapshot,
+        decisionTime: l.effectiveAsOf,
         action: "Wait",
         confidence: n.payload.confidence,
         thesis: n.payload.thesis,
@@ -9341,7 +9343,7 @@ async function Om(e, t, n, i) {
       }), f = await Wo(
         e,
         t,
-        c,
+        l,
         n.payload.wakePlan
       ), d = y({
         ...t,
@@ -9362,60 +9364,60 @@ async function Om(e, t, n, i) {
       });
     } else if (n.type === "Skip") {
       if (!n.payload.reasons.length) throw new RangeError("Skip requires at least one reason");
-      const l = Mn({
+      const c = Mn({
         sessionId: t.id,
-        snapshot: c.decisionSnapshot,
-        decisionTime: c.effectiveAsOf,
+        snapshot: l.decisionSnapshot,
+        decisionTime: l.effectiveAsOf,
         action: "Skip",
         confidence: n.payload.confidence,
         thesis: n.payload.thesis,
         tags: [...n.payload.tags ?? [], ...n.payload.reasons.slice(1)],
         skipReason: n.payload.reasons[0]
       });
-      a = Je(n, "Skipped", c.effectiveAsOf, {
-        decisionRecord: l
+      a = Je(n, "Skipped", l.effectiveAsOf, {
+        decisionRecord: c
       });
     } else if (n.type === "ProposeTrade") {
       if (!e.venueRules) throw new Error("Trade planning requires versioned venue rules");
-      const l = Hl({
+      const c = Hl({
         ...n.payload,
-        snapshot: c.decisionSnapshot,
+        snapshot: l.decisionSnapshot,
         strategyProfile: e.strategyProfile,
         venueRules: e.venueRules,
-        createdAt: c.effectiveAsOf
-      }), u = fd(e, l), f = y({
+        createdAt: l.effectiveAsOf
+      }), u = fd(e, c), f = y({
         id: `replay-planning-attempt:${T({
           sessionId: t.id,
-          frameId: c.id,
-          tradePlan: l
+          frameId: l.id,
+          tradePlan: c
         }).slice(8)}`,
-        frameId: c.id,
-        attemptedAt: c.effectiveAsOf,
-        tradePlan: l,
+        frameId: l.id,
+        attemptedAt: l.effectiveAsOf,
+        tradePlan: c,
         accepted: u == null,
         rejectionReason: u
       }), d = u ? null : Mn({
         sessionId: t.id,
-        snapshot: c.decisionSnapshot,
-        decisionTime: c.effectiveAsOf,
+        snapshot: l.decisionSnapshot,
+        decisionTime: l.effectiveAsOf,
         action: "ProposeTrade",
-        tradePlan: l
+        tradePlan: c
       });
       a = Je(
         n,
         u ? "Active" : "TradePlanRecorded",
-        c.effectiveAsOf,
+        l.effectiveAsOf,
         { planningAttempt: f, decisionRecord: d }
       );
     } else if (n.type === "Abandon") {
       if (!n.payload.reason.trim()) throw new TypeError("Abandon requires a reason");
-      a = Je(n, "Abandoned", c.effectiveAsOf);
+      a = Je(n, "Abandoned", l.effectiveAsOf);
     } else {
-      const l = await wd(e, t, n, i);
-      o = l.envelope, a = Je(n, "Revealed", l.revealedAt, {
+      const c = await wd(e, t, n, i);
+      o = c.envelope, a = Je(n, "Revealed", c.revealedAt, {
         terminalReason: t.terminalReason,
-        revealedBeforeDecisionCompletion: l.early,
-        outcomeEnvelopeId: l.envelope.id
+        revealedBeforeDecisionCompletion: c.early,
+        outcomeEnvelopeId: c.envelope.id
       });
     }
   }
@@ -9520,13 +9522,13 @@ function ld(e, t) {
     if (e.state !== "Active" || t.stateAfter !== "Abandoned" || !n || !i || !r || !a || !o || !s || t.terminalReasonAfter != null) throw new Error("Abandon event transition is invalid");
     return;
   }
-  const c = [
+  const l = [
     "Skipped",
     "TradePlanRecorded",
     "CaseWindowEnded",
     "Abandoned"
-  ].includes(e.state), l = e.state === "Active" && t.command.payload.abandonActive && t.revealedBeforeDecisionCompletionAfter;
-  if (!c && !l || t.stateAfter !== "Revealed" || !n || !i || !r || !a || !o || t.revealedOutcomeEnvelopeIdAfter == null || t.terminalReasonAfter !== e.terminalReason) throw new Error("RevealOutcome event transition is invalid");
+  ].includes(e.state), c = e.state === "Active" && t.command.payload.abandonActive && t.revealedBeforeDecisionCompletionAfter;
+  if (!l && !c || t.stateAfter !== "Revealed" || !n || !i || !r || !a || !o || t.revealedOutcomeEnvelopeIdAfter == null || t.terminalReasonAfter !== e.terminalReason) throw new Error("RevealOutcome event transition is invalid");
 }
 function ud(e) {
   const { id: t, ...n } = e;
@@ -9655,7 +9657,7 @@ function hd(e) {
 }
 async function Wo(e, t, n, i) {
   var P;
-  const r = n.effectiveAsOf, a = Z(e), o = e.manifest.startAsOf + e.sessionConfig.maximumCaseDuration, s = pd(e), c = Go(e, r, i.scheduledReview), l = ((P = i.scheduledReview) == null ? void 0 : P.mode) === "elapsedDuration" ? r + i.scheduledReview.durationSeconds : c ?? i.deadlineAsOf, u = Math.min(i.deadlineAsOf, o, s);
+  const r = n.effectiveAsOf, a = Z(e), o = e.manifest.startAsOf + e.sessionConfig.maximumCaseDuration, s = pd(e), l = Go(e, r, i.scheduledReview), c = ((P = i.scheduledReview) == null ? void 0 : P.mode) === "elapsedDuration" ? r + i.scheduledReview.durationSeconds : l ?? i.deadlineAsOf, u = Math.min(i.deadlineAsOf, o, s);
   if (u < r) throw new Error("Historical coverage ends before the replay clock");
   const f = /* @__PURE__ */ new Set([u]);
   for (const w of a.analysisStateHistory)
@@ -9667,7 +9669,7 @@ async function Wo(e, t, n, i) {
       const S = Math.max(g.closeTime, g.knownAt);
       S > r && S <= u && f.add(S);
     }
-  c != null && c > r && c <= u && f.add(c), i.deadlineAsOf > r && i.deadlineAsOf <= u && f.add(i.deadlineAsOf), o > r && o <= u && f.add(o), s > r && s <= u && f.add(s);
+  l != null && l > r && l <= u && f.add(l), i.deadlineAsOf > r && i.deadlineAsOf <= u && f.add(i.deadlineAsOf), o > r && o <= u && f.add(o), s > r && s <= u && f.add(s);
   const d = {
     evaluationPointsChecked: [],
     lifecycleTransitionsEncountered: [],
@@ -9688,7 +9690,7 @@ async function Wo(e, t, n, i) {
       v = w, p = "CONDITION_TRIGGERED", h = S.conditionIds, A = S.eventIds, d.firstTriggeringEffectiveAsOf = w;
       break;
     }
-    if (c != null && w >= c) {
+    if (l != null && w >= l) {
       v = w, p = "SCHEDULED_REVIEW";
       break;
     }
@@ -9711,7 +9713,7 @@ async function Wo(e, t, n, i) {
     id: `replay-wake-result:${T(E).slice(8)}`
   });
   return {
-    requestedAsOf: l,
+    requestedAsOf: c,
     effectiveAsOf: v,
     state: b ? "CaseWindowEnded" : "Active",
     terminalReason: b,
@@ -9745,13 +9747,13 @@ function di(e, t) {
 function Ko(e, t, n, i, r) {
   const a = [], o = [];
   for (const s of t) {
-    const c = Ad(e, s, n, i, r);
-    c.matched && (a.push(...c.conditionIds), o.push(...c.eventIds));
+    const l = Ad(e, s, n, i, r);
+    l.matched && (a.push(...l.conditionIds), o.push(...l.eventIds));
   }
   return { conditionIds: [...new Set(a)], eventIds: [...new Set(o)] };
 }
 function Ad(e, t, n, i, r) {
-  var l, u;
+  var c, u;
   if (t.type === "AnyOf") {
     const f = Ko(e, t.conditions, n, i, r), d = f.conditionIds.length > 0;
     return r.conditionEvaluations.push({
@@ -9770,7 +9772,7 @@ function Ad(e, t, n, i, r) {
   );
   let o = [], s = !1;
   if (t.type === "NextLifecycleTransition")
-    o = a.filter((f) => f.kind === "lifecycleTransition"), s = o.length > 0 || ((l = di(e, i)) == null ? void 0 : l.lifecycle.currentState) !== xt(e, i).lifecycle.currentState;
+    o = a.filter((f) => f.kind === "lifecycleTransition"), s = o.length > 0 || ((c = di(e, i)) == null ? void 0 : c.lifecycle.currentState) !== xt(e, i).lifecycle.currentState;
   else if (t.type === "LifecycleStateEntered")
     o = a.filter(
       (f) => f.kind === "lifecycleTransition" && f.lifecycleState === t.state
@@ -9798,16 +9800,16 @@ function Ad(e, t, n, i, r) {
     const f = ta(e, t.timeframe, i), d = It(e, t.timeframe, i), m = (v) => v >= t.frozenLowerBound && v <= t.frozenUpperBound;
     s = f != null && d != null && !m(f) && m(d);
   }
-  const c = o.map((f) => f.id);
+  const l = o.map((f) => f.id);
   return r.conditionEvaluations.push({
     conditionId: t.id,
     effectiveAsOf: i,
     matched: s,
-    matchedEventIds: c
+    matchedEventIds: l
   }), {
     matched: s,
     conditionIds: s ? [t.id] : [],
-    eventIds: c
+    eventIds: l
   };
 }
 function bd(e, t, n) {
@@ -9878,7 +9880,7 @@ async function _m(e, t) {
     for (const u of n.events.slice(0, a))
       o = rr(o, u);
     const s = n.events[a];
-    let c = r.activeWakeResult;
+    let l = r.activeWakeResult;
     if (s.command.type === "Wait") {
       const u = fi(o);
       if (!s.wakePlan || !s.wakeResult)
@@ -9897,7 +9899,7 @@ async function _m(e, t) {
       );
       if (C(f.wakeResult) !== C(s.wakeResult) || f.requestedAsOf !== r.requestedAsOf || f.effectiveAsOf !== r.effectiveAsOf || f.state !== s.stateAfter || f.terminalReason !== s.terminalReasonAfter)
         throw new Error("Replay resume could not causally reproduce the saved wake result");
-      c = f.wakeResult;
+      l = f.wakeResult;
     }
     if (s.decisionRecord && (o = y({
       ...o,
@@ -9907,7 +9909,7 @@ async function _m(e, t) {
       session: o,
       requestedAsOf: r.requestedAsOf,
       effectiveAsOf: r.effectiveAsOf,
-      wakeResult: c
+      wakeResult: l
     })).id !== r.id)
       throw new Error("Replay resume data does not reproduce the current DecisionFrame");
   }
@@ -10085,8 +10087,8 @@ function $m(e, t, n, i = {}) {
   for (const o of r)
     a.has(o.radarEpisodeId) || a.set(o.radarEpisodeId, o);
   return y([...a.values()].sort((o, s) => {
-    const c = T({ seed: t, corpus: e.fingerprint, caseId: o.id }), l = T({ seed: t, corpus: e.fingerprint, caseId: s.id });
-    return c.localeCompare(l) || o.id.localeCompare(s.id);
+    const l = T({ seed: t, corpus: e.fingerprint, caseId: o.id }), c = T({ seed: t, corpus: e.fingerprint, caseId: s.id });
+    return l.localeCompare(c) || o.id.localeCompare(s.id);
   }).slice(0, n));
 }
 function Um(e, t, n = !1) {
