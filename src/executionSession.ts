@@ -158,7 +158,7 @@ export function finalizeExecutionAtHorizon(
   loaded: ExecutionLoadedCase,
 ): ExecutionSession {
   const lookahead = loaded.executionProfile.forceCloseAtHorizon
-    ? Math.max(...loaded.executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst.map(strictTimeframeToSeconds))
+    ? 2 * Math.max(...loaded.executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst.map(strictTimeframeToSeconds))
     : 0;
   return advanceExecutionTo(session, loaded, session.executionHorizonTime + lookahead);
 }
@@ -172,8 +172,11 @@ function runExecutionTo(loaded: ExecutionLoadedCase, cutoff: number): ExecutionS
   const working = mutableSession(initial);
   if (cutoff < working.orderActivationTime) return initial;
   activateEntry(working, loaded);
-  const paths = resolvedPricePaths(loaded, cutoff);
-  const funding = loaded.dataBundle.funding.filter((item) => item.knownAt <= cutoff);
+  const dataCutoff = loaded.executionProfile.forceCloseAtHorizon
+    ? cutoff
+    : Math.min(cutoff, working.executionHorizonTime);
+  const paths = resolvedPricePaths(loaded, dataCutoff);
+  const funding = loaded.dataBundle.funding.filter((item) => item.knownAt <= dataCutoff);
   let fundingIndex = 0;
   for (const path of paths) {
     if (TERMINAL_STATES.has(working.state)) break;
@@ -206,7 +209,7 @@ function runExecutionTo(loaded: ExecutionLoadedCase, cutoff: number): ExecutionS
     if (!TERMINAL_STATES.has(working.state)) {
       appendEvent(working, {
         type: "PathResolved",
-        eventTime: path.eventTime,
+        eventTime: path.intervalEnd,
         processingAsOf: path.processingAsOf,
         sourceObservationIds: [path.id],
         explanation: `Execution interval resolved with ${path.resolution} ${path.exact ? "ordered" : "OHLC"} data`,
@@ -313,7 +316,10 @@ function selectFinerCompletePath(
     const expected = coarseSeconds / seconds;
     if (!Number.isInteger(expected)) continue;
     const candles = (loaded.dataBundle.candlesByTimeframe[timeframe] ?? []).filter(
-      (item) => item.openTime >= coarse.openTime && item.closeTime <= coarse.closeTime && item.knownAt <= cutoff,
+      (item) =>
+        item.openTime >= coarse.openTime &&
+        item.closeTime <= coarse.closeTime &&
+        item.knownAt <= Math.min(cutoff, coarse.knownAt),
     );
     if (candles.length !== expected) continue;
     let cursor = coarse.openTime;
@@ -729,7 +735,7 @@ function applyFunding(
   const definition = {
     observationId: observation.id,
     fundingTime: observation.fundingTime,
-    processingAsOf: observation.knownAt,
+    processingAsOf: Math.max(observation.knownAt, conflictingPath?.processingAsOf ?? observation.knownAt),
     positionQuantity,
     referencePrice,
     rate: observation.rate,
@@ -750,7 +756,7 @@ function applyFunding(
   appendEvent(working, {
     type: "FundingApplied",
     eventTime: observation.fundingTime,
-    processingAsOf: observation.knownAt,
+    processingAsOf: record.processingAsOf,
     quantity: record.positionQuantity,
     referencePrice,
     fundingAmount: amount,
@@ -946,7 +952,8 @@ function ambiguityBranches(
   orderIds: string[],
 ): ExecutionAmbiguityBranch[] {
   const entry = entryFill(working);
-  const quantity = entry?.quantity ?? loaded.tradePlan.sizingResult.roundedQuantity!;
+  const positionQuantity = entry?.quantity ?? loaded.tradePlan.sizingResult.roundedQuantity!;
+  const remainingQuantity = entry ? working.positionLedger.remainingQuantity : positionQuantity;
   const entryPrice = entry?.price ?? loaded.tradePlan.entryPlan.intendedPrice;
   const stopPrice = adversePrice(
     Math.max(path.open, loaded.tradePlan.stopPlan.stopPrice),
@@ -954,10 +961,14 @@ function ambiguityBranches(
     "buy",
     loaded.venueRules.priceTick,
   ).price;
-  const target = [...loaded.tradePlan.targetPlans].sort((a, b) => b.targetPrice - a.targetPrice)[0];
-  const feeRate = loaded.feeSchedule.takerRate;
+  const baseGross = working.positionLedger.realizedGrossPnl;
+  const baseFees = working.positionLedger.totalFees || money(positionQuantity * entryPrice * loaded.feeSchedule.takerRate);
   const stopNet = money(
-    quantity * (entryPrice - stopPrice) - quantity * stopPrice * feeRate - working.positionLedger.totalFees + working.positionLedger.netFunding,
+    baseGross +
+    remainingQuantity * (entryPrice - stopPrice) -
+    baseFees -
+    remainingQuantity * stopPrice * loaded.feeSchedule.takerRate +
+    working.positionLedger.netFunding,
   );
   const branches: ExecutionAmbiguityBranch[] = [{
     id: `execution-branch:${canonicalHash([working.id, path.id, "stop-first"]).slice("fnv1a64:".length)}`,
@@ -965,17 +976,43 @@ function ambiguityBranches(
     orderedOrderIds: orderIds.filter((id) => id.includes("stop") || orderById(working, id)?.kind === "protectiveStop"),
     estimatedNetPnl: stopNet,
   }];
-  if (target) {
-    const targetNet = money(
-      quantity * (entryPrice - target.targetPrice) -
-      quantity * target.targetPrice * loaded.feeSchedule.makerRate -
-      working.positionLedger.totalFees +
-      working.positionLedger.netFunding,
-    );
+  const touchedTargetOrders = activeTargets(working)
+    .filter((order) => orderIds.includes(order.id))
+    .sort((left, right) => right.limitPrice! - left.limitPrice! || left.id.localeCompare(right.id));
+  const targetAllocations = touchedTargetOrders.length
+    ? touchedTargetOrders.map((order) => ({ quantity: order.remainingQuantity, price: order.limitPrice!, id: order.id }))
+    : [...loaded.tradePlan.targetPlans]
+        .filter((target) => orderIds.includes(target.id))
+        .sort((left, right) => right.targetPrice - left.targetPrice || left.id.localeCompare(right.id))
+        .map((target) => ({
+          quantity: floorToStep(positionQuantity * target.positionFraction, loaded.venueRules.quantityStep),
+          price: target.targetPrice,
+          id: target.id,
+        }));
+  if (targetAllocations.length) {
+    let branchRemaining = remainingQuantity;
+    let branchGross = baseGross;
+    let branchFees = baseFees;
+    const branchOrderIds: string[] = [];
+    for (const target of targetAllocations) {
+      const fillQuantity = Math.min(branchRemaining, target.quantity);
+      if (fillQuantity <= 0) continue;
+      branchGross += fillQuantity * (entryPrice - target.price);
+      branchFees += fillQuantity * target.price * loaded.feeSchedule.makerRate;
+      branchRemaining = quantity(branchRemaining - fillQuantity, 12);
+      branchOrderIds.push(target.id);
+    }
+    const stopInBranch = orderIds.some((id) => id.includes("stop") || orderById(working, id)?.kind === "protectiveStop");
+    if (stopInBranch && branchRemaining > 0) {
+      branchGross += branchRemaining * (entryPrice - stopPrice);
+      branchFees += branchRemaining * stopPrice * loaded.feeSchedule.takerRate;
+      branchOrderIds.push(...orderIds.filter((id) => id.includes("stop") || orderById(working, id)?.kind === "protectiveStop"));
+    }
+    const targetNet = money(branchGross - branchFees + working.positionLedger.netFunding);
     branches.push({
       id: `execution-branch:${canonicalHash([working.id, path.id, "target-first"]).slice("fnv1a64:".length)}`,
       label: "target-first",
-      orderedOrderIds: orderIds.filter((id) => id.includes(target.id) || orderById(working, id)?.parentTargetId === target.id),
+      orderedOrderIds: branchOrderIds,
       estimatedNetPnl: targetNet,
     });
   }
@@ -1280,6 +1317,10 @@ function excursionMetrics(working: WorkingSession, entry: ExecutionFill | null) 
 
 function appendEvent(working: WorkingSession, input: EventInput) {
   const stateBefore = working.state;
+  const prior = working.executionEvents.at(-1);
+  if (prior && input.processingAsOf < prior.processingAsOf) {
+    throw new Error("Execution event processing time cannot move backward");
+  }
   if (input.stateAfter && input.stateAfter !== stateBefore) {
     assertTransition(stateBefore, input.stateAfter);
     working.state = input.stateAfter;
@@ -1312,6 +1353,7 @@ function appendEvent(working: WorkingSession, input: EventInput) {
     fundingRecordsAfter: immutableJsonClone(working.fundingRecords),
     excursionObservationsAfter: immutableJsonClone(working.excursionObservations),
     resultAfter: immutableJsonClone(working.result),
+    sessionDataQualityNotesAfter: [...working.dataQualityNotes],
     errorsAfter: [...working.errors],
   };
   const event: ExecutionEvent = {
@@ -1336,6 +1378,7 @@ function replaceLastEventResult(working: WorkingSession) {
     fundingRecordsAfter: immutableJsonClone(working.fundingRecords),
     excursionObservationsAfter: immutableJsonClone(working.excursionObservations),
     resultAfter: immutableJsonClone(working.result),
+    sessionDataQualityNotesAfter: [...working.dataQualityNotes],
     errorsAfter: [...working.errors],
   };
   const { id: _undefined, ...eventDefinition } = definition;
@@ -1667,7 +1710,7 @@ export function reconstructExecutionSessionFromEvents(session: ExecutionSession)
     fundingRecords: [],
     excursionObservations: [],
     result: null,
-    dataQualityNotes: [...session.dataQualityNotes],
+    dataQualityNotes: [],
     errors: [],
   };
   for (const event of session.executionEvents) {
@@ -1679,6 +1722,10 @@ export function reconstructExecutionSessionFromEvents(session: ExecutionSession)
       id !== `execution-event:${canonicalHash(definition).slice("fnv1a64:".length)}` ||
       event.stateBefore !== working.state
     ) throw new Error(`Invalid execution event ${event.id}`);
+    if (event.stateAfter !== event.stateBefore) assertTransition(event.stateBefore, event.stateAfter);
+    if (event.processingAsOf < working.currentAsOf) {
+      throw new Error(`Execution event processing time moved backward at ${event.id}`);
+    }
     working.state = event.stateAfter;
     if (event.stateAfter !== event.stateBefore) working.stateSince = event.eventTime;
     working.currentAsOf = Math.max(working.currentAsOf, event.processingAsOf);
@@ -1689,11 +1736,58 @@ export function reconstructExecutionSessionFromEvents(session: ExecutionSession)
     working.fundingRecords = immutableJsonClone(event.fundingRecordsAfter);
     working.excursionObservations = immutableJsonClone(event.excursionObservationsAfter);
     working.result = immutableJsonClone(event.resultAfter);
+    working.dataQualityNotes = [...event.sessionDataQualityNotesAfter];
     working.errors = [...event.errorsAfter];
+    assertEventSnapshotInvariants(working, event);
     working.executionEvents.push(immutableJsonClone(event));
     working.revision += 1;
   }
   return sealSession(working);
+}
+
+function assertEventSnapshotInvariants(working: WorkingSession, event: ExecutionEvent) {
+  const orderIds = new Set<string>();
+  for (const order of working.orders) {
+    if (
+      orderIds.has(order.id) ||
+      order.quantity <= 0 ||
+      order.remainingQuantity < 0 ||
+      order.remainingQuantity > order.quantity
+    ) throw new Error(`Invalid execution order snapshot at ${event.id}`);
+    orderIds.add(order.id);
+  }
+  const fillIds = new Set<string>();
+  let entered = 0;
+  let exited = 0;
+  let fees = 0;
+  for (const fill of working.fills) {
+    if (
+      fillIds.has(fill.id) ||
+      !orderIds.has(fill.orderId) ||
+      fill.quantity <= 0 ||
+      fill.price <= 0 ||
+      fill.feeAmount < 0
+    ) throw new Error(`Invalid execution fill snapshot at ${event.id}`);
+    fillIds.add(fill.id);
+    if (fill.side === "sell") entered += fill.quantity;
+    else exited += fill.quantity;
+    fees += fill.feeAmount;
+  }
+  if (exited > entered + 1e-9 || Math.abs(working.positionLedger.remainingQuantity - (entered - exited)) > 1e-8) {
+    throw new Error(`Execution quantity conservation failed at ${event.id}`);
+  }
+  if (Math.abs(working.positionLedger.totalFees - money(fees)) > 1e-9) {
+    throw new Error(`Execution fee conservation failed at ${event.id}`);
+  }
+  if (TERMINAL_STATES.has(working.state) && working.result == null) {
+    throw new Error(`Terminal execution event has no result at ${event.id}`);
+  }
+  if (working.result) {
+    const { id, ...definition } = working.result;
+    if (id !== `execution-result:${canonicalHash(definition).slice("fnv1a64:".length)}`) {
+      throw new Error(`Execution result identity mismatch at ${event.id}`);
+    }
+  }
 }
 
 export function serializeExecutionSession(session: ExecutionSession) {

@@ -2,17 +2,23 @@ import { describe, expect, it } from "vitest";
 import planningFixture from "../fixtures/impulse-fade-trade-planning.example.json";
 import {
   createExecutionCandleObservation,
+  createExecutionQuoteObservation,
+  createExecutionTradeObservation,
   createExecutionProfile,
   createExperimentalExecutionProfile,
   createFundingObservation,
   createResearchVenueExecutionRules,
   createVenueFeeSchedule,
+  createVenueExecutionRules,
   InMemoryReplayExecutionDataAdapter,
   loadExecutionCase,
   VENUE_FEE_SCHEDULE_SCHEMA_VERSION,
   type ExecutionCandleObservation,
   type ExecutionLoadedCase,
   type ExecutionProfile,
+  type ExecutionProfileDefinition,
+  type ExecutionQuoteObservation,
+  type ExecutionTradeObservation,
   type FundingObservation,
 } from "./execution";
 import {
@@ -37,6 +43,15 @@ const baseSnapshot = planningFixture.snapshots.entryCandidate as ReplayDecisionF
 const basePlan = planningFixture.decisions.proposeCompliant.tradePlan as TradePlan;
 
 describe("deterministic execution session", () => {
+  it("fails closed on an advertised ambiguity policy the engine does not implement", () => {
+    const standard = createExperimentalExecutionProfile(["1m", "15m"]);
+    const { canonicalConfigHash: _hash, ...definition } = standard;
+    expect(() => createExecutionProfile({
+      ...definition,
+      ambiguityPolicy: "WorstCaseBranch",
+    })).toThrow("only implements StrictAmbiguity");
+  });
+
   it("activates causally, fills the next open, and applies adverse entry and stop slippage once", async () => {
     const loaded = await fixture({
       plan: marketPlan(),
@@ -256,6 +271,157 @@ describe("deterministic execution session", () => {
     expect(publicJson).not.toContain("fills");
   });
 
+  it("implements touch, penetration, and exact-data sell-limit policies", async () => {
+    const touchCandles = [
+      candle(0, 0.78, 0.79, 0.77, 0.785),
+      candle(1, 0.79, 0.83, 0.78, 0.82),
+      candle(2, 0.8, 0.81, 0.76, 0.77),
+    ];
+    const touch = simulateExecutionToHorizon(await fixture({ plan: basePlan, candles: touchCandles }));
+    expect(touch.fills[0]).toMatchObject({ price: 0.79, liquidityRole: "assumedMaker" });
+
+    for (const policy of ["PenetrationByTicks", "ExactDataRequired"] as const) {
+      const unfilled = simulateExecutionToHorizon(await fixture({
+        plan: basePlan,
+        candles: [
+          candle(0, 0.78, 0.79, 0.77, 0.785),
+          candle(1, 0.78, 0.7899, 0.77, 0.78),
+          candle(2, 0.78, 0.7899, 0.76, 0.77),
+        ],
+        profileOverrides: { restingLimitFillPolicy: { policy, penetrationTicks: 1 } },
+      }));
+      expect(unfilled.state).toBe("EntryExpired");
+      expect(unfilled.fills).toEqual([]);
+    }
+  });
+
+  it("supports sell stop-market entry and activates protection only after its fill", async () => {
+    const stopEntry = replan(basePlan, {
+      entryPlan: { ...basePlan.entryPlan, orderPlanType: "stopMarket", intendedPrice: 0.79, expiresAt: null },
+    });
+    const loaded = await fixture({
+      plan: stopEntry,
+      candles: [candle(0, 0.8, 0.81, 0.785, 0.79), candle(1, 0.8, 0.83, 0.79, 0.82)],
+    });
+    const before = advanceExecutionTo(createExecutionSession(loaded), loaded, firstOpen - 1);
+    expect(before.orders.some((order) => order.reduceOnly)).toBe(false);
+    const result = simulateExecutionToHorizon(loaded);
+    expect(result.fills[0]).toMatchObject({ side: "sell", referencePrice: 0.79, price: 0.7896 });
+    expect(result.executionEvents.findIndex((event) => event.type === "ProtectiveStopActivated")).toBeGreaterThan(
+      result.executionEvents.findIndex((event) => event.type === "EntryOrderFilled"),
+    );
+  });
+
+  it("force closes at the first observation after horizon with adverse market-exit slippage", async () => {
+    const loaded = await fixture({
+      plan: marketPlan(),
+      horizonSeconds: 1_800,
+      profileOverrides: { forceCloseAtHorizon: true },
+      candles: [
+        candle(0, 0.79, 0.8, 0.78, 0.795),
+        candle(1, 0.795, 0.8, 0.77, 0.78),
+        candle(2, 0.78, 0.79, 0.76, 0.77),
+      ],
+    });
+    const result = simulateExecutionToHorizon(loaded);
+    expect(result.result?.closeReason).toBe("ForcedHorizonClose");
+    expect(result.fills.at(-1)).toMatchObject({ referencePrice: 0.78, price: 0.7808, liquidityRole: "taker" });
+  });
+
+  it("charges negative funding and rejects a stop beyond the bankruptcy bound", async () => {
+    const funded = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [
+        candle(0, 0.79, 0.8, 0.78, 0.795),
+        candle(1, 0.79, 0.8, 0.78, 0.79),
+        candle(2, 0.79, 0.8, 0.78, 0.79),
+      ],
+      funding: [createFundingObservation({
+        venue: "bybit",
+        symbol: "FILUSDT",
+        fundingTime: firstOpen + 900,
+        rate: -0.001,
+        markPrice: 0.79,
+        dataProvenance: "deterministic test",
+      })],
+    }));
+    expect(funded.positionLedger.fundingPaid).toBeGreaterThan(0);
+    expect(funded.positionLedger.netFunding).toBeLessThan(0);
+
+    const underMargined = replan(basePlan, {
+      sizingResult: { ...basePlan.sizingResult, initialMargin: 25 },
+    });
+    await expect(fixture({ plan: underMargined, candles: [candle(0, 0.79, 0.8, 0.78, 0.79)] })).rejects.toThrow(
+      "bankruptcy bound",
+    );
+  });
+
+  it("marks bankruptcy-bound crossing ambiguous instead of claiming a stop fill", async () => {
+    const loaded = await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.8, 0.78, 0.795), candle(1, 0.8, 1.7, 0.79, 1.6)],
+    });
+    const result = simulateExecutionToHorizon(loaded);
+    expect(result.state).toBe("Ambiguous");
+    expect(result.result?.ambiguity?.code).toBe("BANKRUPTCY_BOUND_CROSSED_WITHOUT_LIQUIDATION_MODEL");
+    expect(result.executionEvents.some((event) => event.type === "BankruptcyBoundCrossed")).toBe(true);
+  });
+
+  it("falls back from incomplete finer coverage and uses exact ordered trades only when declared complete", async () => {
+    const incompleteFine = Array.from({ length: 14 }, (_, index) =>
+      minute(firstOpen + index * 60, 0.79, index === 4 ? 0.84 : 0.8, index === 8 ? 0.7 : 0.78, 0.79),
+    );
+    const unresolved = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.84, 0.7, 0.8), ...incompleteFine],
+    }));
+    expect(unresolved.state).toBe("Ambiguous");
+    expect(unresolved.pathResolutionRecords[0]?.selectedResolution).toBe("15m");
+
+    const exact = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [],
+      trades: [
+        createExecutionTradeObservation({ venue: "bybit", symbol: "FILUSDT", eventTime: firstOpen, price: 0.79, quantity: 1, side: "buy" }),
+        createExecutionTradeObservation({ venue: "bybit", symbol: "FILUSDT", eventTime: firstOpen + 60, price: 0.72, quantity: 1, side: "sell" }),
+      ],
+      tradeDataCompleteness: "complete",
+    }));
+    expect(exact.result?.closeReason).toBe("AllTargets");
+    expect(exact.pathResolutionRecords.every((record) => record.exactOrApproximate === "exact")).toBe(true);
+  });
+
+  it("uses the configured mark series for protective stops and fails if it is unavailable", async () => {
+    const markCross = createExecutionQuoteObservation({
+      venue: "bybit",
+      symbol: "FILUSDT",
+      eventTime: firstOpen + 900,
+      bid: 0.829,
+      ask: 0.831,
+    });
+    const stopped = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.8, 0.78, 0.795), candle(1, 0.8, 0.81, 0.79, 0.8)],
+      markPrices: [
+        createExecutionQuoteObservation({ venue: "bybit", symbol: "FILUSDT", eventTime: firstOpen, bid: 0.79, ask: 0.791 }),
+        markCross,
+      ],
+      venueStopTriggerSources: ["last", "mark"],
+      profileOverrides: { stopTriggerPolicy: { source: "mark", authorizedFallback: null } },
+    }));
+    expect(stopped.result?.closeReason).toBe("Stop");
+    expect(stopped.fills.at(-1)?.referencePrice).toBe(0.83);
+
+    const missing = simulateExecutionToHorizon(await fixture({
+      plan: marketPlan(),
+      candles: [candle(0, 0.79, 0.8, 0.78, 0.795)],
+      venueStopTriggerSources: ["last", "mark"],
+      profileOverrides: { stopTriggerPolicy: { source: "mark", authorizedFallback: null } },
+    }));
+    expect(missing.state).toBe("Failed");
+    expect(missing.errors[0]).toContain("mark stop-trigger series");
+  });
+
   it("reveals execution only after the replay outcome boundary has opened", async () => {
     const loaded = await fixture({
       plan: marketPlan(),
@@ -311,6 +477,11 @@ async function fixture(options: {
   funding?: FundingObservation[];
   fundingDataAvailable?: boolean;
   horizonSeconds?: number;
+  profileOverrides?: Partial<ExecutionProfileDefinition>;
+  trades?: ExecutionTradeObservation[];
+  tradeDataCompleteness?: "complete" | "partial" | "unavailable";
+  markPrices?: ExecutionQuoteObservation[];
+  venueStopTriggerSources?: Array<"last" | "mark" | "index">;
 }): Promise<ExecutionLoadedCase> {
   const frame = {
     id: "replay-frame:execution-test",
@@ -347,12 +518,18 @@ async function fixture(options: {
     provenance: "Deterministic research fixture",
     assumptionStatus: "researchAssumption",
   });
-  const venueRules = createResearchVenueExecutionRules(options.plan.venueRules, feeSchedule, decisionTime);
+  const researchRules = createResearchVenueExecutionRules(options.plan.venueRules, feeSchedule, decisionTime);
+  const { canonicalConfigHash: _rulesHash, ...rulesDefinition } = researchRules;
+  const venueRules = createVenueExecutionRules({
+    ...rulesDefinition,
+    stopTriggerSources: options.venueStopTriggerSources ?? rulesDefinition.stopTriggerSources,
+  }, feeSchedule);
   const standard = createExperimentalExecutionProfile(["1m", "15m"]);
   const { canonicalConfigHash: _hash, ...definition } = standard;
   const executionProfile: ExecutionProfile = createExecutionProfile({
     ...definition,
     maximumExecutionHorizon: options.horizonSeconds ?? 3_600,
+    ...options.profileOverrides,
   });
   return loadExecutionCase({
     replaySession,
@@ -366,6 +543,9 @@ async function fixture(options: {
       candles: options.candles,
       funding: options.funding,
       fundingDataAvailable: options.fundingDataAvailable,
+      trades: options.trades,
+      tradeDataCompleteness: options.tradeDataCompleteness,
+      markPrices: options.markPrices,
       venueRuleEvidence: [venueRules],
     }),
   });

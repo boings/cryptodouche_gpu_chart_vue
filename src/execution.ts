@@ -449,6 +449,9 @@ export function createExecutionProfile(definition: ExecutionProfileDefinition): 
   if (!definition.id.trim() || !definition.version.trim()) {
     throw new TypeError("Execution profile id and version are required");
   }
+  if (definition.ambiguityPolicy !== "StrictAmbiguity") {
+    throw new Error("execution-engine.1 only implements StrictAmbiguity");
+  }
   validateNonnegativeInteger(definition.orderActivationPolicy.delaySeconds, "activation delay");
   validatePositiveInteger(definition.maximumExecutionHorizon, "execution horizon");
   validateNonnegativeInteger(
@@ -996,6 +999,7 @@ export interface ExecutionEvent {
   fundingRecordsAfter: ExecutionFundingRecord[];
   excursionObservationsAfter: ExecutionExcursionObservation[];
   resultAfter: ExecutionResult | null;
+  sessionDataQualityNotesAfter: string[];
   errorsAfter: string[];
 }
 
@@ -1151,6 +1155,10 @@ export async function loadExecutionCase(input: LoadExecutionCaseInput): Promise<
     query,
   );
   validateTimedExecutionData(trades, quotes, markPrices, indexPrices, funding, query.venue, query.symbol);
+  if (
+    input.historicalDataAdapter.tradeDataCompleteness === "complete" &&
+    trades.some((item) => item.knownAt !== item.eventTime)
+  ) throw new Error("Complete ordered-trade data requires knownAt equal to eventTime");
   const futureData = {
     candlesByTimeframe,
     trades,
@@ -1266,10 +1274,13 @@ function validateExecutionCaseIdentity(input: LoadExecutionCaseInput) {
   assertEffectiveAt(venueRules, decisionTime, "venue execution rules");
   const requiredThrough = decisionTime +
     executionProfile.orderActivationPolicy.delaySeconds +
-    executionProfile.maximumExecutionHorizon;
+    executionProfile.maximumExecutionHorizon +
+    (executionProfile.forceCloseAtHorizon
+      ? Math.max(...executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst.map(strictTimeframeToSeconds))
+      : 0);
   if (
-    (feeSchedule.effectiveUntil != null && feeSchedule.effectiveUntil < requiredThrough) ||
-    (venueRules.effectiveUntil != null && venueRules.effectiveUntil < requiredThrough)
+    (feeSchedule.effectiveUntil != null && feeSchedule.effectiveUntil <= requiredThrough) ||
+    (venueRules.effectiveUntil != null && venueRules.effectiveUntil <= requiredThrough)
   ) throw new Error("Selected fee schedule and venue rules must cover the execution horizon");
   if (
     venueRules.venue.toLowerCase() !== plan.venueRules.venue.toLowerCase() ||
