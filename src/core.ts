@@ -1,4 +1,5 @@
 export * from "./data";
+export * from "./chartAnalysisDigest";
 export * from "./execution";
 export * from "./executionJsonAdapter";
 export * from "./executionReveal";
