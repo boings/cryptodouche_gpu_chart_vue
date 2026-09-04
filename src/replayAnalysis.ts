@@ -255,6 +255,13 @@ export interface MaterializeReplayAnalysisInput {
   strategyProfile: StrategyProfile;
   analysisProfile: ReplayAnalysisProfile;
   lifecycleConfig?: ImpulseFadeTimelineConfig;
+  /**
+   * Replay timelines retain decision objects and event provenance but do not
+   * need chart-rendering line arrays for every historical evaluation point.
+   */
+  includeIndicatorSeries?: boolean;
+  /** Keep verbose source-id arrays and line series in the returned state. */
+  includeComponentProvenance?: boolean;
 }
 
 interface SelectedSeries {
@@ -415,6 +422,7 @@ export function materializeReplayAnalysis(
   validateMaterializationInput(input);
   const effectiveAsOf = effectiveReplayAnalysisAsOf(input);
   const profile = input.analysisProfile;
+  const includeComponentProvenance = input.includeComponentProvenance !== false;
   const symbol = input.symbol.toUpperCase();
   const referenceSymbol = profile.referenceMarketPolicy.symbol;
   const referenceSource = profile.referenceMarketPolicy.source ?? input.source;
@@ -464,10 +472,15 @@ export function materializeReplayAnalysis(
 
   for (const timeframe of profile.evaluatedTimeframes) {
     const selected = selectedByTimeframe[timeframe]!;
-    const extension = computeExtensionSnapshot(selected.candles, profile.extensionConfig);
+    const extension = extensionSnapshotAt(
+      input.candlesByTimeframe[timeframe] ?? [],
+      selected,
+      profile.extensionConfig,
+    );
     extensionContext[timeframe] = extension;
+    const includeIndicatorSeries = input.includeIndicatorSeries !== false;
     const stoch =
-      timeframe === profile.stochasticRsiConfig.timeframe
+      includeIndicatorSeries && timeframe === profile.stochasticRsiConfig.timeframe
         ? computeStochRsi(
             selected.candles,
             profile.stochasticRsiConfig.rsiPeriod,
@@ -476,21 +489,28 @@ export function materializeReplayAnalysis(
             profile.stochasticRsiConfig.dPeriod,
           )
         : null;
-    indicatorSeries[timeframe] = {
-      ema: linePoints(computeEmaLine(selected.candles, profile.extensionConfig.emaPeriod)),
-      atr: linePoints(computeAtrLine(selected.candles, profile.extensionConfig.atrPeriod)),
-      stochRsi: stoch ? { k: linePoints(stoch.k), d: linePoints(stoch.d) } : null,
-      configurationHash: canonicalHash({
-        extension: profile.extensionConfig,
-        stochasticRsi:
-          timeframe === profile.stochasticRsiConfig.timeframe
-            ? profile.stochasticRsiConfig
-            : null,
-      }),
-    };
+    if (includeIndicatorSeries) {
+      indicatorSeries[timeframe] = {
+        ema: linePoints(computeEmaLine(selected.candles, profile.extensionConfig.emaPeriod)),
+        atr: linePoints(computeAtrLine(selected.candles, profile.extensionConfig.atrPeriod)),
+        stochRsi: stoch ? { k: linePoints(stoch.k), d: linePoints(stoch.d) } : null,
+        configurationHash: canonicalHash({
+          extension: profile.extensionConfig,
+          stochasticRsi:
+            timeframe === profile.stochasticRsiConfig.timeframe
+              ? profile.stochasticRsiConfig
+              : null,
+        }),
+      };
+    }
 
-    const structure = computeMarketStructure(selected.candles, profile.structureConfig);
     const structureConfigHash = canonicalHash(profile.structureConfig);
+    const structure = marketStructureAt(
+      input.candlesByTimeframe[timeframe] ?? [],
+      selected,
+      profile.structureConfig,
+      structureConfigHash,
+    );
     const structureObservation = createAnalysisObservation({
       logicalId: `market-structure:${input.source}:${symbol}:${timeframe}`,
       component: `structure:${timeframe}`,
@@ -505,7 +525,7 @@ export function materializeReplayAnalysis(
       configurationHash: structureConfigHash,
       sourceObservationIds: selected.replay.map((candle) => candle.observationId),
       value: structure,
-    });
+    }, includeComponentProvenance);
     structureByTimeframe[timeframe] = { timeframe, observation: structureObservation };
     for (const event of structure.breaks) {
       structureEvents.push(createAnalysisObservation({
@@ -518,7 +538,7 @@ export function materializeReplayAnalysis(
         configurationHash: structureConfigHash,
         sourceObservationIds: sourceIdsThrough(selected, event.knownAt),
         value: event,
-      }));
+      }, includeComponentProvenance));
     }
     for (const level of computeStructureActiveLevels(structure)) {
       activeStructureLevels.push(structureLevelReference(input, timeframe, level));
@@ -545,7 +565,7 @@ export function materializeReplayAnalysis(
         configurationHash: zoneConfigHash,
         sourceObservationIds: sourceIdsThrough(selected, zone.knownAt),
         value: { ...zone, originatingSwingIds: origins },
-      }));
+      }, includeComponentProvenance));
     }
 
     const componentKey = `timeframe:${timeframe}`;
@@ -555,6 +575,7 @@ export function materializeReplayAnalysis(
       selected,
       componentConfigHash,
       minimumRequiredSamples(profile, timeframe),
+      includeComponentProvenance,
     );
     freshnessByComponent[`extension:${timeframe}`] = freshnessFor(
       `extension:${timeframe}`,
@@ -566,6 +587,7 @@ export function materializeReplayAnalysis(
         profile.extensionConfig.atrPeriod + 1,
         Math.ceil(profile.extensionConfig.windowSeconds / strictTimeframeToSeconds(timeframe)) + 1,
       ),
+      includeComponentProvenance,
     );
     freshnessByComponent[`structure:${timeframe}`] = freshnessFor(
       `structure:${timeframe}`,
@@ -573,6 +595,7 @@ export function materializeReplayAnalysis(
       selected,
       structureConfigHash,
       profile.structureConfig.pivotStrength * 2 + 1,
+      includeComponentProvenance,
     );
     freshnessByComponent[`supportResistance:${timeframe}`] = freshnessFor(
       `supportResistance:${timeframe}`,
@@ -580,6 +603,7 @@ export function materializeReplayAnalysis(
       selected,
       zoneConfigHash,
       profile.structureConfig.pivotStrength * 2 + 1,
+      includeComponentProvenance,
     );
     if (timeframe === profile.stochasticRsiConfig.timeframe) {
       const stochRequired =
@@ -593,6 +617,7 @@ export function materializeReplayAnalysis(
         selected,
         canonicalHash(profile.stochasticRsiConfig),
         stochRequired,
+        includeComponentProvenance,
       );
     }
     if (!selected.candles.length) {
@@ -611,6 +636,8 @@ export function materializeReplayAnalysis(
     candidateTimeframe,
     candidateSelected,
     effectiveAsOf,
+    selectedByTimeframe,
+    extensionContext,
   );
   for (const reason of candidateMetrics.insufficientDataReasons) {
     notes.push(componentNote(reason.code, `extension:${candidateTimeframe}`, reason.message));
@@ -622,6 +649,7 @@ export function materializeReplayAnalysis(
       candidateSelected,
       canonicalHash(profile.extensionConfig),
       profile.extensionConfig.minSamples,
+      includeComponentProvenance,
     ),
     status: candidateMetrics.insufficientDataReasons.length
       ? "insufficientHistory"
@@ -670,7 +698,7 @@ export function materializeReplayAnalysis(
           configurationHash: canonicalHash(profile.relativeStrengthConfig),
           sourceObservationIds: alignedSourceIdsThrough(rsTarget, rsReference, knownAt),
           value: { ...event, knownAt },
-        });
+        }, includeComponentProvenance);
       })
     : [];
   freshnessByComponent.relativeStrength = freshnessForRelativeStrength(
@@ -679,6 +707,7 @@ export function materializeReplayAnalysis(
     rsReference,
     relativeStrength.status,
     canonicalHash(profile.relativeStrengthConfig),
+    includeComponentProvenance,
   );
   if (relativeStrength.status !== "available") {
     notes.push(componentNote(
@@ -690,7 +719,12 @@ export function materializeReplayAnalysis(
     ));
   }
 
-  const avwap = materializeAvwap(input, selectedByTimeframe, effectiveAsOf);
+  const avwap = materializeAvwap(
+    input,
+    selectedByTimeframe,
+    effectiveAsOf,
+    includeComponentProvenance,
+  );
   notes.push(...avwap.notes);
   freshnessByComponent.avwap = avwap.freshness;
 
@@ -720,6 +754,7 @@ export function materializeReplayAnalysis(
     avwapEvents: avwap.events.map((item) => item.value),
     relativeStrengthEvents: relativeStrengthEvents.map((item) => item.value),
     config: input.lifecycleConfig,
+    from: input.radarEpisode.detectedAt,
     to: effectiveAsOf,
   }) ?? fallbackLifecycle(input, effectiveAsOf, executionStructure);
 
@@ -848,20 +883,64 @@ function selectedSeriesAt(
   timeframe: string,
   asOf: number,
 ): SelectedSeries {
+  const cached = selectedSeriesCache.get(records)?.get(timeframe)?.get(asOf);
+  if (cached) return cached;
+  validateReplayAnalysisSeries(records, timeframe);
   const selected = selectReplayRecordsAt(records, asOf);
   const firstBucket = records.length
     ? Math.min(...records.map((record) => record.openTime))
     : selected[0]?.openTime ?? 0;
   const seconds = strictTimeframeToSeconds(timeframe);
-  const candles = selected.map((record) => replayToCandle(record, firstBucket, seconds));
-  selectCompletedCandleRevisionsAt(candles, timeframe, asOf);
-  return { replay: selected, candles };
+  const candles = Object.freeze(
+    selected.map((record) => Object.freeze(replayToCandle(record, firstBucket, seconds))),
+  ) as unknown as CandleRecord[];
+  const result = Object.freeze({ replay: selected, candles }) as SelectedSeries;
+  let byTimeframe = selectedSeriesCache.get(records);
+  if (!byTimeframe) {
+    byTimeframe = new Map();
+    selectedSeriesCache.set(records, byTimeframe);
+  }
+  let byAsOf = byTimeframe.get(timeframe);
+  if (!byAsOf) {
+    byAsOf = new Map();
+    byTimeframe.set(timeframe, byAsOf);
+  }
+  boundedCacheSet(byAsOf, asOf, result);
+  return result;
+}
+
+const selectedSeriesCache = new WeakMap<
+  readonly ReplayCandleRecord[],
+  Map<string, Map<number, SelectedSeries>>
+>();
+const validatedReplayAnalysisSeries = new WeakSet<readonly ReplayCandleRecord[]>();
+
+function validateReplayAnalysisSeries(
+  records: readonly ReplayCandleRecord[],
+  timeframe: string,
+) {
+  if (Object.isFrozen(records) && validatedReplayAnalysisSeries.has(records)) return;
+  const firstBucket = records.length
+    ? Math.min(...records.map((record) => record.openTime))
+    : 0;
+  const seconds = strictTimeframeToSeconds(timeframe);
+  const maximumAsOf = records.length
+    ? Math.max(...records.map((record) => Math.max(record.closeTime, record.knownAt)))
+    : 0;
+  selectCompletedCandleRevisionsAt(
+    records.map((record) => replayToCandle(record, firstBucket, seconds)),
+    timeframe,
+    maximumAsOf,
+  );
+  if (Object.isFrozen(records)) validatedReplayAnalysisSeries.add(records);
 }
 
 export function selectReplayRecordsAt(
   records: readonly ReplayCandleRecord[],
   asOf: number,
 ): ReplayCandleRecord[] {
+  const cached = replaySelectionCache.get(records)?.get(asOf);
+  if (cached) return cached as ReplayCandleRecord[];
   const selected = new Map<string, ReplayCandleRecord>();
   for (const candle of records) {
     if (candle.closeTime > asOf || candle.knownAt > asOf) continue;
@@ -878,9 +957,31 @@ export function selectReplayRecordsAt(
       throw new Error(`Conflicting candle revisions for ${candle.logicalCandleId}`);
     }
   }
-  return immutableJsonClone([...selected.values()].sort(
+  const result = Object.freeze([...selected.values()].sort(
     (left, right) => left.openTime - right.openTime || left.knownAt - right.knownAt,
   ));
+  let byAsOf = replaySelectionCache.get(records);
+  if (!byAsOf) {
+    byAsOf = new Map();
+    replaySelectionCache.set(records, byAsOf);
+  }
+  boundedCacheSet(byAsOf, asOf, result);
+  return result as ReplayCandleRecord[];
+}
+
+const SELECTION_CACHE_LIMIT = 512;
+const replaySelectionCache = new WeakMap<
+  readonly ReplayCandleRecord[],
+  Map<number, readonly ReplayCandleRecord[]>
+>();
+
+function boundedCacheSet<T>(cache: Map<number, T>, key: number, value: T) {
+  cache.set(key, value);
+  while (cache.size > SELECTION_CACHE_LIMIT) {
+    const oldest = cache.keys().next().value as number | undefined;
+    if (oldest == null) break;
+    cache.delete(oldest);
+  }
 }
 
 function replayToCandle(
@@ -918,6 +1019,7 @@ function eventEvaluationAsOf(knownAt: number, executionTimeframe: string) {
 
 function createAnalysisObservation<T>(
   input: Omit<ReplayAnalysisObservation<T>, "schemaVersion" | "observationId">,
+  retainSourceObservationIds = true,
 ): ReplayAnalysisObservation<T> {
   const definition = {
     schemaVersion: REPLAY_ANALYSIS_OBSERVATION_SCHEMA_VERSION,
@@ -926,6 +1028,7 @@ function createAnalysisObservation<T>(
   };
   return immutableJsonClone({
     ...definition,
+    sourceObservationIds: retainSourceObservationIds ? definition.sourceObservationIds : [],
     observationId: `replay-analysis-observation:${canonicalHash(definition).slice("fnv1a64:".length)}`,
   });
 }
@@ -935,9 +1038,15 @@ function candidateMetricsAt(
   timeframe: string,
   selected: SelectedSeries,
   effectiveAsOf: number,
+  selectedByTimeframe: Record<string, SelectedSeries>,
+  extensionContext: ReplayAnalysisState["extensionContext"],
 ): CandidateMetrics {
   const profile = input.analysisProfile;
-  const extension = computeExtensionSnapshot(selected.candles, profile.extensionConfig);
+  const extension = extensionContext[timeframe] ?? extensionSnapshotAt(
+    input.candlesByTimeframe[timeframe] ?? [],
+    selected,
+    profile.extensionConfig,
+  );
   const requestedStartTs = Math.max(0, effectiveAsOf - profile.extensionConfig.historyDays * 86_400);
   const availableStartTs = selected.replay[0]?.openTime ?? null;
   const availableEndTs = selected.replay.at(-1)?.closeTime ?? null;
@@ -968,12 +1077,12 @@ function candidateMetricsAt(
   }
   const timeframeExtensions = Object.fromEntries(
     profile.evaluatedTimeframes.map((item) => {
-      const series = selectedSeriesAt(
-        input.candlesByTimeframe[item] ?? [],
-        item,
-        effectiveAsOf,
+      const series = selectedByTimeframe[item] ?? selectedSeriesAt(
+        input.candlesByTimeframe[item] ?? [], item, effectiveAsOf,
       );
-      const snapshot = computeExtensionSnapshot(series.candles, profile.extensionConfig);
+      const snapshot = extensionContext[item] ?? extensionSnapshotAt(
+        input.candlesByTimeframe[item] ?? [], series, profile.extensionConfig,
+      );
       return [item, {
         timeframe: item,
         emaPeriod: profile.extensionConfig.emaPeriod,
@@ -1024,33 +1133,146 @@ function candidateMetricsAt(
   });
 }
 
+const extensionCache = new WeakMap<
+  readonly ReplayCandleRecord[],
+  Map<string, ReturnType<typeof computeExtensionSnapshot>>
+>();
+const structureCache = new WeakMap<
+  readonly ReplayCandleRecord[],
+  Map<string, MarketStructureState>
+>();
+const revisionFreeCache = new WeakMap<readonly ReplayCandleRecord[], boolean>();
+
+function extensionSnapshotAt(
+  source: readonly ReplayCandleRecord[],
+  selected: SelectedSeries,
+  config: Required<ExtensionSnapshotOptions>,
+) {
+  if (!revisionFree(source)) return computeExtensionSnapshot(selected.candles, config);
+  const key = `${selected.replay.at(-1)?.observationId ?? "empty"}:${canonicalHash(config)}`;
+  let cache = extensionCache.get(source);
+  if (!cache) {
+    cache = new Map();
+    extensionCache.set(source, cache);
+  }
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const snapshot = computeExtensionSnapshot(selected.candles, config);
+  boundedStringCacheSet(cache, key, snapshot);
+  return snapshot;
+}
+
+function marketStructureAt(
+  source: readonly ReplayCandleRecord[],
+  selected: SelectedSeries,
+  config: Required<MarketStructureOptions>,
+  configHash: string,
+) {
+  if (!revisionFree(source)) return computeMarketStructure(selected.candles, config);
+  const key = `${selected.replay.at(-1)?.observationId ?? "empty"}:${configHash}`;
+  let cache = structureCache.get(source);
+  if (!cache) {
+    cache = new Map();
+    structureCache.set(source, cache);
+  }
+  const cached = cache.get(key);
+  if (cached) return cached;
+  const structure = computeMarketStructure(selected.candles, config);
+  boundedStringCacheSet(cache, key, structure);
+  return structure;
+}
+
+function revisionFree(source: readonly ReplayCandleRecord[]) {
+  const cached = revisionFreeCache.get(source);
+  if (cached != null) return cached;
+  const value = source.every((item) => item.correctionPublishedAt == null);
+  revisionFreeCache.set(source, value);
+  return value;
+}
+
+function boundedStringCacheSet<T>(cache: Map<string, T>, key: string, value: T) {
+  cache.set(key, value);
+  while (cache.size > SELECTION_CACHE_LIMIT) {
+    const oldest = cache.keys().next().value as string | undefined;
+    if (oldest == null) break;
+    cache.delete(oldest);
+  }
+}
+
 function candidateMetricHistory(
   input: MaterializeReplayAnalysisInput,
   timeframe: string,
   effectiveAsOf: number,
 ): ImpulseFadeCandidateMetricObservation[] {
-  const executionRecords = selectReplayRecordsAt(
-    input.candlesByTimeframe[input.analysisProfile.executionTimeframe] ?? [],
-    effectiveAsOf,
+  const executionSource = input.candlesByTimeframe[input.analysisProfile.executionTimeframe] ?? [];
+  const candidateSource = input.candlesByTimeframe[timeframe] ?? [];
+  const cacheKey = canonicalHash(input.analysisProfile.extensionConfig);
+  let byCandidate = candidateMetricHistoryCache.get(executionSource);
+  if (!byCandidate) {
+    byCandidate = new WeakMap();
+    candidateMetricHistoryCache.set(executionSource, byCandidate);
+  }
+  let byConfig = byCandidate.get(candidateSource);
+  if (!byConfig) {
+    byConfig = new Map();
+    byCandidate.set(candidateSource, byConfig);
+  }
+  let history = byConfig.get(cacheKey);
+  if (!history) {
+    history = buildCandidateMetricHistory(input, timeframe, executionSource, candidateSource);
+    byConfig.set(cacheKey, history);
+  }
+  return history.filter((item) => (item.knownAt ?? item.asOf) <= effectiveAsOf);
+}
+
+const candidateMetricHistoryCache = new WeakMap<
+  readonly ReplayCandleRecord[],
+  WeakMap<readonly ReplayCandleRecord[], Map<string, ImpulseFadeCandidateMetricObservation[]>>
+>();
+
+function buildCandidateMetricHistory(
+  input: MaterializeReplayAnalysisInput,
+  timeframe: string,
+  executionSource: readonly ReplayCandleRecord[],
+  candidateSource: readonly ReplayCandleRecord[],
+) {
+  const maximumAsOf = Math.max(
+    0,
+    ...executionSource.map((item) => item.knownAt ?? item.closeTime),
   );
+  const executionRecords = selectReplayRecordsAt(executionSource, maximumAsOf);
+  const selectedCandidates = selectedSeriesAt(candidateSource, timeframe, maximumAsOf);
+  let candidateIndex = -1;
+  let priorCandidateIndex = -2;
+  let priorMetrics: ImpulseFadeCandidateMetricObservation["metrics"] | null = null;
+  let priorSampleCount = 0;
   return executionRecords.map((record) => {
-    const selected = selectedSeriesAt(
-      input.candlesByTimeframe[timeframe] ?? [],
-      timeframe,
-      record.closeTime,
-    );
-    const extension = computeExtensionSnapshot(selected.candles, input.analysisProfile.extensionConfig);
-    return {
-      asOf: record.closeTime,
-      eventTime: record.closeTime,
-      knownAt: record.closeTime,
-      metrics: {
+    while (
+      candidateIndex + 1 < selectedCandidates.replay.length &&
+      selectedCandidates.replay[candidateIndex + 1]!.closeTime <= record.closeTime &&
+      (selectedCandidates.replay[candidateIndex + 1]!.knownAt ??
+        selectedCandidates.replay[candidateIndex + 1]!.closeTime) <= record.closeTime
+    ) candidateIndex += 1;
+    if (candidateIndex !== priorCandidateIndex || !priorMetrics) {
+      const extension = computeExtensionSnapshot(
+        selectedCandidates.candles.slice(0, candidateIndex + 1),
+        input.analysisProfile.extensionConfig,
+      );
+      priorCandidateIndex = candidateIndex;
+      priorMetrics = {
         returnPct: extension.returnPct,
         percentile: extension.percentile,
         zScore: extension.zScore,
         atrExtension: extension.atrExtension,
-      },
-      sampleCount: extension.rollingReturnCount,
+      };
+      priorSampleCount = extension.rollingReturnCount;
+    }
+    return {
+      asOf: record.closeTime,
+      eventTime: record.closeTime,
+      knownAt: record.closeTime,
+      metrics: priorMetrics,
+      sampleCount: priorSampleCount,
     };
   });
 }
@@ -1104,7 +1326,7 @@ function materializeRelativeStrength(
       referenceObservationId: firstReference.observationId,
       closeTime: firstTarget.closeTime,
     },
-    series: points,
+    series: input.includeComponentProvenance === false ? points.slice(-1) : points,
     structure: computeMarketStructure(rsCandles, input.analysisProfile.structureConfig),
     status,
   };
@@ -1114,6 +1336,7 @@ function materializeAvwap(
   input: MaterializeReplayAnalysisInput,
   selectedByTimeframe: Record<string, SelectedSeries>,
   effectiveAsOf: number,
+  includeComponentProvenance: boolean,
 ) {
   const states: ReplayAnalysisAvwapState[] = [];
   const events: ReplayAnalysisObservation<AnchoredVwapSignal>[] = [];
@@ -1159,10 +1382,12 @@ function materializeAvwap(
       configurationHash: canonicalHash({ anchor, config: input.analysisProfile.avwapConfig }),
       sourceObservationIds: [anchor.anchorCandleObservationId, ...sourceObservationIds],
       value: snapshot,
-    });
+    }, includeComponentProvenance);
     states.push({
       anchor,
-      series: linePoints(computeAnchoredVwapLine(selected.candles, options)),
+      series: includeComponentProvenance
+        ? linePoints(computeAnchoredVwapLine(selected.candles, options))
+        : [],
       snapshot,
       observation,
     });
@@ -1185,7 +1410,7 @@ function materializeAvwap(
         configurationHash: observation.configurationHash,
         sourceObservationIds: [anchor.anchorCandleObservationId, ...sourceIdsThrough(selected, event.knownAt)],
         value: { ...event, knownAt },
-      }));
+      }, includeComponentProvenance));
     }
     freshness = freshnessFor(
       "avwap",
@@ -1193,6 +1418,7 @@ function materializeAvwap(
       selected,
       observation.configurationHash,
       1,
+      includeComponentProvenance,
     );
   }
   return { states, events, notes, freshness };
@@ -1327,6 +1553,7 @@ function freshnessFor(
   selected: SelectedSeries,
   configurationHash: string,
   requiredSamples: number,
+  includeSourceObservationIds = true,
 ): ReplayAnalysisFreshness {
   const latest = selected.replay.at(-1);
   return {
@@ -1338,7 +1565,9 @@ function freshnessFor(
     sampleCount: selected.replay.length,
     requiredCoverage: requiredSamples,
     availableCoverage: selected.replay.length,
-    sourceObservationIds: selected.replay.map((candle) => candle.observationId),
+    sourceObservationIds: includeSourceObservationIds
+      ? selected.replay.map((candle) => candle.observationId)
+      : [],
     configurationHash,
   };
 }
@@ -1349,6 +1578,7 @@ function freshnessForRelativeStrength(
   reference: SelectedSeries,
   status: ReplayAnalysisComponentStatus,
   configurationHash: string,
+  includeSourceObservationIds = true,
 ): ReplayAnalysisFreshness {
   const latestTarget = target.replay.at(-1);
   const latestReference = reference.replay.at(-1);
@@ -1367,10 +1597,12 @@ function freshnessForRelativeStrength(
     sampleCount: Math.min(target.replay.length, reference.replay.length),
     requiredCoverage: target.replay.length,
     availableCoverage: reference.replay.length,
-    sourceObservationIds: [
-      ...target.replay.map((candle) => candle.observationId),
-      ...reference.replay.map((candle) => candle.observationId),
-    ].sort(),
+    sourceObservationIds: includeSourceObservationIds
+      ? [
+          ...target.replay.map((candle) => candle.observationId),
+          ...reference.replay.map((candle) => candle.observationId),
+        ].sort()
+      : [],
     configurationHash,
   };
 }

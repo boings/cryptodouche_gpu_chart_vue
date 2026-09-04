@@ -32,6 +32,12 @@ import {
   type ReplayAnalysisState,
 } from "./replayAnalysis";
 import type { ReplayAnalysisDataAdapter } from "./replayAnalysisJsonAdapter";
+import { registerReplayTimelineMaterializer } from "./replayInternal";
+import {
+  ensureReplayAnalysisThrough,
+  replayPrivilegedDataBundle,
+} from "./replayInternal";
+import type { ReplayCaseOutcome } from "./replaySession";
 import { canonicalHash, immutableJsonClone, type JsonValue } from "./serialization";
 import type { StrategyProfile } from "./strategy";
 
@@ -85,8 +91,12 @@ export async function loadMaterializedReplayCase(
       input.analysisDataAdapter.getCoverage(referenceQuery),
     ]);
     targetCoverage[timeframe] = coverage;
-    const targetRange = rangeFromCoverage(targetQuery, coverage, horizon);
-    const referenceRange = rangeFromCoverage(referenceQuery, referenceCoverage, horizon);
+    const requiredStart = Math.max(
+      0,
+      input.manifest.startAsOf - materializedHistorySeconds(input, timeframe),
+    );
+    const targetRange = rangeFromCoverage(targetQuery, coverage, requiredStart, horizon);
+    const referenceRange = rangeFromCoverage(referenceQuery, referenceCoverage, requiredStart, horizon);
     targetBaseByTimeframe[timeframe] = targetRange
       ? await input.analysisDataAdapter.loadCandles(targetRange)
       : [];
@@ -124,10 +134,30 @@ export async function loadMaterializedReplayCase(
       points.add(candle.closeTime);
     }
   }
-  const states = [...points].sort((left, right) => left - right).map((asOf) =>
-    materializeReplayAnalysis({ ...materializationBase, asOf }));
-  const observations = states.map(materializedStateToReplayObservation);
-  const knownEvents = materializedAnalysisKnownEvents(states);
+  const evaluationPoints = [...points].sort((left, right) => left - right);
+  const states: ReplayAnalysisState[] = [];
+  const observations: ReplayAnalysisStateObservation[] = [];
+  let knownEvents: ReplayKnownEvent[] = [];
+  let materializedThroughIndex = -1;
+  const materializeThrough = async (asOf: number) => {
+    while (
+      materializedThroughIndex + 1 < evaluationPoints.length &&
+      evaluationPoints[materializedThroughIndex + 1]! <= asOf
+    ) {
+      materializedThroughIndex += 1;
+      const state = materializeReplayAnalysis({
+        ...materializationBase,
+        asOf: evaluationPoints[materializedThroughIndex]!,
+        includeIndicatorSeries: false,
+        includeComponentProvenance: false,
+      });
+      states.push(state);
+      observations.push(materializedStateToReplayObservation(state));
+    }
+    knownEvents = materializedAnalysisKnownEvents(states);
+    return { analysisStateHistory: observations, knownEvents };
+  };
+  await materializeThrough(input.manifest.startAsOf);
   const startState = states.find((state) => state.effectiveAsOf === input.manifest.startAsOf) ??
     states[0];
   if (!startState) throw new Error("No materialized analysis state exists at replay start");
@@ -136,6 +166,8 @@ export async function loadMaterializedReplayCase(
         ...materializationBase,
         avwapAnchors: (input.avwapAnchors ?? []).filter((anchor) => anchor.type !== "manual"),
         asOf: startState.effectiveAsOf,
+        includeIndicatorSeries: false,
+        includeComponentProvenance: false,
       })
     : startState;
 
@@ -148,7 +180,7 @@ export async function loadMaterializedReplayCase(
     knownEvents,
     radarEpisode: materializationBase.radarEpisode,
   });
-  return loadReplayCase({
+  const loaded = await loadReplayCase({
     manifest: input.manifest,
     sessionConfig: input.sessionConfig,
     historicalDataAdapter: adapter,
@@ -171,6 +203,65 @@ export async function loadMaterializedReplayCase(
       radarProfileHash: input.radarSelectionProfile.canonicalConfigHash,
       strategyProfileHash: input.strategyProfile.profileHash,
     },
+  });
+  registerReplayTimelineMaterializer(loaded, { materializeThrough });
+  return loaded;
+}
+
+/** Materialize reveal-only outcome data without exposing the privileged bundle. */
+export async function materializeReplayCaseOutcome(
+  loaded: ReplayLoadedCase,
+): Promise<ReplayCaseOutcome> {
+  const start = loaded.manifest.startAsOf;
+  const horizon = start + loaded.sessionConfig.maximumCaseDuration;
+  await ensureReplayAnalysisThrough(loaded, horizon);
+  const bundle = replayPrivilegedDataBundle(loaded);
+  const selectedByTimeframe = Object.fromEntries(
+    Object.entries(bundle.candlesByTimeframe).map(([timeframe, candles]) => [
+      timeframe,
+      selectReplayRecordsAt(candles, horizon),
+    ]),
+  );
+  const futureCandlesByTimeframe = Object.fromEntries(
+    Object.entries(selectedByTimeframe).map(([timeframe, candles]) => [
+      timeframe,
+      candles.filter((candle) => candle.closeTime > start && candle.knownAt <= horizon),
+    ]),
+  );
+  const lifecycleTimeline = bundle.analysisStateHistory
+    .filter((item) => item.knownAt >= start && item.knownAt <= horizon)
+    .map((item) => ({ knownAt: item.knownAt, state: item.lifecycle.currentState }));
+  const lifecycleStateTimestamps: ReplayCaseOutcome["lifecycleStateTimestamps"] = {};
+  for (const item of lifecycleTimeline) {
+    if (lifecycleStateTimestamps[item.state] == null) {
+      lifecycleStateTimestamps[item.state] = item.knownAt;
+    }
+  }
+  const evaluationCandles = selectedByTimeframe[loaded.sessionConfig.evaluationTimeframe] ?? [];
+  const startPrice = evaluationCandles
+    .filter((candle) => candle.closeTime <= start && candle.knownAt <= start)
+    .at(-1)?.c ?? null;
+  const futureEvaluationCandles = futureCandlesByTimeframe[
+    loaded.sessionConfig.evaluationTimeframe
+  ] ?? [];
+  const radarTerminalEvents = bundle.knownEvents.filter((event) =>
+    (event.kind === "radarTerminal" || event.kind === "lifecycleTerminal") &&
+    event.knownAt >= start && event.knownAt <= horizon);
+
+  return immutableJsonClone({
+    futureCandlesByTimeframe,
+    lifecycleTimeline,
+    radarTerminalResult: radarTerminalEvents.length
+      ? jsonObject({ events: radarTerminalEvents })
+      : null,
+    maximumFavorablePriceExcursionFromDetected: startPrice && futureEvaluationCandles.length
+      ? ((startPrice - Math.min(...futureEvaluationCandles.map((candle) => candle.l))) / startPrice) * 100
+      : null,
+    maximumAdversePriceExcursionFromDetected: startPrice && futureEvaluationCandles.length
+      ? ((Math.max(...futureEvaluationCandles.map((candle) => candle.h)) - startPrice) / startPrice) * 100
+      : null,
+    lifecycleStateTimestamps,
+    dataQualityNotes: bundle.dataQualityNotes,
   });
 }
 
@@ -375,11 +466,40 @@ async function requireRadarEpisode(adapter: ReplayHistoricalDataAdapter, id: str
 function rangeFromCoverage(
   query: ReplayCoverageQuery,
   coverage: ReplayDataCoverage,
+  requiredStart: number,
   to: number,
 ): ReplayCandleQuery | null {
   return coverage.earliestOpenTime == null
     ? null
-    : { ...query, from: coverage.earliestOpenTime, to };
+    : { ...query, from: Math.max(coverage.earliestOpenTime, requiredStart), to };
+}
+
+function materializedHistorySeconds(
+  input: LoadMaterializedReplayCaseInput,
+  timeframe: string,
+) {
+  const declared = input.manifest.preRollRequirements
+    .filter((item) => item.timeframe === timeframe)
+    .reduce((maximum, item) => Math.max(
+      maximum,
+      item.minimumDurationSeconds,
+      item.minimumBars * timeframeSeconds(timeframe),
+    ), 0);
+  const roles = input.strategyProfile.timeframeRoles;
+  const roleDuration = timeframe === roles.candidateTimeframe
+    ? input.analysisProfile.extensionConfig.historyDays * 86_400
+    : timeframe === roles.structureTimeframe || roles.contextTimeframes.includes(timeframe)
+      ? 90 * 86_400
+      : timeframeSeconds(timeframe) * 250;
+  return Math.max(declared, roleDuration);
+}
+
+function timeframeSeconds(timeframe: string) {
+  const match = /^(\d+)(m|h|d)$/i.exec(timeframe);
+  if (!match) throw new RangeError(`Unsupported materialized replay timeframe ${timeframe}`);
+  const value = Number(match[1]);
+  const unit = match[2]!.toLowerCase();
+  return value * (unit === "m" ? 60 : unit === "h" ? 3_600 : 86_400);
 }
 
 function combineSeries(
@@ -387,10 +507,10 @@ function combineSeries(
   revisions: Record<string, ReplayCandleRecord[]>,
 ) {
   return Object.fromEntries([...new Set([...Object.keys(base), ...Object.keys(revisions)])].map(
-    (timeframe) => [timeframe, [
+    (timeframe) => [timeframe, Object.freeze([
       ...(base[timeframe] ?? []),
       ...(revisions[timeframe] ?? []),
-    ]],
+    ]) as unknown as ReplayCandleRecord[]],
   ));
 }
 

@@ -44,7 +44,10 @@ import {
 import { strictTimeframeToSeconds } from "./data";
 import { canonicalHash, canonicalSerialize, immutableJsonClone, type JsonValue } from "./serialization";
 import type { SetupStateName } from "./indicators";
-import { replayPrivilegedDataBundle } from "./replayInternal";
+import {
+  ensureReplayAnalysisThrough,
+  replayPrivilegedDataBundle,
+} from "./replayInternal";
 
 export type ReplayStructureEventType = "BOS" | "Shift" | string;
 export type ReplayAvwapEventType = "loss" | "reclaim" | "failedReclaim" | string;
@@ -706,6 +709,10 @@ export async function applyReplayCommand(
   }
   validateReplayCommand(session, command);
 
+  if (command.type === "StartSession") {
+    await ensureReplayAnalysisThrough(loaded, loaded.manifest.startAsOf);
+  }
+
   let eventInput: Omit<ReplayEvent, "id" | "sequence" | "schemaVersion">;
   let outcomeEnvelope: ReplayOutcomeEnvelope | null = null;
   if (command.type === "StartSession") {
@@ -724,6 +731,19 @@ export async function applyReplayCommand(
     const currentFrame = requireCurrentFrame(session);
     if (command.type === "Wait") {
       validateWakePlan(loaded, session, currentFrame, command.payload.wakePlan);
+      const scheduledTarget = scheduledReviewTarget(
+        loaded,
+        currentFrame.effectiveAsOf,
+        command.payload.wakePlan.scheduledReview,
+      );
+      await ensureReplayAnalysisThrough(
+        loaded,
+        Math.min(
+          command.payload.wakePlan.deadlineAsOf,
+          loaded.manifest.startAsOf + loaded.sessionConfig.maximumCaseDuration,
+          scheduledTarget ?? Infinity,
+        ),
+      );
       const decisionRecord = createDecisionRecord({
         sessionId: session.id,
         snapshot: currentFrame.decisionSnapshot,

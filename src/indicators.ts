@@ -855,17 +855,19 @@ export function evaluateImpulseFadeSnapshot(
   const points = impulseFadeEvaluationPoints(options);
   const asOf = lastItem(points);
   if (asOf == null) return null;
+  const evaluateFrom = normalizedNullableNumber(options.from) ?? -Infinity;
   const htfStructureHistory = buildHtfStructureHistory(options, asOf);
   const confirmedExecutionBreaks = new Map<string, StructureBreak>();
   const executionCandles = options.candlesByTimeframe[options.executionTimeframe] ?? [];
   const structurePoints = new Set(
     executionCandles
       .map((candle) => candleCloseTime(candle, options.executionTimeframe))
-      .filter((knownAt) => knownAt <= asOf),
+      .filter((knownAt) => knownAt >= evaluateFrom && knownAt <= asOf),
   );
   for (const event of options.structureEvents ?? []) {
     if (
       (!event.sourceTimeframe || event.sourceTimeframe === options.executionTimeframe) &&
+      setupEventKnownAt(event) >= evaluateFrom &&
       setupEventKnownAt(event) <= asOf
     ) {
       structurePoints.add(setupEventKnownAt(event));
@@ -1017,16 +1019,22 @@ function buildHtfStructureHistory(
   options: ImpulseFadeTimelineOptions,
   through: number,
 ) {
+  const evaluateFrom = normalizedNullableNumber(options.from) ?? -Infinity;
   return Object.entries(options.candlesByTimeframe)
     .filter(([timeframe]) => timeframe !== options.executionTimeframe)
     .flatMap(([timeframe, candles]) => {
       const knownTimes = new Set(
         candles
           .map((candle) => candleCloseTime(candle, timeframe))
-          .filter((knownAt) => knownAt <= through),
+          .filter((knownAt) => knownAt >= evaluateFrom && knownAt <= through),
       );
+      if (Number.isFinite(evaluateFrom) && evaluateFrom <= through) knownTimes.add(evaluateFrom);
       for (const event of options.structureEvents ?? []) {
-        if (event.sourceTimeframe === timeframe && setupEventKnownAt(event) <= through) {
+        if (
+          event.sourceTimeframe === timeframe &&
+          setupEventKnownAt(event) >= evaluateFrom &&
+          setupEventKnownAt(event) <= through
+        ) {
           knownTimes.add(setupEventKnownAt(event));
         }
       }
@@ -2906,15 +2914,20 @@ function findReferenceCandle(
   beforeIndex: number,
 ) {
   const endIndex = Math.min(candles.length - 1, Math.max(0, beforeIndex - 1));
-  let best: CandleRecord | null = null;
-  for (let index = endIndex; index >= 0; index -= 1) {
-    const candle = candles[index];
-    if (candle.bucket <= targetBucket && validPositivePrice(candle.c)) {
-      best = candle;
-      break;
+  let low = 0;
+  let high = endIndex;
+  let candidate = -1;
+  while (low <= high) {
+    const middle = Math.floor((low + high) / 2);
+    if (candles[middle].bucket <= targetBucket) {
+      candidate = middle;
+      low = middle + 1;
+    } else {
+      high = middle - 1;
     }
   }
-  return best;
+  while (candidate >= 0 && !validPositivePrice(candles[candidate].c)) candidate -= 1;
+  return candidate >= 0 ? candles[candidate] : null;
 }
 
 function rollingWindowReturns(

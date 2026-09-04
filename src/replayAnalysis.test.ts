@@ -169,6 +169,37 @@ describe("replay analysis materializer", () => {
     expect(full.freshnessByComponent["timeframe:1d"]?.latestInputCloseTime).toBeNull();
   });
 
+  it("keeps compact replay timeline semantics equal to the full chart state", () => {
+    const input = fixture();
+    const full = materializeReplayAnalysis(input);
+    const compact = materializeReplayAnalysis({
+      ...input,
+      includeIndicatorSeries: false,
+      includeComponentProvenance: false,
+    });
+
+    expect(compact.dataBundleFingerprint).toBe(full.dataBundleFingerprint);
+    expect(compact.candidateMetrics).toEqual(full.candidateMetrics);
+    expect(compact.extensionContext).toEqual(full.extensionContext);
+    expect(Object.fromEntries(Object.entries(compact.structureByTimeframe).map(
+      ([timeframe, value]) => [timeframe, value.observation.value],
+    ))).toEqual(Object.fromEntries(Object.entries(full.structureByTimeframe).map(
+      ([timeframe, value]) => [timeframe, value.observation.value],
+    )));
+    expect(compact.structureEvents.map((item) => item.observationId)).toEqual(
+      full.structureEvents.map((item) => item.observationId),
+    );
+    expect(compact.supportResistanceZones.map((item) => item.observationId)).toEqual(
+      full.supportResistanceZones.map((item) => item.observationId),
+    );
+    expect(compact.relativeStrengthEvents.map((item) => item.observationId)).toEqual(
+      full.relativeStrengthEvents.map((item) => item.observationId),
+    );
+    expect(compact.relativeStrength.series).toEqual(full.relativeStrength.series.slice(-1));
+    expect(compact.lifecycleResult).toEqual(full.lifecycleResult);
+    expect(compact.indicatorSeries).toEqual({});
+  });
+
   it("reuses the shared extension, structure, Stoch RSI, and RS calculations", () => {
     const input = fixture();
     const state = materializeReplayAnalysis(input);

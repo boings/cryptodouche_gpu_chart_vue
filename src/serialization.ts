@@ -48,12 +48,24 @@ export function canonicalSerialize(value: unknown): string {
 
 export function canonicalHash(value: unknown): string {
   const bytes = new TextEncoder().encode(canonicalSerialize(value));
-  let hash = 0xcbf29ce484222325n;
+  // FNV-1a 64 represented as two uint32 words. The prime is
+  // 0x100000001b3 = 2^40 + 0x1b3, which lets us preserve the exact historic
+  // hash without a BigInt multiplication for every byte.
+  let high = 0xcbf29ce4;
+  let low = 0x84222325;
   for (const byte of bytes) {
-    hash ^= BigInt(byte);
-    hash = BigInt.asUintN(64, hash * 0x100000001b3n);
+    low = (low ^ byte) >>> 0;
+    const lowProduct = low * 0x1b3;
+    high = (
+      Math.imul(high, 0x1b3) +
+      Math.floor(lowProduct / 0x1_0000_0000) +
+      (low << 8)
+    ) >>> 0;
+    low = lowProduct >>> 0;
   }
-  return `fnv1a64:${hash.toString(16).padStart(16, "0")}`;
+  return `fnv1a64:${high.toString(16).padStart(8, "0")}${low
+    .toString(16)
+    .padStart(8, "0")}`;
 }
 
 export function immutableJsonClone<T>(value: T): T {

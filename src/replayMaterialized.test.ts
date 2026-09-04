@@ -11,6 +11,7 @@ import {
 import {
   createMaterializedReplaySessionConfig,
   loadMaterializedReplayCase,
+  materializeReplayCaseOutcome,
 } from "./replayMaterialized";
 import {
   applyReplayCommand,
@@ -182,6 +183,17 @@ describe("materialized replay-engine.2 integration", () => {
     );
     expect(next.visibleCandlesByTimeframe["1h"].every((candle) =>
       candle.closeTime <= next.effectiveAsOf && candle.knownAt <= next.effectiveAsOf)).toBe(true);
+
+    const outcome = await materializeReplayCaseOutcome(anchoredLoaded);
+    expect(outcome.futureCandlesByTimeframe["1h"].length).toBeGreaterThan(0);
+    expect(outcome.futureCandlesByTimeframe["1h"].every((candle) =>
+      candle.closeTime > audit.manifest.startAsOf &&
+      candle.closeTime <= audit.manifest.startAsOf + config.maximumCaseDuration)).toBe(true);
+    expect(outcome.lifecycleTimeline.at(-1)?.knownAt).toBeLessThanOrEqual(
+      audit.manifest.startAsOf + config.maximumCaseDuration,
+    );
+    expect(anchoredLoaded.dataBundle.candlesByTimeframe["1h"].every((candle) =>
+      candle.closeTime <= audit.manifest.startAsOf)).toBe(true);
   });
 });
 

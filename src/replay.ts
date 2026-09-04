@@ -1031,7 +1031,18 @@ function validateReplayCandles(
       left.knownAt - right.knownAt ||
       left.observationId.localeCompare(right.observationId),
   );
-  for (const asOf of [...new Set(validated.map((item) => item.knownAt))]) {
+  const revisionKnowledgePoints = validated.some((item) => item.correctionPublishedAt != null)
+    ? [...new Set(validated
+        .filter((item) => item.correctionPublishedAt != null)
+        .map((item) => item.knownAt))]
+    : [];
+  const latestKnowledgePoint = validated.length
+    ? Math.max(...validated.map((item) => item.knownAt))
+    : null;
+  for (const asOf of [...new Set([
+    ...revisionKnowledgePoints,
+    ...(latestKnowledgePoint == null ? [] : [latestKnowledgePoint]),
+  ])]) {
     selectCompletedCandleRevisionsAt(validated.map(replayCandleToCandle), timeframe, asOf);
   }
   return immutableJsonClone(validated);
