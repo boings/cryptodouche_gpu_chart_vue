@@ -48,6 +48,10 @@ test("builds a deterministic dashboard-importable real corpus without authored o
     bundle.executionProfile.pathResolutionPolicy.candleTimeframesFinestFirst,
     ["1m", bundle.strategyProfile.timeframeRoles.executionTimeframe],
   );
+  assert.deepEqual(
+    [...new Set(bundle.executionData.candles.map((candle) => candle.timeframe))].sort(),
+    ["15m", "1m"],
+  );
   assert.equal(bundle.provenance.executionSimulationMode, "ResearchProxyExecution");
   assert.equal(bundle.venueExecutionRules.assumptionStatus, "researchAssumption");
   assert.equal(bundle.feeSchedule.assumptionStatus, "researchAssumption");

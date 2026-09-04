@@ -286,7 +286,12 @@ function createDashboardBundle(input, index) {
     timeframe,
     toDashboardCandles(targetRecords.filter((item) => item.timeframe === timeframe && item.closeTime >= displayStart)),
   ]));
-  const executionRecords = executionCandles.map((item) => replayRecord(candidate.symbol, "1m", item));
+  const executionRecords = [
+    ...executionCandles.map((item) => replayRecord(candidate.symbol, "1m", item)),
+    ...targetRecords.filter(
+      (item) => item.timeframe === profiles.strategy.timeframeRoles.executionTimeframe,
+    ),
+  ];
   const planningVenueRiskRules = createPlanningVenueRiskRules(candidate.symbol);
   const feeSchedule = createProxyFeeSchedule(detectedAt);
   const venueExecutionRules = createResearchVenueExecutionRules(
