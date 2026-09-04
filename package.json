@@ -1,6 +1,6 @@
 {
   "name": "@cryptodouche/gpu-chart-vue",
-  "version": "0.1.28",
+  "version": "0.1.29",
   "private": true,
   "type": "module",
   "files": [
@@ -32,6 +32,7 @@
     "audit:replay": "pnpm build && node scripts/audit-replay.mjs",
     "audit:trade-plan": "pnpm build && node scripts/audit-trade-planning.mjs",
     "audit:execution": "pnpm build && node scripts/audit-execution.mjs",
+    "audit:trainer-corpus": "pnpm build && node scripts/audit-real-trainer-corpus.mjs",
     "generate:execution-examples": "pnpm build && node scripts/generate-execution-examples.mjs && pnpm clean:appledouble",
     "generate:analysis-examples": "pnpm build && node scripts/generate-analysis-examples.mjs && pnpm clean:appledouble",
     "generate:replay-examples": "pnpm build && node scripts/generate-replay-examples.mjs",

@@ -3,6 +3,7 @@ export * from "./execution";
 export * from "./executionJsonAdapter";
 export * from "./executionReveal";
 export * from "./executionSession";
+export * from "./historical";
 export * from "./indicators";
 export * from "./radar";
 export * from "./replay";

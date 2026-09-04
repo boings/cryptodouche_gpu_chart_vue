@@ -1,4 +1,4 @@
-import type { CandidateMetrics, GpuChartDataAdapter, GpuChartOpenPayload, GpuChartPointSelectionPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
+import type { CandidateMetrics, GpuChartAvwapAnchor, GpuChartDataAdapter, GpuChartExecutionMarker, GpuChartOpenPayload, GpuChartPointSelectionPayload, GpuChartTimeSyncAction, GpuChartTimeSyncCommand } from "./types";
 import { type GpuChartAppearance } from "./appearance";
 type __VLS_Props = {
     symbol: string;
@@ -21,6 +21,8 @@ type __VLS_Props = {
     syncId?: string | number;
     timeSyncCommand?: GpuChartTimeSyncCommand | null;
     candidateMetrics?: CandidateMetrics | null;
+    anchoredVwapAnchors?: GpuChartAvwapAnchor[];
+    executionMarkers?: GpuChartExecutionMarker[];
     appearance?: Partial<GpuChartAppearance>;
 };
 declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {}, import("vue").ComponentOptionsMixin, import("vue").ComponentOptionsMixin, {
@@ -61,5 +63,7 @@ declare const _default: import("vue").DefineComponent<__VLS_Props, {}, {}, {}, {
     showChartSettings: boolean;
     syncId: string | number;
     timeSyncCommand: GpuChartTimeSyncCommand | null;
+    anchoredVwapAnchors: GpuChartAvwapAnchor[];
+    executionMarkers: GpuChartExecutionMarker[];
 }, {}, {}, {}, string, import("vue").ComponentProvideOptions, false, {}, any>;
 export default _default;

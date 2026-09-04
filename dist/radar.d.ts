@@ -340,6 +340,12 @@ export interface RadarScanInput {
     selectionProfile: RadarSelectionProfile;
     from: number;
     to: number;
+    /**
+     * Optional conservative prefilter output. Points omitted here are treated as
+     * evaluated false for state-machine continuity, without materializing the
+     * expensive detector evidence that cannot pass at those points.
+     */
+    candidateEvaluationPoints?: readonly number[];
     strategyProfile?: StrategyProfile;
     lifecycleHistory?: Record<string, readonly SetupStateSnapshot[]>;
     universeHistory?: readonly UniverseMembershipObservation[];

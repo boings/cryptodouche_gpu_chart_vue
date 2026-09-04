@@ -205,6 +205,13 @@ export interface MaterializeReplayAnalysisInput {
     strategyProfile: StrategyProfile;
     analysisProfile: ReplayAnalysisProfile;
     lifecycleConfig?: ImpulseFadeTimelineConfig;
+    /**
+     * Replay timelines retain decision objects and event provenance but do not
+     * need chart-rendering line arrays for every historical evaluation point.
+     */
+    includeIndicatorSeries?: boolean;
+    /** Keep verbose source-id arrays and line series in the returned state. */
+    includeComponentProvenance?: boolean;
 }
 export declare function replayAnalysisProfileHash(profile: ReplayAnalysisProfile | ReplayAnalysisProfileDefinition): string;
 export declare function createReplayAnalysisProfile(definition: ReplayAnalysisProfileDefinition, strategyProfile?: StrategyProfile): ReplayAnalysisProfile;
